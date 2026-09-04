@@ -15,7 +15,7 @@ import { resolverCliente } from "./clientesService";
 import { generarCodigoRecibo, firmarPayload, registrarAuditoria } from "./coreService";
 import { estadosPorDestino } from "../utils/estadosEnvio";
 import { tarifaDesdePerfil, costoInternoDefaultPorTipo, tipoEnvioResumen } from "../utils/calculosPaqueteria";
-import { postearAsiento } from "./contabilidadService";
+import { postearAsiento } from "./ContabilidadService";
 
 // Trackings que llegan de la landing pública nacen con datos mínimos
 // (cliente/contacto como texto suelto, sin cliente_id, y un estado que no
@@ -63,8 +63,6 @@ export const registrarTracking = async ({ form, clientesEnMemoria, auth }) => {
   if (!contacto.trim()) throw new Error("Escribe el WhatsApp del cliente.");
   if (!codigo.trim() && !almacenId.trim()) throw new Error("Escribe el número de tracking o el ID de almacén.");
 
-  // Igual que en pedidos/envíos: se resuelve (o crea) el cliente por
-  // teléfono, para que el tracking quede ligado desde el inicio.
   const clienteResuelto = await resolverCliente({
     clientesEnMemoria, nombre: cliente, telefono: contacto, tipo: "General", auth
   });
@@ -93,7 +91,6 @@ export const registrarTracking = async ({ form, clientesEnMemoria, auth }) => {
   });
 };
 
-// Edita UN campo de un tracking suelto (todavía no facturado en un recibo).
 const COLUMNAS_EDITABLES = { peso: "peso", estado: "estado", almacenId: "almacen_id", costoInterno: "costo_interno", nota: "nota", tipoEnvio: "tipo_envio" };
 
 export const actualizarTracking = async ({ tracking, field, value, auth }) => {
@@ -122,20 +119,6 @@ export const eliminarTracking = async ({ tracking, auth }) => {
   });
 };
 
-// ===== Generar recibo =====
-// `trackings` ya viene filtrado (solo los listos, de un mismo cliente y
-// mismo destino — se valida acá por seguridad). Cobra peso × tarifa por
-// tracking, aplica descuento/gastos extra al RECIBO completo (no hay
-// ambigüedad de "parcial" acá: lo que se selecciona ES el recibo entero).
-//
-// Al crear el recibo se reconoce la VENTA en el libro diario — sin
-// importar si ya se cobró o no (eso es lo correcto contablemente: la
-// venta se causa al generar el recibo, el cobro es un evento aparte que
-// maneja saldarEnvio/actualizarEstadoEnvio en enviosService.js):
-// Debe Cuentas por Cobrar Clientes (1030) · Haber Ventas Paquetería (4010).
-// `fecha` (opcional, "YYYY-MM-DD"): para cuando estás cargando un recibo
-// histórico (ej. migrando datos de un sistema anterior) — si no se pasa,
-// se usa el momento real en que se genera.
 export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil, tarifaPersonalizada, descuento, gastosExtras, nota, fecha, auth }) => {
   if (!trackings || trackings.length === 0) throw new Error("Selecciona al menos un tracking listo para generar el recibo.");
 
@@ -159,9 +142,6 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
   }, 0);
   const gananciaReal = total - costoInternoTotal - numero(gastosExtras);
 
-  // El estado del recibo se toma como el más atrasado ENTRE los trackings
-  // listos incluidos (puede haber, por ejemplo, algunos en "Punto UNI" y
-  // otros en "Jardines de Veracruz" — ambos son destinos de retiro válidos).
   const pipeline = estadosPorDestino(destino);
   const indices = trackings.map((t) => { const idx = pipeline.indexOf(t.estado); return idx === -1 ? 0 : idx; });
   const estadoRecibo = pipeline[Math.min(...indices)];
@@ -208,9 +188,6 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
 
   if (error) throw error;
 
-  // Ya quedaron guardados dentro del recibo (envios.trackings) — se sacan
-  // del pool de trackings sueltos para no duplicarlos ni mostrarlos de
-  // nuevo como "listos" en la pantalla de Trackings.
   const idsFacturados = trackings.map((t) => t.id);
   await supabase.from("tracking_registros").delete().in("id", idsFacturados);
 
