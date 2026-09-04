@@ -19,7 +19,7 @@ import { firmarPayload, registrarAuditoria } from "./coreService";
 import { costoInternoDefaultPorTipo } from "../utils/calculosPaqueteria";
 import { siguienteEstadoTrasRetiroProveedor } from "../utils/estadosEnvio";
 import { ajustarSaldoCuentaDinero } from "./cuentasDineroService";
-import { postearAsiento } from "./contabilidadService";
+import { postearAsiento } from "./ContabilidadService";
 
 export const TIPOS_PROVEEDOR = ["Aduana / Flete", "Transporte local"];
 
@@ -63,9 +63,6 @@ export const actualizarProveedor = async ({ proveedor, form, auth }) => {
   await registrarAuditoria({ ...auth, accion: "Editó proveedor", modulo: "Finanzas", registroCodigo: form.nombre, detalle: form.tipo || "" });
 };
 
-// Costo interno estimado de un tracking suelto — mismo criterio que se usa
-// en trackingsService.generarRecibo(): su propio costoInterno si lo tiene,
-// si no el default según tipo (Marítimo/Aéreo). Solo aplica a Aduana/Flete.
 const costoEstimadoTracking = (t) => {
   const costo = t.costoInterno !== undefined && t.costoInterno !== "" ? numero(t.costoInterno) : costoInternoDefaultPorTipo(t.tipoEnvio);
   return numero(t.peso) * costo;
@@ -73,20 +70,6 @@ const costoEstimadoTracking = (t) => {
 
 export const calcularMontoEstimado = (trackings) => trackings.reduce((a, t) => a + costoEstimadoTracking(t), 0);
 
-// Genera la factura. Ambos tipos pueden ligar trackings (para saber
-// qué paquetes cubrió ese traslado/factura), pero solo Aduana/Flete:
-// - Exige al menos un tracking.
-// - Calcula el cuadre estimado-vs-real (porque ahí sí existe un costo
-//   interno por libra con qué comparar).
-// Transporte local puede ligar cero o varios trackings, sin exigencia
-// y sin cuadre — el monto estimado se iguala al real, así la
-// diferencia siempre da $0 en vez de mostrar un cuadre que no existe
-// para ese tipo.
-//
-// `link` (opcional): URL al documento real de la factura (foto, PDF en
-// Drive, etc.) — puramente informativo.
-// `fecha` (opcional, "YYYY-MM-DD"): para cargar una factura histórica —
-// si no se pasa, se usa el momento real en que se genera.
 export const generarFacturaProveedor = async ({ proveedor, trackings = [], montoReal, numeroFactura, nota, link, fecha, auth }) => {
   const esAduana = esAduanaFlete(proveedor);
 
@@ -96,10 +79,6 @@ export const generarFacturaProveedor = async ({ proveedor, trackings = [], monto
   if (numero(montoReal) <= 0) throw new Error("Escribe el monto real que factura el proveedor.");
 
   const montoEstimado = esAduana ? calcularMontoEstimado(trackings) : numero(montoReal);
-
-  // El snapshot se guarda para AMBOS tipos si hay trackings elegidos —
-  // solo cambia si trae costoEstimado (Aduana/Flete) o no (Transporte
-  // local, donde ese concepto no existe).
   const trackingsSnapshot = trackings.map((t) => ({
     id: t.id,
     codigo: t.tracking,
@@ -151,16 +130,6 @@ export const generarFacturaProveedor = async ({ proveedor, trackings = [], monto
   return { facturaId: creada.id, montoEstimado, diferencia };
 };
 
-// Registra un pago (parcial o total) contra una factura ya generada —
-// igual para ambos tipos de proveedor. `proveedor` se necesita para
-// saber si aplica el avance automático de trackings (solo Aduana/Flete).
-// `cuentaDinero` es obligatoria — es la única fuente de "de dónde sale
-// el pago" (antes existía también un campo de texto libre `cuenta`,
-// ligado a una lista separada en Configuración; se unificaron en una
-// sola cosa). El campo `cuenta` de la tabla se sigue llenando, pero
-// ahora se deriva del nombre de la cuenta de dinero, no de texto suelto.
-// `fecha` (opcional, "YYYY-MM-DD"): para cargar un pago histórico — si no
-// se pasa, se usa el momento real en que se registra.
 export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo, cuentaDinero, referencia, nota, fecha, auth }) => {
   const montoNum = numero(monto);
   if (montoNum <= 0) throw new Error("El monto debe ser mayor a cero.");
@@ -196,13 +165,6 @@ export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo
   }).eq("id", factura.id);
   if (error) throw error;
 
-  // El tracking se queda "atascado" en Bodega OEX hasta que la factura
-  // de Darío quede TOTALMENTE pagada — recién ahí avanza al siguiente
-  // paso (depende del destino de cada tracking). Este avance SOLO
-  // aplica a Aduana/Flete: si es Transporte local, sus trackings
-  // ligados son solo trazabilidad (qué paquetes cubrió ese traslado),
-  // no representan un "retiro de bodega de proveedor" y no deben
-  // saltar de estado al pagarse.
   if (nuevoEstado === "Pagada" && esAduanaFlete(proveedor || {}) && (factura.trackings || []).length > 0) {
     await Promise.all(
       factura.trackings.map((t) =>
@@ -211,7 +173,6 @@ export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo
     );
   }
 
-  // Sale dinero real de la cuenta elegida (caja o banco).
   await ajustarSaldoCuentaDinero(cuentaDinero.id, -montoNum);
 
   if (cuentaDinero.cuentaContableId) {
@@ -238,9 +199,6 @@ export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo
   });
 };
 
-// Historial de pagos de UN proveedor (todas sus facturas, todos sus
-// pagos) — se consulta bajo demanda al abrir su ficha de detalle, no
-// viene precargado globalmente como facturasProveedor.
 export const listarPagosDeProveedor = async (proveedorId) => {
   const { data: facturas, error: errorFacturas } = await supabase
     .from("facturas_proveedor").select("id").eq("proveedor_id", proveedorId);
