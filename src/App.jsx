@@ -12,7 +12,7 @@ import { useToast } from "./hooks/useToast";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Paqueteria from "./pages/paqueteria/Paqueteria";
-import Finanzas from "./pages/Finanzas/Finanzas";
+import Finanzas from "./pages/finanzas/Finanzas";
 import Clientes from "./pages/Clientes";
 import Auditoria from "./pages/Auditoria";
 import Configuracion from "./pages/Configuracion";
