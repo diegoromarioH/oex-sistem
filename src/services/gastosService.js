@@ -3,7 +3,7 @@ import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { firmarPayload, registrarAuditoria } from "./coreService";
 import { ajustarSaldoCuentaDinero } from "./cuentasDineroService";
-import { postearAsiento, reversarAsientosDeOrigen } from "./contabilidadService";
+import { postearAsiento, reversarAsientosDeOrigen } from "./ContabilidadService";
 
 // Categoría de gasto (texto libre en el formulario) → código de cuenta
 // contable de tipo "gasto" en el catálogo. Si aparece una categoría que
