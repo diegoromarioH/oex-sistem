@@ -12,7 +12,7 @@
 import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { firmarPayload, registrarAuditoria } from "./coreService";
-import { postearAsiento } from "./contabilidadService";
+import { postearAsiento } from "./ContabilidadService";
 
 export const listarCortesCaja = async (cuentaDineroId) => {
   let query = supabase.from("cortes_caja").select("*").order("hora_apertura", { ascending: false });
@@ -52,9 +52,6 @@ export const abrirCaja = async ({ cuentaDinero, montoContado, auth }) => {
   return data;
 };
 
-// Suma debe−haber de las líneas del libro diario que tocaron esta
-// cuenta de dinero durante la ventana de la sesión — es el mismo
-// origen de datos que usa el resto del sistema, no un cálculo aparte.
 const movimientosDeSesion = async (cuentaDineroId, desde, hasta) => {
   const { data, error } = await supabase
     .from("movimientos_contables")
@@ -85,9 +82,6 @@ export const cerrarCaja = async ({ corte, cuentaDinero, montoContado, notas, aut
   }).eq("id", corte.id);
   if (error) throw error;
 
-  // Si no cuadra, se postea el ajuste y se corrige el saldo_actual de
-  // la cuenta de dinero para que el sistema arranque el siguiente día
-  // con el número real, no con el que "debería" haber habido.
   if (Math.abs(diferencia) > 0.01 && cuentaDinero.cuentaContableId) {
     const { data: cuentaContable } = await supabase
       .from("cuentas_contables").select("codigo").eq("id", cuentaDinero.cuentaContableId).single();
@@ -124,9 +118,6 @@ export const cerrarCaja = async ({ corte, cuentaDinero, montoContado, notas, aut
   return { esperado, contado, diferencia };
 };
 
-// Para mostrar "esperado hasta ahora" en vivo mientras la caja sigue
-// abierta, sin necesidad de cerrarla — útil para que el operador vea
-// cómo va antes de hacer el conteo físico real.
 export const calcularEsperadoEnVivo = async (corte, cuentaDineroId) => {
   const movimientosSesion = await movimientosDeSesion(cuentaDineroId, corte.hora_apertura, new Date().toISOString());
   return numero(corte.saldo_apertura) + movimientosSesion;
