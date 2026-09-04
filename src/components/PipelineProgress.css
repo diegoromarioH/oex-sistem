@@ -1,0 +1,187 @@
+/* ---------- Pipeline progress (línea de seguimiento horizontal) ---------- */
+.pipeline-progress {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 14px 4px 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 82px;
+  position: relative;
+}
+
+/* Línea conectora entre nodos — gris por defecto, se "llena" en verde a
+   medida que se completan tramos. */
+.pipeline-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 19px;
+  left: 50%;
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  z-index: 0;
+  border-radius: 2px;
+  transition: background var(--transition-slow);
+}
+.pipeline-step.completado:not(:last-child)::after { background: var(--success); }
+
+.pipeline-dot {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2.5px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  position: relative;
+  z-index: 1;
+  transition: all var(--transition-slow);
+  box-shadow: var(--shadow-xs);
+}
+
+.pipeline-step.completado .pipeline-dot {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.pipeline-step.actual .pipeline-dot {
+  background: var(--module-color, var(--accent));
+  border-color: var(--module-color, var(--accent));
+  color: #fff;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--module-color, var(--accent)) 25%, transparent);
+  animation: pulse-step 1.8s ease-in-out infinite;
+}
+@keyframes pulse-step {
+  0%, 100% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--module-color, var(--accent)) 25%, transparent); }
+  50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--module-color, var(--accent)) 10%, transparent); }
+}
+
+/* Insignia con check que confirma un tramo ya completado — se ve
+   "bonita" apenas se supera cada parada, no solo al final. */
+.pipeline-check-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--success);
+  border: 2px solid var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  z-index: 2;
+}
+
+.pipeline-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-align: center;
+  max-width: 92px;
+  line-height: 1.25;
+}
+.pipeline-step.completado .pipeline-label { color: var(--success); }
+.pipeline-step.actual .pipeline-label { color: var(--module-color, var(--accent)); font-weight: 800; }
+
+.pipeline-fecha {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  margin-top: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pipeline-step.actual .pipeline-dot { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .pipeline-step { min-width: 68px; }
+  .pipeline-dot { width: 32px; height: 32px; }
+  .pipeline-step:not(:last-child)::after { top: 16px; }
+  .pipeline-label { font-size: 9.5px; max-width: 72px; }
+}
+
+/* ---------- Barra de acciones (select / badge / inputs con ícono) ---------- */
+.pipeline-actions {
+  align-items: center;
+}
+
+.field-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 110px;
+}
+.field-icon-svg {
+  position: absolute;
+  left: 10px;
+  color: var(--text-faint);
+  pointer-events: none;
+  z-index: 1;
+  transition: color var(--transition);
+}
+.field-icon .input {
+  padding-left: 32px;
+}
+.field-icon:focus-within .field-icon-svg {
+  color: var(--module-color, var(--accent));
+}
+
+.pipeline-actions select.input {
+  cursor: pointer;
+}
+
+/* Quita las flechitas nativas de un input number — con ellas, un solo
+   click sin querer (o el scroll del mouse encima del campo) cambia el
+   valor. El peso solo se edita a propósito, entrando en modo edición. */
+.peso-input::-webkit-outer-spin-button,
+.peso-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.peso-input {
+  -moz-appearance: textfield;
+}
+
+/* Vista de solo lectura del peso: se ve como un campo más, pero es un
+   botón — hay que pedir "editar" a propósito antes de poder cambiarlo. */
+.peso-display {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 110px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.peso-display:hover {
+  border-color: color-mix(in srgb, var(--module-color, var(--accent)) 35%, var(--border));
+  background: var(--surface);
+}
+.peso-display svg:first-child { color: var(--text-faint); flex-shrink: 0; }
+.peso-display span { flex: 1; text-align: left; }
+.peso-display-lapiz { color: var(--text-faint); flex-shrink: 0; }
+.peso-display:hover .peso-display-lapiz { color: var(--module-color, var(--accent)); }

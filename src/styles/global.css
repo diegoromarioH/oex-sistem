@@ -1,0 +1,451 @@
+/* =========================================================
+   OEX CRM — Sistema de diseño
+   Variables CSS + componentes reutilizables. Reemplaza los
+   objetos `styles` / `darkStyles` inline del App.jsx original.
+   ========================================================= */
+
+:root {
+  --font-sans: Arial, "Helvetica Neue", Helvetica, ui-sans-serif, sans-serif;
+  --font-display: "Poppins", var(--font-sans);
+
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #f1f0ec;
+  --border: #d8dadd;
+  --text: #22252b;
+  --text-muted: #5c6470;
+  --text-faint: #8a8f98;
+
+  --accent: #f4562d;
+  --accent-strong: #d43f19;
+  --accent-soft: #fde9e3;
+  --accent-contrast: #ffffff;
+
+  --navy: #0f2445;
+  --navy-claro: #2c4267;
+  --navy-palido: #e7e9ec;
+
+  --success: #16a34a;
+  --success-soft: #ecfdf5;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --info: #2c4267;
+  --info-soft: #e7e9ec;
+
+  /* Color de identidad por módulo — se usa en la barra superior y se
+     "contagia" (vía herencia de custom property) a los sub-menús de cada
+     módulo, para que siempre se sepa en qué sección estás. Elegidos para
+     NO pisar el significado de success/danger/warning que ya usan los
+     badges de estado en toda la app. */
+  --mod-dashboard: var(--navy);
+  --mod-shein: #c2447c;
+  --mod-paqueteria: #2f6fb0;
+  --mod-finanzas: #1f7a5c;
+  --mod-clientes: #6a5acd;
+  --mod-auditoria: #a1752f;
+  --mod-configuracion: var(--text-muted);
+  --module-color: var(--accent);
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 36, 69, 0.07);
+  --shadow-md: 0 12px 28px rgba(15, 36, 69, 0.10);
+  --shadow-lg: 0 20px 45px rgba(15, 36, 69, 0.16);
+
+  --transition: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] {
+  /* Antes todo esto tiraba a azul marino (bg/surface/border partían de
+     tonos "navy"). Ahora son negros y grises neutros — el color queda
+     reservado para los acentos (naranja de marca, colores de módulo,
+     badges de estado), no para el fondo general. */
+  --bg: #0a0a0c;
+  --surface: #18181b;
+  --surface-2: #232327;
+  --border: #3a3a40;
+  --text: #f4f4f5;
+  --text-muted: #a8a8b3;
+  --text-faint: #75757f;
+
+  --accent-soft: #2b1d16;
+  --navy-palido: #2a2a30;
+
+  /* Colores de estado en versión "suave" (pastel), pensados para fondo
+     oscuro neutro — ya no son el mismo verde/rojo/ámbar saturado de modo
+     claro, que sobre negro se ve demasiado "neón". */
+  --success: #7ee2ac;
+  --success-soft: #132018;
+  --danger: #f3a5a5;
+  --danger-soft: #2a1717;
+  --warning: #f0c674;
+  --warning-soft: #2a2115;
+  --info: #9cbdf0;
+  --info-soft: #1b2330;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 45px rgba(0, 0, 0, 0.6);
+}
+
+/* El punteado de fondo usaba --navy (azul) incluso en modo oscuro — con
+   la paleta nueva se ve fuera de lugar, así que en dark usa --text (casi
+   blanco) a muy baja opacidad: puntitos grises tenues sobre negro.
+   Además, un "glow" ambiental de color muy sutil detrás de todo — varios
+   blobs difusos con los colores de módulo, como en apps fintech oscuras
+   modernas — para que el negro no se sienta plano/vacío. */
+[data-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at 12% -5%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 38%),
+    radial-gradient(circle at 92% 15%, color-mix(in srgb, var(--mod-finanzas) 10%, transparent), transparent 42%),
+    radial-gradient(circle at 50% 105%, color-mix(in srgb, var(--mod-clientes) 8%, transparent), transparent 45%),
+    radial-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
+  background-size: auto, auto, auto, 22px 22px;
+  background-attachment: fixed, fixed, fixed, scroll;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--transition), color var(--transition);
+  /* Patrón sutil de puntos — eco del isotipo circular de la marca */
+  background-image: radial-gradient(color-mix(in srgb, var(--navy) 6%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+h1, h2, h3 { font-family: var(--font-display); margin: 0 0 4px; letter-spacing: -0.02em; }
+p { margin: 0; color: var(--text-muted); }
+small { color: var(--text-faint); font-size: 12.5px; }
+b { color: var(--text); }
+
+button, input, select, textarea { font-family: inherit; }
+
+/* Detalles finos tipo SaaS moderno: selección de texto y scrollbar a
+   tono con la paleta, en vez del gris/azul genérico del navegador. */
+::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); color: var(--text); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-pill); border: 2px solid var(--bg); background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--text-faint); background-clip: padding-box; }
+
+/* ---------- Layout ---------- */
+.app-shell { min-height: 100vh; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding: 12px 24px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Franja fina que refleja el color del módulo activo — visible siempre,
+   incluso haciendo scroll, para ubicarte de un vistazo. */
+.module-strip {
+  position: sticky; top: 0; z-index: 19;
+  height: 3px;
+  background: var(--module-color, var(--accent));
+  transition: background var(--transition);
+}
+
+.brand-btn {
+  display: flex; align-items: center; gap: 10px;
+  border: 0; background: transparent; cursor: pointer; color: inherit;
+}
+.brand-btn img { width: 42px; height: 42px; object-fit: contain; }
+.brand-btn b { font-family: var(--font-display); font-size: 17px; }
+
+.nav { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.page { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+  font-size: 14px;
+}
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; transition-duration: 60ms; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn:focus-visible {
+  outline: 2px solid var(--module-color, var(--accent));
+  outline-offset: 2px;
+}
+
+/* Íconos de lucide-react dentro de un botón (patrón usado en todo el
+   sistema: <Icon size={14}/>Texto) — espaciado y alineación consistentes
+   sin tener que repetir style inline cada vez que se agrega un ícono. */
+.btn svg:first-child:not(:last-child) { margin-right: 6px; vertical-align: -2px; }
+.btn svg:last-child:not(:first-child) { margin-left: 6px; vertical-align: -2px; }
+.btn svg:only-child { vertical-align: -2px; }
+
+.btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: var(--accent-contrast);
+  box-shadow: 0 10px 22px rgba(249, 97, 28, .28);
+}
+.btn-primary:hover:not(:disabled) { box-shadow: 0 14px 28px rgba(249, 97, 28, .38); }
+.btn-primary:active:not(:disabled) { box-shadow: 0 6px 14px rgba(249, 97, 28, .3); }
+
+.btn-danger { border: 0; background: var(--danger-soft); color: var(--danger); }
+.btn-whatsapp { border: 0; background: #22c55e; color: #fff; }
+.btn-ghost { border: 1px solid transparent; background: transparent; color: var(--text-muted); }
+
+.nav-btn {
+  position: relative;
+  border: 1.5px solid color-mix(in srgb, var(--module-color, var(--accent)) 35%, var(--border));
+  background: color-mix(in srgb, var(--module-color, var(--accent)) 9%, var(--surface));
+  color: var(--text);
+  padding: 10px 16px 10px 30px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13.5px;
+  transition: all var(--transition);
+}
+/* Punto de color: identifica el módulo aunque el botón esté inactivo. */
+.nav-btn::before {
+  content: "";
+  position: absolute;
+  left: 12px; top: 50%; transform: translateY(-50%);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--module-color, var(--accent));
+  transition: background var(--transition);
+}
+.nav-btn:hover:not(.active):not(:disabled) {
+  border-color: var(--module-color, var(--accent));
+  background: color-mix(in srgb, var(--module-color, var(--accent)) 18%, var(--surface));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.nav-btn.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--module-color, var(--accent)), color-mix(in srgb, var(--module-color, var(--accent)) 70%, black));
+  color: #fff;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--module-color, var(--accent)) 45%, transparent);
+  transform: translateY(-1px);
+}
+.nav-btn.active::before {
+  background: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--module-color, var(--accent)) 55%, transparent);
+}
+.nav-btn:focus-visible {
+  outline: 2px solid var(--module-color, var(--accent));
+  outline-offset: 2px;
+}
+
+/* ---------- Cards / surfaces ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+[data-theme="dark"] .card,
+[data-theme="dark"] .metric,
+[data-theme="dark"] .row-card {
+  /* Filo superior sutil (highlight) + sombra teñida con el color del
+     módulo activo en vez de una sombra negra plana — es lo que hace que
+     las tarjetas se sientan "flotando con luz de color" en vez de
+     bloques grises apilados. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 40px -22px color-mix(in srgb, var(--module-color, var(--accent)) 45%, transparent),
+    var(--shadow-sm);
+}
+
+.row-card {
+  display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 16px; box-shadow: var(--shadow-sm);
+}
+
+/* Para las filas/tarjetas clickeables que ya existen en todo el sistema
+   (lista de proveedores, clientes, facturas...) — agrega esta clase junto
+   a la existente para el hover con elevación en vez del cursor pelón. */
+.row-card--clickable, .card--clickable {
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.row-card--clickable:hover, .card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--module-color, var(--accent)) 30%, var(--border));
+}
+
+.info-box {
+  background: var(--info-soft); border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
+  color: var(--info); padding: 13px 16px; border-radius: var(--radius-md); font-weight: 600; font-size: 13.5px;
+  margin: 12px 0;
+}
+
+/* ---------- Forms ---------- */
+label { display: block; }
+.field-label { display: block; margin-bottom: 6px; font-weight: 700; color: var(--text-muted); font-size: 13px; }
+
+.input, select.input, textarea.input {
+  width: 100%; box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14.5px;
+  outline: none;
+  transition: border-color var(--transition), background var(--transition);
+}
+.input:focus { border-color: var(--accent); background: var(--surface); }
+.input-sm { width: 150px; padding: 8px 10px; font-size: 13px; }
+.input-tiny { width: 80px; padding: 7px 9px; font-size: 13px; }
+
+textarea.input { min-height: 90px; resize: vertical; margin-top: 12px; }
+
+.form-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.product-row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)) auto;
+  gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.tracking-row {
+  display: grid; grid-template-columns: 1.2fr .8fr .8fr .8fr .8fr .8fr auto auto;
+  gap: 8px; align-items: center; margin-bottom: 8px;
+}
+
+/* ---------- Grids / metrics ---------- */
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 16px 0; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 16px 0; }
+.list { display: grid; gap: 12px; margin-top: 16px; }
+
+.metric {
+  text-align: left; border: 1px solid var(--border); background: var(--surface);
+  border-radius: var(--radius-md); padding: 18px; color: var(--text);
+  font-family: inherit; cursor: default;
+}
+.metric.clickable { cursor: pointer; box-shadow: var(--shadow-sm); transition: transform var(--transition); }
+.metric.clickable:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.metric b { display: block; font-size: 13px; color: var(--text-muted); font-weight: 700; }
+.metric-value { display: block; font-size: 27px; font-weight: 900; margin-top: 8px; color: var(--text); font-family: var(--font-display); }
+
+/* ---------- Page header ---------- */
+.page-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 4px 0 22px; flex-wrap: wrap; }
+.page-title .actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  /* Fuerza que las acciones siempre caigan en su propia línea, debajo del
+     título — sin esto, con pocos botones (ej. Finanzas: 3) quedaban
+     pegados junto al título, mientras que con muchos (ej. Paquetería: 6)
+     "caían" solos por falta de espacio. Ahora es consistente siempre. */
+  flex-basis: 100%;
+}
+.page-title .actions .btn:not(.btn-primary):not(.btn-danger):not(.btn-ghost):not(.btn-whatsapp) {
+  border-color: color-mix(in srgb, var(--module-color, var(--accent)) 30%, var(--border));
+}
+.page-title .actions .btn:not(.btn-primary):not(.btn-danger):not(.btn-ghost):not(.btn-whatsapp):hover:not(:disabled) {
+  border-color: var(--module-color, var(--accent));
+  color: var(--module-color, var(--accent));
+}
+
+/* ---------- Segments / pills ---------- */
+.segment { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.segment-btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+  border-radius: var(--radius-pill); padding: 10px 16px; font-weight: 700; cursor: pointer; font-size: 13.5px;
+}
+.segment-btn.active {
+  border-color: transparent; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); color: #fff;
+  box-shadow: 0 8px 18px rgba(249, 97, 28, .3);
+}
+
+/* ---------- Badges (estados) ---------- */
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 700; }
+.badge-neutral { background: var(--surface-2); color: var(--text-muted); }
+.badge-success { background: var(--success-soft); color: var(--success); }
+.badge-warning { background: var(--warning-soft); color: var(--warning); }
+.badge-danger { background: var(--danger-soft); color: var(--danger); }
+.badge-info { background: var(--info-soft); color: var(--info); }
+
+/* ---------- Tracking mini list / timeline (seguimiento) ---------- */
+.mini-tracking-list { margin-top: 12px; display: grid; gap: 8px; }
+.mini-tracking-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px; background: var(--surface-2); border-radius: var(--radius-sm); }
+
+.timeline { margin-top: 10px; padding: 0; list-style: none; display: grid; gap: 10px; }
+.timeline-item { display: grid; grid-template-columns: 8px 1fr; gap: 10px; align-items: start; }
+.timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 6px; }
+.timeline-item span { display: block; font-size: 13.5px; color: var(--text); }
+.timeline-item small { display: block; margin-top: 2px; }
+.timeline-summary { cursor: pointer; font-weight: 700; color: var(--text-muted); font-size: 13px; padding: 6px 0; }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; right: 22px; bottom: 22px; z-index: 60;
+  background: var(--text); color: var(--bg);
+  padding: 14px 18px; border-radius: var(--radius-md);
+  display: grid; gap: 3px; box-shadow: var(--shadow-lg);
+  min-width: 220px; animation: toast-in 200ms ease;
+}
+.toast.toast-error { background: var(--danger); color: #fff; }
+.toast.toast-warning { background: var(--warning); color: #fff; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------- Login ---------- */
+.login-page {
+  min-height: 100vh; display: grid; place-items: center; padding: 20px;
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 45%),
+    radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--navy-claro) 40%, transparent), transparent 50%),
+    linear-gradient(160deg, var(--navy) 0%, #081428 100%);
+}
+.login-card {
+  width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-lg); text-align: center;
+  display: grid; gap: 12px;
+}
+.login-card img { width: 76px; height: 76px; object-fit: contain; margin: 0 auto; }
+
+/* ---------- Utility ---------- */
+.stack-gap-sm { display: grid; gap: 8px; }
+.text-right { text-align: right; }
+.muted { color: var(--text-muted); }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+
+/* Para íconos tipo Loader2 (lucide-react) en botones mientras se guarda
+   algo — className="spin" en vez de un GIF o animación aparte. */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.7s linear infinite; }
+
+@media (max-width: 720px) {
+  .page { padding: 16px; }
+  .topbar { flex-wrap: wrap; padding: 12px 16px; }
+  .tracking-row { grid-template-columns: 1fr 1fr; }
+  .product-row { grid-template-columns: 1fr 1fr; }
+}

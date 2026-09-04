@@ -1,0 +1,140 @@
+/* src/styles/topnav.css
+ *
+ * Estilos del mega-menú al hover en la barra superior. No toca tus
+ * clases .nav / .nav-btn existentes — solo agrega lo necesario para
+ * el chevron y el panel desplegable. Usa var(--module-color), la misma
+ * variable que ya pones inline en cada botón de módulo, así el punto y
+ * el acento del panel salen automáticamente en el color correcto sin
+ * tocar tu paleta.
+ */
+
+.nav--con-dropdown {
+  position: relative;
+  z-index: 40;
+}
+
+.nav-item {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+/* Chevron pegado al pill del módulo — mismo alto, look de una sola
+   pieza con el botón mientras deja un hit-target separado para touch. */
+.nav-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  margin-left: -6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: currentColor;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.nav-chevron:hover,
+.nav-chevron[aria-expanded="true"] {
+  opacity: 1;
+}
+.nav-chevron[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+.nav-chevron svg {
+  transition: transform 0.15s ease;
+}
+.nav-chevron:focus-visible {
+  outline: 2px solid var(--module-color, currentColor);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Panel desplegable */
+.nav-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  min-width: 260px;
+  padding: 6px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  border-radius: 14px;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.06);
+  animation: nav-dropdown-in 0.16s ease-out;
+  transform-origin: top left;
+}
+
+[data-theme="dark"] .nav-dropdown {
+  background: var(--surface, #1c1f26);
+  border-color: var(--border, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+@keyframes nav-dropdown-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-dropdown { animation: none; }
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.nav-dropdown-item:hover,
+.nav-dropdown-item:focus-visible {
+  background: color-mix(in srgb, var(--module-color, #888) 12%, transparent);
+}
+.nav-dropdown-item:focus-visible {
+  outline: 2px solid var(--module-color, currentColor);
+  outline-offset: -2px;
+}
+
+.nav-dropdown-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--module-color, #888);
+}
+
+.nav-dropdown-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nav-dropdown-texto b {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text, inherit);
+}
+.nav-dropdown-texto small {
+  font-size: 0.76rem;
+  color: var(--text-muted, rgba(128, 128, 128, 0.9));
+  line-height: 1.3;
+}
+
+/* En pantallas angostas el hover no existe de forma confiable — el
+   panel ya se maneja por clic en el chevron gracias al JS, esto solo
+   asegura que no se corte contra el borde de la pantalla. */
+@media (max-width: 640px) {
+  .nav-dropdown {
+    left: auto;
+    right: 0;
+    min-width: 240px;
+  }
+}

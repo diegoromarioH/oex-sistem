@@ -1,0 +1,311 @@
+/* src/styles/sidebar.css
+ *
+ * Reemplaza a topnav.css. Layout de dos columnas: sidebar fijo +
+ * columna de contenido. Usa var(--module-color) por sección igual que
+ * ya hacías en los pills del nav anterior, así el acento de cada
+ * módulo sale automático sin tocar tu paleta.
+ */
+
+:root {
+  --sidebar-w: 232px;
+  --sidebar-w-colapsado: 64px;
+}
+
+/* ---------- Layout general ---------- */
+/* Altura fija al viewport + overflow hidden en el contenedor: así el
+   sidebar y la columna de contenido scrollean cada uno por su cuenta.
+   Antes el sidebar era un simple hijo del flex que crecía junto con
+   todo lo demás, así que al hacer scroll en una lista larga (como
+   Envíos activos) el sidebar se iba con el contenido — con esto se
+   queda fijo en su sitio siempre. */
+.app-shell--sidebar {
+  display: flex;
+  align-items: stretch;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-column {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar-mini {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+}
+
+.hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  flex: 0 0 auto;
+  width: var(--sidebar-w);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+  background: var(--sidebar-bg, #f7f8fa);
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.03), 4px 0 16px -8px rgba(0, 0, 0, 0.08);
+  transition: width 0.18s ease;
+  overflow-y: auto;
+}
+[data-theme="dark"] .sidebar {
+  background: var(--sidebar-bg, #11141a);
+  border-color: var(--border, rgba(255, 255, 255, 0.1));
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.2), 4px 0 20px -8px rgba(0, 0, 0, 0.5);
+}
+
+.sidebar--colapsado {
+  width: var(--sidebar-w-colapsado);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.sidebar-brand img {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+}
+.sidebar-brand b {
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sidebar-seccion { display: flex; flex-direction: column; }
+
+.sidebar-modulo {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sidebar-modulo.active {
+  background: color-mix(in srgb, var(--module-color, #888) 14%, transparent);
+}
+.sidebar-modulo.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--module-color, #888);
+}
+
+.sidebar-modulo-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 10px 10px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.sidebar-modulo.active .sidebar-modulo-btn {
+  color: var(--module-color, inherit);
+}
+.sidebar--colapsado .sidebar-modulo-btn {
+  justify-content: center;
+  padding: 11px 0;
+}
+
+.sidebar-icono {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--module-color, currentColor);
+  opacity: 0.85;
+}
+.sidebar-modulo.active .sidebar-icono { opacity: 1; }
+
+.sidebar-modulo-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-chevron {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  border: none;
+  background: transparent;
+  color: currentColor;
+  opacity: 0.55;
+  cursor: pointer;
+}
+.sidebar-chevron:hover { opacity: 1; }
+.sidebar-chevron:focus-visible,
+.sidebar-modulo-btn:focus-visible,
+.sidebar-brand:focus-visible,
+.sidebar-colapsar:focus-visible {
+  outline: 2px solid var(--module-color, currentColor);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.sidebar-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 6px 6px 24px;
+  animation: sidebar-submenu-in 0.15s ease-out;
+}
+@keyframes sidebar-submenu-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-submenu { animation: none; }
+}
+
+.sidebar-subitem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.sidebar-subitem:hover,
+.sidebar-subitem:focus-visible {
+  background: color-mix(in srgb, var(--module-color, #888) 10%, transparent);
+  outline: none;
+}
+.sidebar-subitem-icono {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  color: var(--module-color, currentColor);
+  opacity: 0.8;
+}
+.sidebar-subitem-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.sidebar-subitem-texto b {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.sidebar-subitem-texto small {
+  font-size: 0.72rem;
+  color: var(--text-muted, rgba(128, 128, 128, 0.9));
+  line-height: 1.3;
+}
+
+.sidebar-colapsar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 8px 10px;
+  padding: 8px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.sidebar-colapsar:hover { opacity: 1; }
+
+/* ---------- Móvil: sidebar como drawer ---------- */
+@media (max-width: 860px) {
+  .hamburger { display: inline-flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    width: min(80vw, 280px);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 12px 0 32px rgba(0, 0, 0, 0.18);
+  }
+  .sidebar--abierta-movil {
+    transform: translateX(0);
+  }
+  /* En móvil no tiene sentido el modo colapsado a íconos — siempre se
+     ve completo cuando el drawer está abierto. */
+  .sidebar--colapsado {
+    width: min(80vw, 280px);
+  }
+  .sidebar--colapsado .sidebar-modulo-label,
+  .sidebar--colapsado .sidebar-brand b,
+  .sidebar--colapsado .sidebar-colapsar span {
+    display: inline;
+  }
+  .sidebar-colapsar { display: none; }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.35);
+  }
+}
