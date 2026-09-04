@@ -5,7 +5,7 @@ import PaqueteriaRecibo from "./PaqueteriaRecibo";
 import PaqueteriaDashboard from "./PaqueteriaDashboard";
 import EnviosList from "./EnviosList";
 import Prealertas from "./Prealertas";
-import RegistrarTracking from "./RegistrarTracking";
+import RegistrarTracking from "./Registrartracking";
 import TrackingsActivos from "./TrackingsActivos";
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 
