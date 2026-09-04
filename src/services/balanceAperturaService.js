@@ -11,7 +11,7 @@
 import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { firmarPayload, registrarAuditoria } from "./coreService";
-import { postearAsientoPorId, eliminarAsientosDeOrigen } from "./contabilidadService";
+import { postearAsientoPorId, eliminarAsientosDeOrigen } from "./ContabilidadService";
 
 export const listarBalanceApertura = async () => {
   const { data, error } = await supabase.from("balance_apertura").select("*");
@@ -36,9 +36,6 @@ export const guardarFechaApertura = async ({ fechaApertura, auth }) => {
   if (error) throw error;
 };
 
-// filas: [{ cuentaContableId, monto }]. Valida que Activos = Pasivos +
-// Patrimonio antes de tocar la base de datos — si no cuadra, no guarda
-// nada y explica la diferencia para que se corrija desde la UI.
 export const guardarBalanceApertura = async ({ filas, cuentasContables, fechaApertura, auth }) => {
   const cuentaPorId = new Map(cuentasContables.map((c) => [c.id, c]));
 
@@ -61,10 +58,6 @@ export const guardarBalanceApertura = async ({ filas, cuentasContables, fechaApe
   }
 
   const filasConMonto = filas.filter((f) => numero(f.monto) !== 0);
-
-  // Reemplaza todo el snapshot anterior — más simple y seguro que
-  // intentar hacer upsert fila por fila cuando también hay que borrar
-  // cuentas que quedaron en $0.
   const { error: errorBorrado } = await supabase.from("balance_apertura").delete().neq("id", 0);
   if (errorBorrado) throw errorBorrado;
 
@@ -79,10 +72,6 @@ export const guardarBalanceApertura = async ({ filas, cuentasContables, fechaApe
     if (error) throw error;
   }
 
-  // Reemplaza también el asiento de apertura en el libro diario. Se
-  // borra el anterior (si existía) y se postea uno nuevo con las líneas
-  // vigentes — un snapshot no tiene historial de reversiones, solo una
-  // versión vigente.
   await eliminarAsientosDeOrigen("apertura");
   if (filasConMonto.length > 0) {
     await postearAsientoPorId({
@@ -94,10 +83,6 @@ export const guardarBalanceApertura = async ({ filas, cuentasContables, fechaApe
       lineas: filasConMonto.map((f) => {
         const cuenta = cuentaPorId.get(f.cuentaContableId);
         const monto = numero(f.monto);
-        // Activo es de naturaleza deudora → su saldo de apertura va al
-        // Debe. Pasivo y Patrimonio son de naturaleza acreedora → van
-        // al Haber. Esto es lo que hace que el asiento cuadre solo,
-        // porque ya validamos arriba que Activo = Pasivo + Patrimonio.
         return cuenta.tipo === "activo"
           ? { cuentaContableId: f.cuentaContableId, debe: monto, haber: 0 }
           : { cuentaContableId: f.cuentaContableId, debe: 0, haber: monto };
