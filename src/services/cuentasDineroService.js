@@ -12,7 +12,7 @@
 import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { firmarPayload, registrarAuditoria } from "./coreService";
-import { postearAsiento } from "./contabilidadService";
+import { postearAsiento } from "./ContabilidadService";
 import { formatoMoneda } from "../utils/moneda";
 
 export const listarCuentasDinero = async () => {
@@ -51,11 +51,6 @@ export const desactivarCuentaDinero = async ({ cuenta, auth }) => {
   });
 };
 
-// Suma `delta` (puede ser negativo) al saldo_actual de una cuenta de
-// dinero. No falla si cuentaDineroId es null/"" — así los llamadores
-// (gastosService, etc.) pueden invocarla sin verificar antes si el
-// movimiento tiene o no cuenta de dinero asignada (sigue siendo
-// opcional, para no romper flujos existentes que aún no la usan).
 export const ajustarSaldoCuentaDinero = async (cuentaDineroId, delta) => {
   if (!cuentaDineroId || numero(delta) === 0) return;
   const { data: cuenta, error: errorLectura } = await supabase
@@ -66,15 +61,6 @@ export const ajustarSaldoCuentaDinero = async (cuentaDineroId, delta) => {
   if (error) throw error;
 };
 
-// Mover dinero entre dos cuentas propias — no es un gasto ni un ingreso,
-// es el mismo dinero cambiando de lugar. Si las monedas son distintas,
-// se convierte automático con la tasa de cambio de Configuración →
-// Empresa (empresa.tipoCambio, C$ por US$1).
-//
-// El monto que se escribe siempre es en la moneda de la cuenta ORIGEN.
-// El libro diario (que valora todo en dólares equivalentes, igual que el
-// resto del sistema) postea usando el equivalente en USD de esa
-// transferencia, sin importar en qué moneda esté cada cuenta.
 export const transferirEntreCuentas = async ({ cuentaOrigen, cuentaDestino, monto, nota, tasaCambio, auth }) => {
   const montoOrigen = numero(monto);
   if (montoOrigen <= 0) throw new Error("El monto debe ser mayor a cero.");
@@ -93,18 +79,12 @@ export const transferirEntreCuentas = async ({ cuentaOrigen, cuentaDestino, mont
     montoUSD = cuentaOrigen.moneda === "NIO" ? montoOrigen / tasaCambio : montoOrigen;
     montoDestino = cuentaDestino.moneda === "NIO" ? montoUSD * tasaCambio : montoUSD;
   } else if (cuentaOrigen.moneda === "NIO" && tasaCambio > 0) {
-    // Misma moneda pero córdobas: para el libro diario igual hace falta
-    // el equivalente en dólares.
     montoUSD = montoOrigen / tasaCambio;
   }
 
   await ajustarSaldoCuentaDinero(cuentaOrigen.id, -montoOrigen);
   await ajustarSaldoCuentaDinero(cuentaDestino.id, montoDestino);
 
-  // Solo postea al libro diario si AMBAS cuentas están vinculadas a una
-  // cuenta contable — si falta alguna, el dinero igual se mueve (arriba),
-  // pero sin asiento formal, mismo criterio de "grado" que el resto del
-  // sistema.
   if (cuentaOrigen.cuentaContableId && cuentaDestino.cuentaContableId) {
     const { data: cuentasContables } = await supabase
       .from("cuentas_contables").select("id, codigo")
