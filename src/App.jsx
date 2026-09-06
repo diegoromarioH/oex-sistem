@@ -13,11 +13,12 @@ import FinanzasReportes from "./pages/finanzas/FinanzasReportes";
 import Clientes from "./pages/Clientes";
 import Auditoria from "./pages/Auditoria";
 import Configuracion from "./pages/Configuracion";
+import EventosWeb from "./pages/EventosWeb";
 import Toast from "./components/Toast";
 import SidebarNav from "./components/SidebarNav";
 import logo from "./assets/logo.svg";
 import "./styles/sidebar.css";
-import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart } from "lucide-react";
+import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity } from "lucide-react";
 
 const MODULOS = [
   { id: "dashboard", label: "Dashboard", color: "var(--mod-dashboard)", icon: LayoutDashboard },
@@ -39,6 +40,7 @@ const MODULOS = [
     { subvista: "reportes", label: "Reportes", descripcion: "Resultados, libro diario y balance general", icon: FileBarChart }
   ]},
   { id: "clientes", label: "Clientes", color: "var(--mod-clientes)", icon: Users },
+  { id: "eventos", label: "Eventos web", color: "var(--mod-dashboard)", icon: Activity },
   { id: "auditoria", label: "Auditoría", color: "var(--mod-auditoria)", icon: ShieldCheck },
   { id: "configuracion", label: "Configuración", color: "var(--mod-configuracion)", icon: Settings }
 ];
@@ -77,6 +79,7 @@ export default function App() {
       {vista === "finanzas" && subvistaFinanzas !== "reportes" && <Finanzas {...propsFinanzas} vistaInicial={subvistaFinanzas} />}
       {vista === "finanzas" && subvistaFinanzas === "reportes" && <div className="page"><FinanzasReportes cuentasContables={datos.cuentasContables} mostrarToast={mostrarToast} /></div>}
       {vista === "clientes" && <Clientes clientes={datos.clientes} pedidos={datos.pedidos} envios={datos.envios} empresa={empresa} tarifas={tarifas} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
+      {vista === "eventos" && <EventosWeb />}
       {vista === "auditoria" && <Auditoria auditLog={datos.auditLog} />}
       {vista === "configuracion" && <Configuracion tarifas={tarifas} setTarifas={setTarifas} empresa={empresa} setEmpresa={setEmpresa} cuentasDinero={datos.cuentasDinero} rol={rol} tema={tema} setTema={cambiarTema} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
       <Toast toast={toast} />
