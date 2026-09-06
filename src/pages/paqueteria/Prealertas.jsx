@@ -7,22 +7,52 @@
 import { useMemo, useState } from "react";
 import { confirmarTracking, eliminarTracking } from "../../services/trackingsService";
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
-import { buscarClientesParecidos } from "../../utils/clientes";
+import { buscarClientesParecidos, limpiarTelefono } from "../../utils/clientes";
 
 export default function Prealertas({ prealertas, clientes, rol, auth, mostrarToast, cargarDatos }) {
   const [confirmando, setConfirmando] = useState(null);
   const [busqueda, setBusqueda] = useState("");
 
+  const resolverVinculo = (t) => {
+    const codigo = String(t.clienteCodigo || "").trim().toUpperCase();
+    if (codigo) {
+      const porCodigo = clientes.find((c) => String(c.codigo || "").trim().toUpperCase() === codigo);
+      if (porCodigo) return { cliente: porCodigo, motivo: "código" };
+    }
+
+    const telefono = limpiarTelefono(t.contacto);
+    if (telefono) {
+      const porTelefono = clientes.find((c) => limpiarTelefono(c.telefono) === telefono);
+      if (porTelefono) return { cliente: porTelefono, motivo: "WhatsApp" };
+    }
+
+    if (t.clienteId) {
+      const porId = clientes.find((c) => c.id === t.clienteId);
+      if (porId) return { cliente: porId, motivo: "cliente" };
+    }
+
+    return null;
+  };
+
   const pendientes = useMemo(() => {
     const q = busqueda.toLowerCase();
-    const coincide = (t) =>
-      !q ||
-      (t.cliente || "").toLowerCase().includes(q) ||
-      (t.clienteCodigo || "").toLowerCase().includes(q) ||
-      (t.tracking || "").toLowerCase().includes(q) ||
-      (t.almacenId || "").toLowerCase().includes(q);
+    const coincide = (t) => {
+      const vinculo = resolverVinculo(t);
+      const clienteVinculado = vinculo?.cliente;
+      return (
+        !q ||
+        (t.cliente || "").toLowerCase().includes(q) ||
+        (t.clienteCodigo || "").toLowerCase().includes(q) ||
+        (t.contacto || "").toLowerCase().includes(q) ||
+        (t.tracking || "").toLowerCase().includes(q) ||
+        (t.almacenId || "").toLowerCase().includes(q) ||
+        (clienteVinculado?.nombre || "").toLowerCase().includes(q) ||
+        (clienteVinculado?.codigo || "").toLowerCase().includes(q) ||
+        (clienteVinculado?.telefono || "").toLowerCase().includes(q)
+      );
+    };
     return prealertas.filter(esPendienteDeConfirmar).filter(coincide);
-  }, [prealertas, busqueda]);
+  }, [prealertas, clientes, busqueda]);
 
   const confirmar = async (t) => {
     setConfirmando(t.id);
@@ -58,11 +88,12 @@ export default function Prealertas({ prealertas, clientes, rol, auth, mostrarToa
 
       <div className="list mt-8">
         {pendientes.map((t) => {
-          // Alerta de posible duplicado: alguien ya registrado con un
-          // teléfono o código MUY parecido (un solo dígito/caracter
-          // distinto) al de esta prealerta — típico de un typo. Solo
-          // avisa, no bloquea la confirmación.
-          const parecidos = buscarClientesParecidos(clientes, { telefono: t.contacto, codigo: t.clienteCodigo });
+          const vinculo = resolverVinculo(t);
+          const clienteVinculado = vinculo?.cliente;
+          const parecidos = vinculo ? [] : buscarClientesParecidos(clientes, { telefono: t.contacto, codigo: t.clienteCodigo });
+          const nombreMostrar = clienteVinculado?.nombre || t.cliente || "Sin nombre";
+          const codigoMostrar = clienteVinculado?.codigo || t.clienteCodigo || "Sin registrar";
+          const telefonoMostrar = clienteVinculado?.telefono || t.contacto || "Sin WhatsApp";
 
           return (
             <div key={t.id} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", borderLeft: "3px solid #F4562D" }}>
@@ -70,8 +101,12 @@ export default function Prealertas({ prealertas, clientes, rol, auth, mostrarToa
                 <div>
                   <b>{t.tracking || t.almacenId || "Sin código"}</b> <span className="badge badge-neutral">{t.tipoEnvio}</span>{" "}
                   <span className="badge badge-warning">{t.estado || "Sin confirmar"}</span>
-                  <p>{t.cliente} · {t.clienteCodigo || "Sin registrar"} · {t.destino}</p>
-                  <small>{t.fecha}</small>
+                  {clienteVinculado && <>{" "}<span className="badge badge-success">Vinculado por {vinculo.motivo}</span></>}
+                  <p><b>{nombreMostrar}</b> · {codigoMostrar} · {telefonoMostrar} · {t.destino}</p>
+                  {clienteVinculado && t.cliente && t.cliente.trim().toLowerCase() !== clienteVinculado.nombre.trim().toLowerCase() && (
+                    <small>Nombre recibido en prealerta: {t.cliente} → se usará el nombre registrado: {clienteVinculado.nombre}</small>
+                  )}
+                  <small style={{ display: "block" }}>{t.fecha}</small>
                 </div>
                 <div className="segment">
                   <button className="btn btn-primary" disabled={confirmando === t.id} onClick={() => confirmar(t)}>
@@ -80,6 +115,13 @@ export default function Prealertas({ prealertas, clientes, rol, auth, mostrarToa
                   <button className="btn btn-danger" onClick={() => eliminar(t)}>Eliminar</button>
                 </div>
               </div>
+
+              {!clienteVinculado && (
+                <div className="mt-8" style={{ background: "#f6f7f9", border: "1px solid #dfe3e8", borderRadius: 8, padding: "8px 12px" }}>
+                  <b>Cliente nuevo / Sin vincular</b>
+                  <p style={{ margin: "4px 0 0" }}>No encontramos coincidencia exacta por código ni WhatsApp.</p>
+                </div>
+              )}
 
               {parecidos.length > 0 && (
                 <div className="mt-8" style={{ background: "#fff8e6", border: "1px solid #f0c94c", borderRadius: 8, padding: "8px 12px" }}>
