@@ -2,7 +2,7 @@
 // Orquestador general: sesión, navegación entre módulos y layout. Toda la
 // lógica de negocio vive en src/services y src/utils; el render de cada
 // módulo vive en src/pages.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useDatosOEX } from "./hooks/useDatosOEX";
 import { useTarifas } from "./hooks/useTarifas";
@@ -25,7 +25,6 @@ import {
   Receipt, FilePlus, PackagePlus, Bell, Truck,
   BarChart3, TrendingUp, TrendingDown, Landmark, ClipboardList, BookOpen, Calculator, LineChart
 } from "lucide-react";
-
 
 const MODULOS = [
   { id: "dashboard", label: "Dashboard", color: "var(--mod-dashboard)", icon: LayoutDashboard },
@@ -59,39 +58,65 @@ const MODULOS = [
   { id: "configuracion", label: "Configuración", color: "var(--mod-configuracion)", icon: Settings }
 ];
 
+const STORAGE_NAVEGACION = {
+  vista: "oex_vista_actual",
+  paqueteria: "oex_subvista_paqueteria",
+  finanzas: "oex_subvista_finanzas"
+};
+
+const vistaGuardadaValida = () => {
+  const guardada = localStorage.getItem(STORAGE_NAVEGACION.vista);
+  return MODULOS.some((m) => m.id === guardada) ? guardada : "dashboard";
+};
+
+const subvistaGuardadaValida = (moduloId, fallback) => {
+  const modulo = MODULOS.find((m) => m.id === moduloId);
+  const key = moduloId === "paqueteria" ? STORAGE_NAVEGACION.paqueteria : STORAGE_NAVEGACION.finanzas;
+  const guardada = localStorage.getItem(key);
+  return modulo?.submenu?.some((s) => s.subvista === guardada) ? guardada : fallback;
+};
+
 export default function App() {
   const { session, usuarioActual, rol, cargandoAuth, login, logout } = useAuth();
   const datos = useDatosOEX(session);
   const { tarifas, setTarifas } = useTarifas();
   const { empresa, setEmpresa } = useEmpresa();
   const { toast, mostrarToast } = useToast();
-  const [vista, setVista] = useState("dashboard");
-  // Pestaña con la que abre Paquetería/Finanzas la próxima vez que se
-  // entre a ese módulo. Normalmente su propio default ("dashboard" /
-  // "resumen"), pero el mega-menú del TopNav o algún atajo interno
-  // (como el banner de prealertas del Dashboard) puede forzarla a una
-  // sub-página específica.
-  const [subvistaPaqueteria, setSubvistaPaqueteria] = useState("dashboard");
-  const [subvistaFinanzas, setSubvistaFinanzas] = useState("resumen");
+
+  // Conservamos la última pantalla visitada para que F5/recargar no mande
+  // al usuario al Dashboard. Solo se aceptan módulos/subvistas existentes.
+  const [vista, setVista] = useState(vistaGuardadaValida);
+  const [subvistaPaqueteria, setSubvistaPaqueteria] = useState(() => subvistaGuardadaValida("paqueteria", "dashboard"));
+  const [subvistaFinanzas, setSubvistaFinanzas] = useState(() => subvistaGuardadaValida("finanzas", "resumen"));
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_NAVEGACION.vista, vista);
+  }, [vista]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_NAVEGACION.paqueteria, subvistaPaqueteria);
+  }, [subvistaPaqueteria]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_NAVEGACION.finanzas, subvistaFinanzas);
+  }, [subvistaFinanzas]);
+
   const irAPrealertas = () => {
     setVista("paqueteria");
     setSubvistaPaqueteria("prealertas");
   };
-  // Handler único para el sidebar: si el módulo clickeado trae una
-  // sub-página específica la aplica, si no, cae en el default de ese
-  // módulo. También cierra el drawer en móvil — sin esto, elegir una
-  // página no cerraría el menú y taparía el contenido.
+
   const navegarA = (moduloId, subvista) => {
     setVista(moduloId);
     if (moduloId === "paqueteria") setSubvistaPaqueteria(subvista || "dashboard");
     if (moduloId === "finanzas") setSubvistaFinanzas(subvista || "resumen");
     setSidebarAbiertoMovil(false);
   };
+
   const [tema, setTema] = useState(() => localStorage.getItem("oex_tema") || "light");
-  // Modo colapsado (solo íconos) — persiste igual que el tema, para que
-  // no se reinicie cada vez que se recarga la página.
   const [sidebarColapsado, setSidebarColapsado] = useState(() => localStorage.getItem("oex_sidebar_colapsado") === "1");
   const [sidebarAbiertoMovil, setSidebarAbiertoMovil] = useState(false);
+
   const toggleSidebarColapsado = () => {
     setSidebarColapsado((actual) => {
       const nuevo = !actual;
@@ -105,13 +130,8 @@ export default function App() {
     localStorage.setItem("oex_tema", nuevo);
   };
 
-  if (cargandoAuth) {
-    return <div className="page">Cargando…</div>;
-  }
-
-  if (!session) {
-    return <Login onLogin={login} />;
-  }
+  if (cargandoAuth) return <div className="page">Cargando…</div>;
+  if (!session) return <Login onLogin={login} />;
 
   const auth = { session, usuarioActual };
   const moduloActivo = MODULOS.find((m) => m.id === vista);
