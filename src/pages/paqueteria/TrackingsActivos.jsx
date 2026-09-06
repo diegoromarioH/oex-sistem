@@ -8,28 +8,68 @@ import { useMemo, useState } from "react";
 import { Layers, CheckCircle2, XCircle, HelpCircle, Package, Weight } from "lucide-react";
 import { actualizarTracking, eliminarTracking } from "../../services/trackingsService";
 import { estadosPorDestino, badgeEstado, esListoParaRetirar, esPendienteDeConfirmar, esListoParaRetiroProveedor } from "../../utils/estadosEnvio";
+import { limpiarTelefono } from "../../utils/clientes";
 import { numero } from "../../utils/numero";
 import { parseListaPesos, emparejarConTrackings } from "../../utils/parseListaPesos";
 import PipelineProgress from "../../components/PipelineProgress";
 import ModalRegistrarPeso from "../../components/ModalRegistrarPeso";
 
-export default function TrackingsActivos({ prealertas, facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos }) {
+const vincularCliente = (tracking, clientes = []) => {
+  const porId = tracking.clienteId ? clientes.find((c) => c.id === tracking.clienteId) : null;
+  if (porId) return { cliente: porId, motivo: "ID" };
+
+  const codigo = String(tracking.clienteCodigo || "").trim().toUpperCase();
+  if (codigo) {
+    const porCodigo = clientes.find((c) => String(c.codigo || "").trim().toUpperCase() === codigo);
+    if (porCodigo) return { cliente: porCodigo, motivo: "código" };
+  }
+
+  const telefono = limpiarTelefono(tracking.contacto);
+  if (telefono) {
+    const porTelefono = clientes.find((c) => limpiarTelefono(c.telefono) === telefono);
+    if (porTelefono) return { cliente: porTelefono, motivo: "WhatsApp" };
+  }
+
+  return { cliente: null, motivo: null };
+};
+
+export default function TrackingsActivos({ prealertas, clientes = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos }) {
   const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("Todos");
   // Tracking pendiente de que le registren el peso antes de continuar el
   // cambio de estado — null = ningún modal abierto.
   const [pendientePeso, setPendientePeso] = useState(null);
   const [guardandoPeso, setGuardandoPeso] = useState(false);
 
+  const estadosDisponibles = useMemo(() => {
+    const estados = prealertas
+      .filter((t) => !esPendienteDeConfirmar(t))
+      .map((t) => t.estado)
+      .filter(Boolean);
+    return [...new Set(estados)].sort((a, b) => a.localeCompare(b, "es"));
+  }, [prealertas]);
+
   const activos = useMemo(() => {
     const q = busqueda.toLowerCase();
-    const coincide = (t) =>
-      !q ||
-      (t.cliente || "").toLowerCase().includes(q) ||
-      (t.clienteCodigo || "").toLowerCase().includes(q) ||
-      (t.tracking || "").toLowerCase().includes(q) ||
-      (t.almacenId || "").toLowerCase().includes(q);
-    return prealertas.filter((t) => !esPendienteDeConfirmar(t)).filter(coincide);
-  }, [prealertas, busqueda]);
+    return prealertas
+      .filter((t) => !esPendienteDeConfirmar(t))
+      .map((t) => {
+        const vinculacion = vincularCliente(t, clientes);
+        return { ...t, vinculacion };
+      })
+      .filter((t) => filtroEstado === "Todos" || t.estado === filtroEstado)
+      .filter((t) => {
+        const clienteOficial = t.vinculacion.cliente;
+        return !q ||
+          (t.cliente || "").toLowerCase().includes(q) ||
+          (t.clienteCodigo || "").toLowerCase().includes(q) ||
+          (t.tracking || "").toLowerCase().includes(q) ||
+          (t.almacenId || "").toLowerCase().includes(q) ||
+          (clienteOficial?.nombre || "").toLowerCase().includes(q) ||
+          (clienteOficial?.codigo || "").toLowerCase().includes(q) ||
+          (clienteOficial?.telefono || "").toLowerCase().includes(q);
+      });
+  }, [prealertas, clientes, busqueda, filtroEstado]);
 
   const actualizarCampo = async (t, campo, valor) => {
     try {
@@ -40,10 +80,6 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
     }
   };
 
-  // Aplica de verdad el cambio de estado, ya con el peso resuelto (si
-  // hacía falta). Separado de cambiarEstado() para poder llamarlo tanto
-  // directo (cuando no hace falta pedir peso) como después de confirmar
-  // el modal.
   const aplicarCambioEstado = async (t, nuevoEstado) => {
     if (esListoParaRetirar(nuevoEstado) && numero(t.peso) <= 0) {
       mostrarToast("Este tracking no tiene peso registrado. Ponle el peso antes de marcarlo como listo para retirar.", "warning");
@@ -54,9 +90,6 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
     const idxActual = pipeline.indexOf(t.estado);
     const idxNuevo = pipeline.indexOf(nuevoEstado);
 
-    // No se puede avanzar más allá de Bodega OEX (Darío Import ya lo tiene
-    // disponible) hasta que la factura de ese tracking esté TOTALMENTE
-    // pagada — evita retirar/mover paquetes que todavía se deben.
     if (esListoParaRetiroProveedor(t.estado) && idxNuevo > idxActual) {
       const pagado = facturasProveedor.some(
         (f) => f.estado === "Pagada" && (f.trackings || []).some((tk) => tk.id === t.id)
@@ -76,10 +109,6 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
     await actualizarCampo(t, "estado", nuevoEstado);
   };
 
-  // Punto de entrada desde el selector de estado. Si va hacia "Bodega
-  // OEX" y todavía no tiene peso, no se aplica el cambio directo — se
-  // abre el modal para pedirlo ahí mismo (más natural que dejar un input
-  // suelto en la fila esperando que alguien se acuerde de llenarlo).
   const cambiarEstado = async (t, nuevoEstado) => {
     if (nuevoEstado === "Bodega OEX" && numero(t.peso) <= 0) {
       setPendientePeso({ tracking: t, nuevoEstado });
@@ -104,10 +133,9 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
     }
   };
 
-  // ===== Modo lote: pegar la lista del proveedor (No. Guía + Peso) =====
   const [loteAbierto, setLoteAbierto] = useState(false);
   const [textoLote, setTextoLote] = useState("");
-  const [resultadoLote, setResultadoLote] = useState(null); // { reconocidas, noReconocidas } emparejadas
+  const [resultadoLote, setResultadoLote] = useState(null);
   const [seleccionLote, setSeleccionLote] = useState(() => new Set());
   const [aplicandoLote, setAplicandoLote] = useState(false);
 
@@ -115,8 +143,6 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
     const { reconocidas, noReconocidas } = parseListaPesos(textoLote);
     const emparejadas = emparejarConTrackings(reconocidas, activos);
     setResultadoLote({ emparejadas, noReconocidas });
-    // Preseleccionadas por defecto solo las que sí encontraron tracking —
-    // las sin match no tienen nada que aplicar todavía.
     setSeleccionLote(new Set(emparejadas.filter((e) => e.tracking).map((e) => e.tracking.id)));
   };
 
@@ -160,9 +186,6 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
     }
   };
 
-  // El peso solo pide confirmación cuando ya HABÍA un valor guardado
-  // (evita alertas molestas la primera vez que se pesa). Compara el valor
-  // NUMÉRICO, no el texto — así "5" y "5.0" no cuentan como un cambio real.
   const manejarBlurPeso = (t, e) => {
     const textoNuevo = e.target.value;
     const nuevo = numero(textoNuevo);
@@ -196,11 +219,15 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
     <div className="card">
       <div className="page-title" style={{ margin: "0 0 8px" }}>
         <h3>Envíos activos ({activos.length})</h3>
-        <div className="segment">
+        <div className="segment" style={{ flexWrap: "wrap" }}>
           <button className="btn" onClick={() => setLoteAbierto((v) => !v)}>
             <Layers size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />
             {loteAbierto ? "Ocultar carga por lote" : "Cargar lote de Bodega OEX"}
           </button>
+          <select className="input input-sm" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+            <option value="Todos">Todos los estados</option>
+            {estadosDisponibles.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
+          </select>
           <input className="input input-sm" placeholder="Buscar cliente, tracking, código o ID almacén" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
       </div>
@@ -225,54 +252,23 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
           {resultadoLote && (
             <div className="mt-16">
               <div className="grid-4">
-                <div className="metric">
-                  <b>Con match</b>
-                  <span className="metric-value" style={{ color: "var(--success)" }}>
-                    {resultadoLote.emparejadas.filter((e) => e.tracking).length}
-                  </span>
-                </div>
-                <div className="metric">
-                  <b>Sin match</b>
-                  <span className="metric-value" style={{ color: "var(--warning, #b7791f)" }}>
-                    {resultadoLote.emparejadas.filter((e) => !e.tracking).length}
-                  </span>
-                </div>
-                <div className="metric">
-                  <b>Líneas no reconocidas</b>
-                  <span className="metric-value" style={{ color: resultadoLote.noReconocidas.length > 0 ? "var(--danger)" : undefined }}>
-                    {resultadoLote.noReconocidas.length}
-                  </span>
-                </div>
-                <div className="metric">
-                  <b>Seleccionados para aplicar</b>
-                  <span className="metric-value">{seleccionLote.size}</span>
-                </div>
+                <div className="metric"><b>Con match</b><span className="metric-value" style={{ color: "var(--success)" }}>{resultadoLote.emparejadas.filter((e) => e.tracking).length}</span></div>
+                <div className="metric"><b>Sin match</b><span className="metric-value" style={{ color: "var(--warning, #b7791f)" }}>{resultadoLote.emparejadas.filter((e) => !e.tracking).length}</span></div>
+                <div className="metric"><b>Líneas no reconocidas</b><span className="metric-value" style={{ color: resultadoLote.noReconocidas.length > 0 ? "var(--danger)" : undefined }}>{resultadoLote.noReconocidas.length}</span></div>
+                <div className="metric"><b>Seleccionados para aplicar</b><span className="metric-value">{seleccionLote.size}</span></div>
               </div>
 
               <div className="list mt-16">
                 {resultadoLote.emparejadas.map((item, i) => (
-                  <label
-                    key={i}
-                    className="row-card"
-                    style={{ cursor: item.tracking ? "pointer" : "default", opacity: item.tracking ? 1 : 0.6 }}
-                  >
+                  <label key={i} className="row-card" style={{ cursor: item.tracking ? "pointer" : "default", opacity: item.tracking ? 1 : 0.6 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      {item.tracking
-                        ? <CheckCircle2 size={18} style={{ color: "var(--success)", flexShrink: 0 }} />
-                        : <XCircle size={18} style={{ color: "var(--warning, #b7791f)", flexShrink: 0 }} />}
-                      <input
-                        type="checkbox"
-                        style={{ display: item.tracking ? "inline" : "none" }}
-                        checked={item.tracking ? seleccionLote.has(item.tracking.id) : false}
-                        onChange={() => item.tracking && toggleSeleccionLote(item.tracking.id)}
-                      />
+                      {item.tracking ? <CheckCircle2 size={18} style={{ color: "var(--success)", flexShrink: 0 }} /> : <XCircle size={18} style={{ color: "var(--warning, #b7791f)", flexShrink: 0 }} />}
+                      <input type="checkbox" style={{ display: item.tracking ? "inline" : "none" }} checked={item.tracking ? seleccionLote.has(item.tracking.id) : false} onChange={() => item.tracking && toggleSeleccionLote(item.tracking.id)} />
                       <div>
                         <b>{item.identificador}</b> → {item.peso.toFixed(2)} lb
                         {item.tipoEnvioDetectado && <span className="badge badge-neutral" style={{ marginLeft: 6 }}>{item.tipoEnvioDetectado}</span>}
                         <p style={{ margin: 0 }}>
-                          {item.tracking
-                            ? <small>{item.tracking.cliente} · {item.tracking.tracking || item.tracking.almacenId} · estado actual: {item.tracking.estado}</small>
-                            : <small style={{ color: "var(--warning, #b7791f)" }}>Sin coincidencia — ningún tracking activo tiene este ID de almacén ni tracking</small>}
+                          {item.tracking ? <small>{item.tracking.vinculacion?.cliente?.nombre || item.tracking.cliente} · {item.tracking.tracking || item.tracking.almacenId} · estado actual: {item.tracking.estado}</small> : <small style={{ color: "var(--warning, #b7791f)" }}>Sin coincidencia — ningún tracking activo tiene este ID de almacén ni tracking</small>}
                         </p>
                       </div>
                     </div>
@@ -282,13 +278,9 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
 
               {resultadoLote.noReconocidas.length > 0 && (
                 <div className="mt-16">
-                  <p style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <HelpCircle size={16} style={{ color: "var(--danger)" }} /> <b>Líneas que no se pudieron leer</b>
-                  </p>
+                  <p style={{ display: "flex", alignItems: "center", gap: 6 }}><HelpCircle size={16} style={{ color: "var(--danger)" }} /> <b>Líneas que no se pudieron leer</b></p>
                   <div className="list">
-                    {resultadoLote.noReconocidas.map((n, i) => (
-                      <div key={i} className="row-card"><code style={{ fontSize: "0.8rem" }}>{n.lineaOriginal}</code></div>
-                    ))}
+                    {resultadoLote.noReconocidas.map((n, i) => <div key={i} className="row-card"><code style={{ fontSize: "0.8rem" }}>{n.lineaOriginal}</code></div>)}
                   </div>
                 </div>
               )}
@@ -314,7 +306,7 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
             eliminar={eliminar}
           />
         ))}
-        {activos.length === 0 && <p>Sin envíos activos por ahora.</p>}
+        {activos.length === 0 && <p>Sin envíos activos con estos filtros.</p>}
       </div>
 
       {pendientePeso && (
@@ -330,13 +322,13 @@ export default function TrackingsActivos({ prealertas, facturasProveedor = [], a
   );
 }
 
-// ---------- Fila compacta, colapsada por defecto ----------
-// Con volumen alto, mostrar la línea de tiempo completa de cada tracking
-// a la vez satura la pantalla. Por defecto se ve solo lo esencial en una
-// línea; al hacer clic se despliega el pipeline y los controles de
-// edición — el mismo patrón que ya usan Clientes y Proveedores.
 function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, actualizarCampo, manejarBlurPeso, eliminar }) {
   const [expandido, setExpandido] = useState(false);
+  const clienteOficial = t.vinculacion?.cliente;
+  const nombreMostrar = clienteOficial?.nombre || t.cliente;
+  const codigoMostrar = clienteOficial?.codigo || t.clienteCodigo || "Sin registrar";
+  const telefonoMostrar = clienteOficial?.telefono || t.contacto || "";
+  const nombreDiferente = clienteOficial && t.cliente && clienteOficial.nombre.trim().toLowerCase() !== t.cliente.trim().toLowerCase();
 
   const esperandoPago = esListoParaRetiroProveedor(t.estado) &&
     !facturasProveedor.some((f) => f.estado === "Pagada" && (f.trackings || []).some((tk) => tk.id === t.id));
@@ -354,10 +346,12 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
           <span className={`badge ${badgeEstado(t.estado)}`}>{t.estado}</span>{" "}
           {esListoParaRetirar(t.estado) && <span className="badge badge-success">Listo para recibo</span>}
           {esperandoPago && <span className="badge badge-warning">Falta pago proveedor</span>}
+          {clienteOficial && <span className="badge badge-success">Vinculado por {t.vinculacion.motivo}</span>}
           <p style={{ margin: "2px 0 0" }}>
-            {t.cliente} · {t.clienteCodigo || "Sin registrar"} · {t.destino}
+            {nombreMostrar} · {codigoMostrar}{telefonoMostrar ? ` · ${telefonoMostrar}` : ""} · {t.destino}
             {numero(t.peso) > 0 && ` · ${numero(t.peso).toFixed(1)} lb`}
           </p>
+          {nombreDiferente && <small style={{ opacity: 0.65 }}>Nombre recibido: {t.cliente} · usando registro oficial: {clienteOficial.nombre}</small>}
         </div>
         <div className="stack-gap-sm text-right">
           <small style={{ opacity: 0.6 }}>{expandido ? "Ocultar ▲" : "Ver detalle ▼"}</small>
