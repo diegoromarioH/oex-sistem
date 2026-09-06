@@ -1,10 +1,4 @@
 // src/services/enviosService.js
-//
-// Los envíos ("recibos") ya no se registran a mano desde cero: se generan
-// en trackingsService.js (generarRecibo) a partir de trackings sueltos que
-// ya están listos para retirar. Este archivo se quedó solo con lo que
-// sigue operando sobre un envío YA CREADO: editar un tracking dentro de él,
-// cambiar su estado, saldarlo (pago) y eliminarlo.
 import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { tarifaPorTipoEnvio, calcularTotalesTrackings, totalPaq, costoInternoTotalPaq, tipoEnvioResumen } from "../utils/calculosPaqueteria";
@@ -13,12 +7,23 @@ import { estadosPorDestino } from "../utils/estadosEnvio";
 import { ajustarSaldoCuentaDinero } from "./cuentasDineroService";
 import { postearAsiento, reversarAsientosDeOrigen } from "./ContabilidadService";
 
+const nombreUsuario = (auth) => auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario";
+
+const sincronizarTrackingsVivos = async ({ envioId, cambios, auth }) => {
+  if (!envioId) return;
+  const { error } = await supabase.from("tracking_registros").update({
+    ...cambios,
+    updated_by: auth.session?.user?.id || null,
+    updated_by_name: nombreUsuario(auth)
+  }).eq("envio_id", envioId);
+  if (error) throw error;
+};
+
 const postearCobro = async ({ envio, monto, cuentaDinero, fecha, auth }) => {
   if (!cuentaDinero?.id || monto <= 0) return;
-
   await ajustarSaldoCuentaDinero(cuentaDinero.id, monto);
-
   if (!cuentaDinero.cuentaContableId) return;
+
   const { data: cuentaContable } = await supabase
     .from("cuentas_contables").select("codigo").eq("id", cuentaDinero.cuentaContableId).single();
   if (!cuentaContable) return;
@@ -43,21 +48,8 @@ export const actualizarTrackingEnvio = async ({ envio, trackingIndex, field, val
   const tipoEnvioActualizado = tipoEnvioResumen(nuevosTrackings, envio.tipoEnvio);
   const envioParaCalculo = { ...envio, tipoEnvio: tipoEnvioActualizado };
   const { libras: totalLibras, total, costoInternoTotal, gananciaReal } = calcularTotalesTrackings(tarifas, envioParaCalculo, nuevosTrackings);
-
   const abono = numero(envio.abono);
   const saldo = Math.max(total - abono, 0);
-
-  let estadoActualizado = envio.estado;
-  if (envio.estado !== "Entregado") {
-    const pipeline = estadosPorDestino(envio.destino);
-    const indices = nuevosTrackings.map((t) => {
-      const idx = pipeline.indexOf(t.estado);
-      return idx === -1 ? 0 : idx;
-    });
-    const idxMinimo = Math.min(...indices, pipeline.length - 2);
-    estadoActualizado = pipeline[Math.max(idxMinimo, 0)];
-  }
-
   const totalAnterior = numero(envio.total);
 
   const { error } = await supabase.from("envios").update({
@@ -69,12 +61,20 @@ export const actualizarTrackingEnvio = async ({ envio, trackingIndex, field, val
     ganancia_real: gananciaReal,
     abono,
     saldo,
-    estado: estadoActualizado,
     updated_by: auth.session?.user?.id || null,
-    updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
+    updated_by_name: nombreUsuario(auth)
   }).eq("id", envio.id);
-
   if (error) throw error;
+
+  const trackingId = nuevosTrackings[trackingIndex]?.id;
+  if (trackingId && field === "peso") {
+    const { error: trackingError } = await supabase.from("tracking_registros").update({
+      peso: value,
+      updated_by: auth.session?.user?.id || null,
+      updated_by_name: nombreUsuario(auth)
+    }).eq("id", trackingId).eq("envio_id", envio.id);
+    if (trackingError) throw trackingError;
+  }
 
   const delta = total - totalAnterior;
   if (Math.abs(delta) > 0.005) {
@@ -85,20 +85,17 @@ export const actualizarTrackingEnvio = async ({ envio, trackingIndex, field, val
       origenId: envio.id,
       auth,
       lineas: delta > 0
-        ? [
-            { cuentaCodigo: "1030", debe: delta, haber: 0 },
-            { cuentaCodigo: "4010", debe: 0, haber: delta }
-          ]
-        : [
-            { cuentaCodigo: "4010", debe: -delta, haber: 0 },
-            { cuentaCodigo: "1030", debe: 0, haber: -delta }
-          ]
+        ? [{ cuentaCodigo: "1030", debe: delta, haber: 0 }, { cuentaCodigo: "4010", debe: 0, haber: delta }]
+        : [{ cuentaCodigo: "4010", debe: -delta, haber: 0 }, { cuentaCodigo: "1030", debe: 0, haber: -delta }]
     });
   }
 
   await registrarAuditoria({
-    ...auth, accion: field === "peso" ? "Registró peso" : "Actualizó tracking", modulo: "Paquetería",
-    registroCodigo: envio.numero, detalle: `${nuevosTrackings[trackingIndex]?.codigo || ""} · ${field}: ${value}`
+    ...auth,
+    accion: field === "peso" ? "Registró peso" : "Actualizó tracking",
+    modulo: "Paquetería",
+    registroCodigo: envio.numero,
+    detalle: `${nuevosTrackings[trackingIndex]?.tracking || nuevosTrackings[trackingIndex]?.codigo || ""} · ${field}: ${value}`
   });
 };
 
@@ -118,21 +115,22 @@ export const actualizarEstadoEnvio = async ({ envio, nuevoEstado, prompts, cuent
     abono = numero(envio.total);
   }
 
+  const trackingsActualizados = (envio.trackings || []).map((t) => ({ ...t, estado: nuevoEstado }));
   const { error } = await supabase.from("envios").update({
     estado: nuevoEstado,
+    trackings: trackingsActualizados,
     metodo_pago: metodo,
     referencia_pago: referencia,
     abono,
     saldo: Math.max(numero(envio.total) - abono, 0),
     updated_by: auth.session?.user?.id || null,
-    updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
+    updated_by_name: nombreUsuario(auth)
   }).eq("id", envio.id);
-
   if (error) throw error;
 
+  await sincronizarTrackingsVivos({ envioId: envio.id, cambios: { estado: nuevoEstado }, auth });
   await postearCobro({ envio, monto: montoCobradoAhora, cuentaDinero, auth });
-
-  await registrarAuditoria({ ...auth, accion: "Cambió estado", modulo: "Paquetería", registroCodigo: envio.numero, detalle: `${envio.estado} → ${nuevoEstado}` });
+  await registrarAuditoria({ ...auth, accion: "Cambió estado", modulo: "Paquetería", registroCodigo: envio.numero, detalle: `${envio.estado} → ${nuevoEstado} · ${trackingsActualizados.length} tracking(s)` });
 };
 
 export const saldarEnvio = async ({ envio, pago, cuentaDinero, fecha, auth }) => {
@@ -151,39 +149,51 @@ export const saldarEnvio = async ({ envio, pago, cuentaDinero, fecha, auth }) =>
 
   const horaActual = new Date().toTimeString().slice(0, 8);
   const fechaISO = fecha ? new Date(`${fecha}T${horaActual}`).toISOString() : new Date().toISOString();
-
   const montoCobrado = Math.max(numero(envio.total) - numero(envio.abono), 0);
   const nuevoEstado = pago.marcarEntregado === false ? envio.estado : "Entregado";
+  const trackingsActualizados = (envio.trackings || []).map((t) => ({ ...t, estado: nuevoEstado }));
 
   const { error } = await supabase.from("envios").update({
     estado: nuevoEstado,
+    trackings: trackingsActualizados,
     metodo_pago: pago.metodo,
     referencia_pago: referencia,
     abono: numero(envio.total),
     saldo: 0,
     updated_by: auth.session?.user?.id || null,
-    updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
+    updated_by_name: nombreUsuario(auth)
   }).eq("id", envio.id);
-
   if (error) throw error;
 
-  await postearCobro({ envio, monto: montoCobrado, cuentaDinero, fecha: fechaISO, auth });
+  if (nuevoEstado === "Entregado") {
+    await sincronizarTrackingsVivos({ envioId: envio.id, cambios: { estado: "Entregado" }, auth });
+  }
 
+  await postearCobro({ envio, monto: montoCobrado, cuentaDinero, fecha: fechaISO, auth });
   await registrarAuditoria({
-    ...auth, accion: nuevoEstado === "Entregado" ? "Saldó y entregó envío" : "Saldó envío", modulo: "Paquetería",
-    registroCodigo: envio.numero, detalle: `${envio.cliente} · ${referencia} · $${numero(envio.total).toFixed(2)}`
+    ...auth,
+    accion: nuevoEstado === "Entregado" ? "Saldó y entregó envío" : "Saldó envío",
+    modulo: "Paquetería",
+    registroCodigo: envio.numero,
+    detalle: `${envio.cliente} · ${referencia} · $${numero(envio.total).toFixed(2)}`
   });
 };
 
 export const eliminarEnvio = async ({ envio, auth }) => {
+  const { error: unlinkError } = await supabase.from("tracking_registros").update({
+    envio_id: null,
+    updated_by: auth.session?.user?.id || null,
+    updated_by_name: nombreUsuario(auth)
+  }).eq("envio_id", envio.id);
+  if (unlinkError) throw unlinkError;
+
   const { error } = await supabase.from("envios").delete().eq("id", envio.id);
   if (error) throw error;
 
   await reversarAsientosDeOrigen({ origenModulo: "envios", origenId: envio.id, auth });
   await reversarAsientosDeOrigen({ origenModulo: "envios_ajuste", origenId: envio.id, auth });
   await reversarAsientosDeOrigen({ origenModulo: "envios_cobro", origenId: envio.id, auth });
-
-  await registrarAuditoria({ ...auth, accion: "Eliminó envío", modulo: "Paquetería", registroCodigo: envio.numero || "", detalle: envio.cliente || "" });
+  await registrarAuditoria({ ...auth, accion: "Eliminó envío", modulo: "Paquetería", registroCodigo: envio.numero || "", detalle: `${envio.cliente || ""} · trackings desvinculados` });
 };
 
 export { tarifaPorTipoEnvio, calcularTotalesTrackings, totalPaq, costoInternoTotalPaq };
