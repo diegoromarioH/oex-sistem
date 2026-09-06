@@ -1,0 +1,72 @@
+/* OEX — barras de búsqueda globales
+   Aplica automáticamente a inputs cuyo placeholder comienza con "Buscar".
+   TrackingsActivos conserva su variante propia para evitar duplicar el icono. */
+
+input.input[placeholder^="Buscar"]:not(.tracking-search) {
+  width: min(100%, 420px);
+  min-height: 44px;
+  padding: 10px 14px 10px 42px;
+  border: 1px solid color-mix(in srgb, var(--module-color, var(--accent)) 22%, var(--border));
+  border-radius: 14px;
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%238a8f98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px center;
+  background-size: 17px 17px;
+  box-shadow: 0 1px 2px rgba(15, 36, 69, 0.04);
+  font-size: 14px;
+  transition: border-color var(--transition), box-shadow var(--transition), background-color var(--transition), transform var(--transition);
+}
+
+input.input[placeholder^="Buscar"]:not(.tracking-search)::placeholder {
+  color: var(--text-faint);
+  opacity: .9;
+}
+
+input.input[placeholder^="Buscar"]:not(.tracking-search):hover {
+  border-color: color-mix(in srgb, var(--module-color, var(--accent)) 45%, var(--border));
+}
+
+input.input[placeholder^="Buscar"]:not(.tracking-search):focus {
+  border-color: var(--module-color, var(--accent));
+  background-color: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--module-color, var(--accent)) 14%, transparent), var(--shadow-sm);
+}
+
+/* Las búsquedas dentro de encabezados/listas ganan espacio y no quedan
+   comprimidas al ancho histórico de .input-sm (150px). */
+.page-title .actions input.input[placeholder^="Buscar"]:not(.tracking-search),
+.page-title > input.input[placeholder^="Buscar"]:not(.tracking-search),
+.segment input.input[placeholder^="Buscar"]:not(.tracking-search) {
+  width: min(100%, 420px);
+  flex: 1 1 280px;
+}
+
+/* Si el buscador vive junto con filtros, que los controles respiren y se
+   acomoden en varias líneas sin romper el layout. */
+.page-title .actions:has(input.input[placeholder^="Buscar"]),
+.segment:has(input.input[placeholder^="Buscar"]) {
+  align-items: center;
+}
+
+[data-theme="dark"] input.input[placeholder^="Buscar"]:not(.tracking-search) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2375757f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+}
+
+@media (max-width: 720px) {
+  input.input[placeholder^="Buscar"]:not(.tracking-search),
+  .page-title .actions input.input[placeholder^="Buscar"]:not(.tracking-search),
+  .page-title > input.input[placeholder^="Buscar"]:not(.tracking-search),
+  .segment input.input[placeholder^="Buscar"]:not(.tracking-search) {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 100%;
+    min-height: 46px;
+    font-size: 16px; /* evita zoom automático de Safari/iOS */
+  }
+
+  .page-title .actions:has(input.input[placeholder^="Buscar"]),
+  .segment:has(input.input[placeholder^="Buscar"]) {
+    width: 100%;
+  }
+}
