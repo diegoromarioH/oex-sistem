@@ -1,16 +1,9 @@
 // src/pages/paqueteria/PaqueteriaRecibo.jsx
-//
-// Reemplaza al viejo "Registrar envío": ya no se arma un envío desde cero
-// con trackings nuevos. Se elige un cliente EXISTENTE (los trackings ya
-// están ligados a él desde que se registraron en Prealertas.jsx), se
-// muestran solo los que ya están listos para retirar, y se generan como
-// recibo (R00001...) — esto reemplaza también a "Factura consolidada".
 import { useMemo, useState } from "react";
 import { numero } from "../../utils/numero";
 import { generarRecibo } from "../../services/trackingsService";
 import { generarDetalleEnvio } from "../../services/pdfService";
-import { perfilEstandarDestino, tarifaDesdePerfil, costoInternoDefaultPorTipo } from "../../utils/calculosPaqueteria";
-import { esListoParaRetirar } from "../../utils/estadosEnvio";
+import { perfilEstandarDestino, tarifaDesdePerfil } from "../../utils/calculosPaqueteria";
 import ClienteSelector from "../../components/ClienteSelector";
 import TarifaSelect from "../../components/TarifaSelect";
 
@@ -24,12 +17,14 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
 
   const trackingsListos = useMemo(() => {
     if (!clienteSeleccionado) return [];
-    return prealertas.filter((t) => t.clienteId === clienteSeleccionado.id && esListoParaRetirar(t.estado));
+    return prealertas.filter((t) =>
+      t.clienteId === clienteSeleccionado.id &&
+      t.estado === "Bodega OEX" &&
+      numero(t.peso) > 0 &&
+      !t.envioId
+    );
   }, [prealertas, clienteSeleccionado]);
 
-  // Un cliente podría (raramente) tener trackings listos de Managua Y
-  // Ometepe al mismo tiempo — se agrupan por destino porque un recibo solo
-  // puede tener un destino (columna `lugar` del envío).
   const gruposPorDestino = useMemo(() => {
     const mapa = {};
     trackingsListos.forEach((t) => {
@@ -42,7 +37,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
   return (
     <div className="card">
       <h3>Generar recibo</h3>
-      <p>Elige un cliente para ver sus trackings que ya están listos para retirar. El recibo se genera solo con esos — el resto sigue su curso normal en Trackings.</p>
+      <p>El recibo puede generarse cuando los paquetes ya están en <b>Bodega OEX</b> y tienen peso registrado. Los trackings seguirán visibles en Envíos activos y avanzarán junto con el recibo.</p>
 
       <ClienteSelector
         clientes={clientes} clienteId={clienteId} nombre={clienteNombre} telefono={clienteTelefono}
@@ -53,7 +48,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
       {!clienteSeleccionado && <p className="mt-16">Selecciona un cliente existente de la lista para continuar.</p>}
 
       {clienteSeleccionado && trackingsListos.length === 0 && (
-        <p className="mt-16">{clienteSeleccionado.nombre} no tiene trackings listos para retirar todavía.</p>
+        <p className="mt-16">{clienteSeleccionado.nombre} no tiene trackings disponibles en Bodega OEX con peso registrado.</p>
       )}
 
       {clienteSeleccionado && Object.entries(gruposPorDestino).map(([destino, trackings]) => (
@@ -109,8 +104,8 @@ function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, most
         cliente, trackings: trackingsIncluidos, tarifas, tarifaPerfil, tarifaPersonalizada, descuento, gastosExtras, nota, fecha, auth
       });
       generarDetalleEnvio(envio, tarifas, empresa);
-      mostrarToast(`Recibo ${numeroRecibo} generado — PDF descargado.`);
-      cargarDatos();
+      mostrarToast(`Recibo ${numeroRecibo} generado desde Bodega OEX — los trackings siguen activos.`);
+      await cargarDatos();
     } catch (err) {
       mostrarToast(err.message || "No se pudo generar el recibo.", "error");
     } finally {
@@ -120,7 +115,7 @@ function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, most
 
   return (
     <div className="mt-16" style={{ borderTop: "1px solid #D8DADD", paddingTop: 16 }}>
-      <h4>{destino} — {trackings.length} tracking(s) listo(s)</h4>
+      <h4>{destino} — {trackings.length} tracking(s) en Bodega OEX</h4>
       <div className="mini-tracking-list">
         {trackings.map((t) => (
           <label key={t.id} className="mini-tracking-row" style={{ cursor: "pointer" }}>
@@ -128,7 +123,7 @@ function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, most
             <b>{t.tracking || t.almacenId || "Sin código"}</b>
             <span className="badge badge-neutral">{t.tipoEnvio}</span>
             <span>{numero(t.peso).toFixed(2)} lb</span>
-            <span className="badge badge-info">{t.estado}</span>
+            <span className="badge badge-info">Bodega OEX</span>
           </label>
         ))}
       </div>
