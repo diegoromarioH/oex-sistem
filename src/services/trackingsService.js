@@ -25,25 +25,36 @@ import { postearAsiento } from "./ContabilidadService";
 // primer paso del pipeline real — desde ahí se edita como cualquier otro
 // tracking (peso, ID de almacén, estado).
 export const confirmarTracking = async ({ tracking, clientesEnMemoria, auth }) => {
-  let clienteId = tracking.clienteId;
-  let clienteCodigo = tracking.clienteCodigo;
-  let clienteTipo = tracking.clienteTipo;
+  let clienteResuelto = null;
 
-  if (!clienteId) {
-    const clienteResuelto = await resolverCliente({
+  if (tracking.clienteId) {
+    const existentePorId = clientesEnMemoria.find((c) => c.id === tracking.clienteId);
+    if (existentePorId) {
+      clienteResuelto = {
+        id: existentePorId.id,
+        codigo: existentePorId.codigo,
+        nombre: existentePorId.nombre,
+        telefono: existentePorId.telefono,
+        tipo: existentePorId.tipo,
+        esNuevo: false
+      };
+    }
+  }
+
+  if (!clienteResuelto) {
+    clienteResuelto = await resolverCliente({
       clientesEnMemoria, nombre: tracking.cliente, telefono: tracking.contacto, tipo: "General",
       codigo: tracking.clienteCodigo, auth
     });
-    clienteId = clienteResuelto.id;
-    clienteCodigo = clienteResuelto.codigo;
-    clienteTipo = clienteResuelto.tipo;
   }
 
   const { error } = await supabase.from("tracking_registros").update({
     estado: "Miami",
-    cliente_id: clienteId,
-    cliente_codigo: clienteCodigo,
-    cliente_tipo: clienteTipo,
+    cliente_id: clienteResuelto.id,
+    cliente_codigo: clienteResuelto.codigo,
+    cliente_tipo: clienteResuelto.tipo,
+    cliente: clienteResuelto.nombre || tracking.cliente,
+    contacto: clienteResuelto.telefono || tracking.contacto,
     updated_by: auth.session?.user?.id || null,
     updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
   }).eq("id", tracking.id);
@@ -51,7 +62,7 @@ export const confirmarTracking = async ({ tracking, clientesEnMemoria, auth }) =
 
   await registrarAuditoria({
     ...auth, accion: "Confirmó tracking recibido", modulo: "Trackings",
-    registroCodigo: tracking.tracking || tracking.almacenId || "", detalle: tracking.cliente || ""
+    registroCodigo: tracking.tracking || tracking.almacenId || "", detalle: clienteResuelto.nombre || tracking.cliente || ""
   });
 };
 
