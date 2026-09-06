@@ -3,8 +3,7 @@ import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { resolverCliente } from "./clientesService";
 import { generarCodigoRecibo, firmarPayload, registrarAuditoria } from "./coreService";
-import { estadosPorDestino } from "../utils/estadosEnvio";
-import { tarifaDesdePerfil, costoInternoDefaultPorTipo, tipoEnvioResumen } from "../utils/calculosPaqueteria";
+import { costoInternoDefaultPorTipo, tarifaDesdePerfil, tipoEnvioResumen } from "../utils/calculosPaqueteria";
 import { postearAsiento } from "./ContabilidadService";
 
 const costoProveedorPorTipo = (proveedor, tipoEnvio) => {
@@ -65,6 +64,7 @@ const COLUMNAS_EDITABLES={peso:"peso",estado:"estado",almacenId:"almacen_id",cos
 export const actualizarTracking=async({tracking,field,value,auth})=>{
   const columna=COLUMNAS_EDITABLES[field];
   if(!columna) throw new Error(`Campo no editable: ${field}`);
+  if(field==="estado"&&tracking.envioId) throw new Error("Este tracking ya pertenece a un recibo. Cambia el estado desde el recibo para mover todos sus paquetes juntos.");
   if(field==="estado"&&value==="Miami"&&!String(tracking.almacenId||"").trim()) throw new Error("Antes de marcar como Recibido en Miami, registra el ID de almacén.");
   const cambios={[columna]:value,updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"};
   if(field==="estado"&&value==="Miami"&&!tracking.fechaMiami) cambios.fecha_miami=new Date().toISOString();
@@ -73,22 +73,94 @@ export const actualizarTracking=async({tracking,field,value,auth})=>{
   await registrarAuditoria({...auth,accion:field==="peso"?"Registró peso":"Actualizó tracking",modulo:"Trackings",registroCodigo:tracking.tracking||tracking.almacenId||"",detalle:`${field}: ${value}`});
 };
 
-export const eliminarTracking=async({tracking,auth})=>{const{error}=await supabase.from("tracking_registros").delete().eq("id",tracking.id);if(error)throw error;await registrarAuditoria({...auth,accion:"Eliminó tracking",modulo:"Trackings",registroCodigo:tracking.tracking||"",detalle:tracking.cliente||""});};
+export const eliminarTracking=async({tracking,auth})=>{
+  if(tracking.envioId) throw new Error("Este tracking pertenece a un recibo. Elimina o corrige el recibo primero.");
+  const{error}=await supabase.from("tracking_registros").delete().eq("id",tracking.id);
+  if(error)throw error;
+  await registrarAuditoria({...auth,accion:"Eliminó tracking",modulo:"Trackings",registroCodigo:tracking.tracking||"",detalle:tracking.cliente||""});
+};
 
 export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil, tarifaPersonalizada, descuento, gastosExtras, nota, fecha, auth }) => {
-  if(!trackings||trackings.length===0) throw new Error("Selecciona al menos un tracking listo para generar el recibo.");
-  const destinos=new Set(trackings.map(t=>t.destino)); if(destinos.size>1) throw new Error("Todos los trackings de un mismo recibo deben ser del mismo destino.");
-  const destino=trackings[0].destino, tipoEnvioRecibo=tipoEnvioResumen(trackings), tarifaBase=tarifaDesdePerfil(tarifas,tarifaPerfil,tipoEnvioRecibo,tarifaPersonalizada);
+  if(!trackings||trackings.length===0) throw new Error("Selecciona al menos un tracking en Bodega OEX.");
+  const destinos=new Set(trackings.map(t=>t.destino));
+  if(destinos.size>1) throw new Error("Todos los trackings de un mismo recibo deben ser del mismo destino.");
+  if(trackings.some(t=>t.estado!=="Bodega OEX")) throw new Error("El recibo solo puede generarse cuando todos los trackings seleccionados están en Bodega OEX.");
+  if(trackings.some(t=>numero(t.peso)<=0)) throw new Error("Todos los trackings deben tener peso registrado antes de generar el recibo.");
+  if(trackings.some(t=>t.envioId)) throw new Error("Uno o más trackings seleccionados ya pertenecen a otro recibo.");
+
+  const destino=trackings[0].destino;
+  const tipoEnvioRecibo=tipoEnvioResumen(trackings);
+  const tarifaBase=tarifaDesdePerfil(tarifas,tarifaPerfil,tipoEnvioRecibo,tarifaPersonalizada);
   const totalLibras=trackings.reduce((a,t)=>a+numero(t.peso),0);
   const bruto=trackings.reduce((a,t)=>a+numero(t.peso)*tarifaDesdePerfil(tarifas,tarifaPerfil,t.tipoEnvio,tarifaPersonalizada),0);
   const total=Math.max(bruto-numero(descuento),0);
-  const costoInternoTotal=trackings.reduce((a,t)=>{const costo=t.costoInterno!==undefined&&t.costoInterno!==""?numero(t.costoInterno):costoInternoDefaultPorTipo(t.tipoEnvio);return a+numero(t.peso)*costo;},0);
-  const gananciaReal=total-costoInternoTotal-numero(gastosExtras), numeroRecibo=await generarCodigoRecibo(), fechaRecibo=fecha||new Date().toISOString();
-  const snapshotTrackings=trackings.map(t=>({id:t.id,tracking:t.tracking||"",almacenId:t.almacenId||"",cliente:t.cliente||"",clienteId:t.clienteId||null,clienteCodigo:t.clienteCodigo||"",destino:t.destino||destino,tipoEnvio:t.tipoEnvio||"",peso:numero(t.peso),costoInterno:numero(t.costoInterno),proveedorAduanaId:t.proveedorAduanaId||null,estado:t.estado||"",fechaMiami:t.fechaMiami||""}));
-  const payload={numero:numeroRecibo,cliente:cliente.nombre,cliente_id:cliente.id,cliente_codigo:cliente.codigo,cliente_tipo:cliente.tipo,contacto:cliente.telefono,destino,tipo_envios:tipoEnvioRecibo,trackings:snapshotTrackings,total_libras:totalLibras,tarifa:tarifaBase,descuento:numero(descuento),gastos_extras:numero(gastosExtras),total,costo_interno_total:costoInternoTotal,ganancia_real:gananciaReal,abono:0,saldo:total,estado:estadosPorDestino(destino)[0],nota:nota||"",fecha:fechaRecibo,...firmarPayload(auth)};
-  const {data:envio,error}=await supabase.from("envios").insert([payload]).select().single(); if(error)throw error;
-  const ids=trackings.map(t=>t.id).filter(Boolean); if(ids.length){const{error:deleteError}=await supabase.from("tracking_registros").delete().in("id",ids);if(deleteError)throw deleteError;}
+  const costoInternoTotal=trackings.reduce((a,t)=>{
+    const costo=t.costoInterno!==undefined&&t.costoInterno!==""?numero(t.costoInterno):costoInternoDefaultPorTipo(t.tipoEnvio);
+    return a+numero(t.peso)*costo;
+  },0);
+  const gananciaReal=total-costoInternoTotal-numero(gastosExtras);
+  const numeroRecibo=await generarCodigoRecibo();
+  const fechaRecibo=fecha||new Date().toISOString();
+  const snapshotTrackings=trackings.map(t=>({
+    id:t.id,
+    tracking:t.tracking||"",
+    almacenId:t.almacenId||"",
+    cliente:t.cliente||"",
+    clienteId:t.clienteId||null,
+    clienteCodigo:t.clienteCodigo||"",
+    destino:t.destino||destino,
+    tipoEnvio:t.tipoEnvio||"",
+    peso:numero(t.peso),
+    costoInterno:numero(t.costoInterno),
+    proveedorAduanaId:t.proveedorAduanaId||null,
+    estado:"Bodega OEX",
+    fechaMiami:t.fechaMiami||""
+  }));
+  const payload={
+    numero:numeroRecibo,
+    cliente:cliente.nombre,
+    cliente_id:cliente.id,
+    cliente_codigo:cliente.codigo,
+    cliente_tipo:cliente.tipo,
+    contacto:cliente.telefono,
+    destino,
+    tipo_envios:tipoEnvioRecibo,
+    trackings:snapshotTrackings,
+    total_libras:totalLibras,
+    tarifa:tarifaBase,
+    tarifa_perfil:tarifaPerfil,
+    tarifa_personalizada:tarifaPerfil==="personalizada"?numero(tarifaPersonalizada):null,
+    descuento:numero(descuento),
+    gastos_extras:numero(gastosExtras),
+    total,
+    costo_interno_total:costoInternoTotal,
+    ganancia_real:gananciaReal,
+    abono:0,
+    saldo:total,
+    estado:"Bodega OEX",
+    nota:nota||"",
+    fecha:fechaRecibo,
+    ...firmarPayload(auth)
+  };
+
+  const {data:envio,error}=await supabase.from("envios").insert([payload]).select().single();
+  if(error)throw error;
+
+  const ids=trackings.map(t=>t.id).filter(Boolean);
+  if(ids.length){
+    const {error:linkError}=await supabase.from("tracking_registros").update({
+      envio_id:envio.id,
+      estado:"Bodega OEX",
+      updated_by:auth.session?.user?.id||null,
+      updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"
+    }).in("id",ids).is("envio_id",null);
+    if(linkError){
+      await supabase.from("envios").delete().eq("id",envio.id);
+      throw linkError;
+    }
+  }
+
   await postearAsiento({fecha:fechaRecibo,descripcion:`Venta paquetería · Recibo ${numeroRecibo} · ${cliente.nombre}`,origenModulo:"envios",origenId:envio.id,auth,lineas:[{cuentaCodigo:"1030",debe:total,haber:0},{cuentaCodigo:"4010",debe:0,haber:total}]});
-  await registrarAuditoria({...auth,accion:"Generó recibo",modulo:"Paquetería",registroCodigo:numeroRecibo,detalle:`${cliente.nombre} · ${trackings.length} tracking(s) · $${total.toFixed(2)}`});
-  return envio;
+  await registrarAuditoria({...auth,accion:"Generó recibo",modulo:"Paquetería",registroCodigo:numeroRecibo,detalle:`${cliente.nombre} · ${trackings.length} tracking(s) desde Bodega OEX · $${total.toFixed(2)}`});
+  return { numeroRecibo, envio };
 };
