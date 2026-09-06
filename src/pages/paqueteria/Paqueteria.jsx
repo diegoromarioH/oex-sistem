@@ -34,7 +34,7 @@ export default function Paqueteria({ envios, prealertas, facturasProveedor, audi
       {vista === "nuevo" && <PaqueteriaRecibo prealertas={prealertas} clientes={clientes} tarifas={tarifas} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "registrar" && <RegistrarTracking clientes={clientes} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "prealertas" && <Prealertas prealertas={prealertas} clientes={clientes} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
-      {vista === "activos" && <TrackingsActivos prealertas={prealertas} facturasProveedor={facturasProveedor} auditLog={auditLog} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+      {vista === "activos" && <TrackingsActivos prealertas={prealertas} clientes={clientes} facturasProveedor={facturasProveedor} auditLog={auditLog} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "lista" && <EnviosList envios={envios} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
     </div>
   );
