@@ -26,8 +26,10 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
     const idxActual = pipeline.indexOf(envio.estado);
     const idxNuevo = pipeline.indexOf(nuevoEstado);
     const idxBodega = pipeline.indexOf("Bodega OEX");
-    if (idxNuevo !== -1 && idxNuevo < idxBodega) {
-      mostrarToast("Un recibo generado desde Bodega OEX no puede retroceder a estados anteriores a Bodega OEX.", "warning");
+    const reciboNuevoDesdeBodega = idxActual >= idxBodega;
+
+    if (reciboNuevoDesdeBodega && idxNuevo !== -1 && idxNuevo < idxBodega) {
+      mostrarToast("Un recibo que ya está en Bodega OEX no puede retroceder a estados anteriores a Bodega OEX.", "warning");
       return;
     }
     if (idxActual !== -1 && idxNuevo !== -1 && idxNuevo < idxActual) {
@@ -80,7 +82,8 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
 
   const pipeline = estadosPorDestino(envio.destino);
   const idxBodega = pipeline.indexOf("Bodega OEX");
-  const estadosRecibo = pipeline.slice(Math.max(idxBodega, 0)).filter((e) => e !== "Entregado");
+  const idxActual = pipeline.indexOf(envio.estado);
+  const estadosRecibo = (idxActual >= idxBodega ? pipeline.slice(Math.max(idxBodega, 0)) : pipeline).filter((e) => e !== "Entregado");
 
   return (
     <div className="row-card" style={{ flexDirection: "column", alignItems: "stretch" }}>
