@@ -11,23 +11,61 @@ const TODOS_LOS_ESTADOS = [...new Set([...PIPELINE_MANAGUA, ...PIPELINE_OMETEPE]
 
 const tipoDeTracking = (envio, tracking) => tracking.tipoEnvio || envio.tipoEnvio;
 
-const TarjetaResumen = ({ etiqueta, valor, sublinea, activa, onClick }) => (
-  <button
-    type="button"
-    className="metric"
-    onClick={onClick}
-    disabled={!onClick}
-    style={{
-      cursor: onClick ? "pointer" : "default",
-      textAlign: "left",
-      border: activa ? "2px solid #F4562D" : undefined,
-      width: "100%"
-    }}
-  >
-    <b>{etiqueta}</b>
-    <span className="metric-value">{valor}</span>
-    {sublinea && <small style={{ display: "block", marginTop: 4, opacity: 0.6 }}>{sublinea}</small>}
-  </button>
+const MiniMetrica = ({ etiqueta, valor, detalle, activa, onClick }) => {
+  const contenido = (
+    <>
+      <small style={{ opacity: 0.66, fontWeight: 700 }}>{etiqueta}</small>
+      <strong style={{ display: "block", fontSize: "1.55rem", lineHeight: 1.1, marginTop: 5 }}>{valor}</strong>
+      {detalle && <small style={{ display: "block", marginTop: 5, opacity: 0.5 }}>{detalle}</small>}
+    </>
+  );
+
+  if (!onClick) {
+    return (
+      <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--surface-2, #f7f8fa)", minWidth: 0 }}>
+        {contenido}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "14px 16px",
+        borderRadius: 12,
+        background: activa ? "var(--primary-soft, #eef6ff)" : "var(--surface-2, #f7f8fa)",
+        border: activa ? "1px solid var(--primary, #2563eb)" : "1px solid transparent",
+        textAlign: "left",
+        cursor: "pointer",
+        color: "inherit",
+        minWidth: 0
+      }}
+    >
+      {contenido}
+    </button>
+  );
+};
+
+const PanelResumen = ({ titulo, subtitulo, destacado, destacadoDetalle, items, columnas = 3 }) => (
+  <section className="card" style={{ margin: 0, padding: 18 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 14 }}>
+      <div>
+        <h3 style={{ margin: 0 }}>{titulo}</h3>
+        {subtitulo && <small style={{ opacity: 0.58 }}>{subtitulo}</small>}
+      </div>
+      {destacado !== undefined && (
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <strong style={{ fontSize: "2rem", lineHeight: 1 }}>{destacado}</strong>
+          {destacadoDetalle && <small style={{ display: "block", marginTop: 5, opacity: 0.5 }}>{destacadoDetalle}</small>}
+        </div>
+      )}
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))`, gap: 10 }}>
+      {items.map((item) => <MiniMetrica key={item.etiqueta} {...item} />)}
+    </div>
+  </section>
 );
 
 export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos }) {
@@ -76,9 +114,6 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
     );
   }, [trackingsActivos]);
 
-  // Histórico = trackings que siguen activos + trackings que ya pasaron a
-  // un recibo (incluyendo recibos entregados). Al generar un recibo los
-  // trackings dejan la tabla de activos, por eso ambas fuentes no se duplican.
   const librasHistoricas = useMemo(() => {
     const acumulado = { aereo: 0, maritimo: 0 };
 
@@ -169,91 +204,55 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
 
   return (
     <div>
-      <div className="grid-4">
-        <TarjetaResumen
-          etiqueta="Trackings prealertados"
-          valor={pendientesConfirmar.length}
-          sublinea={mostrarPrealertas ? "Ocultar lista ▲" : "Ver lista ▼"}
-          activa={mostrarPrealertas}
-          onClick={() => setMostrarPrealertas((v) => !v)}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14, marginBottom: 18 }}>
+        <PanelResumen
+          titulo="Operación actual"
+          subtitulo="Trackings antes de convertirse en recibo"
+          destacado={trackingsActivos.length}
+          destacadoDetalle="envíos activos"
+          columnas={2}
+          items={[
+            {
+              etiqueta: "Prealertas",
+              valor: pendientesConfirmar.length,
+              detalle: mostrarPrealertas ? "Ocultar lista ▲" : "Ver lista ▼",
+              activa: mostrarPrealertas,
+              onClick: () => setMostrarPrealertas((v) => !v)
+            },
+            { etiqueta: "Ometepe", valor: activosOmetepe, detalle: "activos", activa: filtroDestino === "Ometepe", onClick: () => toggleDestino("Ometepe") },
+            { etiqueta: "Managua", valor: activosManagua, detalle: "activos", activa: filtroDestino === "Managua", onClick: () => toggleDestino("Managua") },
+            { etiqueta: "Aéreos", valor: activosAereos, detalle: "activos", activa: filtroTipo === "Aéreo", onClick: () => toggleTipo("Aéreo") },
+            { etiqueta: "Marítimos", valor: activosMaritimos, detalle: "activos", activa: filtroTipo === "Marítimo", onClick: () => toggleTipo("Marítimo") }
+          ]}
         />
-        <TarjetaResumen
-          etiqueta="Envíos activos"
-          valor={trackingsActivos.length}
-          sublinea="Trackings confirmados"
+
+        <PanelResumen
+          titulo="Peso"
+          subtitulo="Volumen actual e histórico"
+          destacado={`${librasHistoricas.total.toFixed(1)} lb`}
+          destacadoDetalle="histórico total"
+          columnas={2}
+          items={[
+            { etiqueta: "Aéreas activas", valor: `${librasActivas.aereo.toFixed(1)} lb` },
+            { etiqueta: "Marítimas activas", valor: `${librasActivas.maritimo.toFixed(1)} lb` },
+            { etiqueta: "Aéreo histórico", valor: `${librasHistoricas.aereo.toFixed(1)} lb` },
+            { etiqueta: "Marítimo histórico", valor: `${librasHistoricas.maritimo.toFixed(1)} lb` }
+          ]}
         />
-        <TarjetaResumen
-          etiqueta="Paquetes Ometepe (activos)"
-          valor={activosOmetepe}
-          sublinea="Dentro de Envíos activos"
-          activa={filtroDestino === "Ometepe"}
-          onClick={() => toggleDestino("Ometepe")}
-        />
-        <TarjetaResumen
-          etiqueta="Paquetes Managua (activos)"
-          valor={activosManagua}
-          sublinea="Dentro de Envíos activos"
-          activa={filtroDestino === "Managua"}
-          onClick={() => toggleDestino("Managua")}
-        />
-        <TarjetaResumen
-          etiqueta="Aéreos activos"
-          valor={activosAereos}
-          sublinea="Dentro de Envíos activos"
-          activa={filtroTipo === "Aéreo"}
-          onClick={() => toggleTipo("Aéreo")}
-        />
-        <TarjetaResumen
-          etiqueta="Marítimos activos"
-          valor={activosMaritimos}
-          sublinea="Dentro de Envíos activos"
-          activa={filtroTipo === "Marítimo"}
-          onClick={() => toggleTipo("Marítimo")}
-        />
-        <TarjetaResumen
-          etiqueta="Libras aéreas activas"
-          valor={`${librasActivas.aereo.toFixed(1)} lb`}
-          sublinea="Solo Envíos activos"
-        />
-        <TarjetaResumen
-          etiqueta="Libras marítimas activas"
-          valor={`${librasActivas.maritimo.toFixed(1)} lb`}
-          sublinea="Solo Envíos activos"
-        />
-        <TarjetaResumen
-          etiqueta="Libras históricas"
-          valor={`${librasHistoricas.total.toFixed(1)} lb`}
-          sublinea={`Aéreo ${librasHistoricas.aereo.toFixed(1)} lb · Marítimo ${librasHistoricas.maritimo.toFixed(1)} lb`}
-        />
-        <TarjetaResumen
-          etiqueta="Recibos activos"
-          valor={resumenRecibos.total}
-          sublinea="No entregados"
-        />
-        <TarjetaResumen
-          etiqueta="Recibos aéreos"
-          valor={resumenRecibos.aereos}
-          sublinea={resumenRecibos.mixtos ? `${resumenRecibos.mixtos} mixto(s) aparte` : "Activos"}
-        />
-        <TarjetaResumen
-          etiqueta="Recibos marítimos"
-          valor={resumenRecibos.maritimos}
-          sublinea={resumenRecibos.mixtos ? `${resumenRecibos.mixtos} mixto(s) aparte` : "Activos"}
-        />
-        <TarjetaResumen
-          etiqueta="Recibos Managua"
-          valor={resumenRecibos.managua}
-          sublinea="Activos"
-        />
-        <TarjetaResumen
-          etiqueta="Recibos Ometepe"
-          valor={resumenRecibos.ometepe}
-          sublinea="Activos"
-        />
-        <TarjetaResumen
-          etiqueta="Clientes con recibos activos"
-          valor={resumenRecibos.clientes}
-          sublinea="Clientes únicos"
+
+        <PanelResumen
+          titulo="Recibos activos"
+          subtitulo="No entregados"
+          destacado={resumenRecibos.total}
+          destacadoDetalle={`${resumenRecibos.clientes} clientes únicos`}
+          columnas={2}
+          items={[
+            { etiqueta: "Aéreos", valor: resumenRecibos.aereos, detalle: resumenRecibos.mixtos ? `${resumenRecibos.mixtos} mixto(s)` : undefined },
+            { etiqueta: "Marítimos", valor: resumenRecibos.maritimos, detalle: resumenRecibos.mixtos ? `${resumenRecibos.mixtos} mixto(s)` : undefined },
+            { etiqueta: "Managua", valor: resumenRecibos.managua },
+            { etiqueta: "Ometepe", valor: resumenRecibos.ometepe },
+            { etiqueta: "Clientes", valor: resumenRecibos.clientes, detalle: "únicos" }
+          ]}
         />
       </div>
 
