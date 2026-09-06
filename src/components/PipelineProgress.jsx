@@ -29,41 +29,37 @@ function construirFechasPorPaso({ auditLog, registroCodigo, pasos, idxActual }) 
   if (!auditLog || !registroCodigo) return {};
   const entradas = auditLog.filter((a) => a.modulo === "Trackings" && a.registro === registroCodigo);
   const mapa = {};
-
   pasos.forEach((paso) => {
     const evento = entradas.find((a) => a.accion === "Actualizó tracking" && a.detalle === `estado: ${paso}`);
     if (evento) mapa[paso] = formatoCorto(evento.fechaISO);
   });
-
   if (pasos[0] && !mapa[pasos[0]]) {
     const creacion = entradas.find((a) => a.accion === "Registró tracking" || a.accion === "Confirmó tracking recibido");
     if (creacion) mapa[pasos[0]] = formatoCorto(creacion.fechaISO);
   }
-
   let ultimaFechaConocida = null;
   for (let i = idxActual; i >= 0; i--) {
     const paso = pasos[i];
     if (mapa[paso]) ultimaFechaConocida = mapa[paso];
     else if (ultimaFechaConocida) mapa[paso] = ultimaFechaConocida;
   }
-
   return mapa;
 }
 
 export default function PipelineProgress({ estado, destino, tipoEnvio, auditLog, registroCodigo }) {
   const pasos = estadosPorDestino(destino);
   const idxActual = pasos.indexOf(estado);
-  const scrollRef = useRef(null);
+  const viewportRef = useRef(null);
 
   useEffect(() => {
-    const contenedor = scrollRef.current;
-    if (!contenedor || idxActual < 0) return;
-
-    const actual = contenedor.querySelector(".pipeline-step.actual");
+    const viewport = viewportRef.current;
+    if (!viewport || idxActual < 0) return;
+    const actual = viewport.querySelector(".pipeline-step.actual");
     if (!actual) return;
-
-    const objetivo = actual.offsetLeft - (contenedor.clientWidth - actual.offsetWidth) / 2;
-    contenedor.scrollTo({ left: Math.max(0, objetivo), behavior: "smooth" });
+    const objetivo = actual.offsetLeft - Math.max(0, (viewport.clientWidth - actual.offsetWidth) / 2);
+    requestAnimationFrame(() => {
+      viewport.scrollLeft = Math.max(0, objetivo);
+    });
   }, [estado, destino, idxActual]);
 
   if (idxActual === -1) return null;
@@ -71,33 +67,38 @@ export default function PipelineProgress({ estado, destino, tipoEnvio, auditLog,
   const fechasPorPaso = construirFechasPorPaso({ auditLog, registroCodigo, pasos, idxActual });
 
   return (
-    <div
-      ref={scrollRef}
-      className="pipeline-progress"
-      role="list"
-      aria-label="Progreso del envío. Desliza horizontalmente para ver todas las etapas."
-    >
-      {pasos.map((paso, i) => {
-        const completado = i < idxActual;
-        const actual = i === idxActual;
-        const Icono = iconoDePaso(paso, tipoEnvio);
-        const fecha = fechasPorPaso[paso];
+    <div className="pipeline-mobile-shell">
+      <div className="pipeline-swipe-hint">↔ Desliza para ver todo el seguimiento</div>
+      <div
+        ref={viewportRef}
+        className="pipeline-progress"
+        role="list"
+        aria-label="Progreso del envío. Desliza horizontalmente para ver todas las etapas."
+      >
+        <div className="pipeline-track">
+          {pasos.map((paso, i) => {
+            const completado = i < idxActual;
+            const actual = i === idxActual;
+            const Icono = iconoDePaso(paso, tipoEnvio);
+            const fecha = fechasPorPaso[paso];
 
-        return (
-          <div key={paso} role="listitem" className={`pipeline-step ${completado ? "completado" : ""} ${actual ? "actual" : ""}`}>
-            <div className="pipeline-dot">
-              <Icono size={17} strokeWidth={2.3} />
-              {completado && (
-                <span className="pipeline-check-badge">
-                  <Check size={10} strokeWidth={3.5} />
-                </span>
-              )}
-            </div>
-            <span className="pipeline-label">{paso}</span>
-            {(completado || actual) && <span className="pipeline-fecha">{fecha || "—"}</span>}
-          </div>
-        );
-      })}
+            return (
+              <div key={paso} role="listitem" className={`pipeline-step ${completado ? "completado" : ""} ${actual ? "actual" : ""}`}>
+                <div className="pipeline-dot">
+                  <Icono size={17} strokeWidth={2.3} />
+                  {completado && (
+                    <span className="pipeline-check-badge">
+                      <Check size={10} strokeWidth={3.5} />
+                    </span>
+                  )}
+                </div>
+                <span className="pipeline-label">{paso}</span>
+                {(completado || actual) && <span className="pipeline-fecha">{fecha || "—"}</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
