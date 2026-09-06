@@ -1,0 +1,180 @@
+/* OEX — mejoras responsive globales
+   Capa final para que páginas y subpáginas mantengan jerarquía, espacio
+   y controles cómodos en tablet/teléfono sin reescribir cada pantalla. */
+
+/* Evita desbordes horizontales accidentales en contenido largo. */
+.page,
+.card,
+.row-card,
+.metric,
+.form-grid,
+.grid-2,
+.grid-4,
+.list,
+.page-title,
+.page-title .actions,
+.segment {
+  min-width: 0;
+}
+
+img, svg { max-width: 100%; }
+
+/* Acciones más ordenadas y con targets táctiles consistentes. */
+.page-title .actions,
+.segment {
+  align-items: center;
+}
+
+.page-title .actions > .input,
+.page-title .actions > select,
+.segment > .input,
+.segment > select {
+  min-height: 42px;
+}
+
+/* Listas largas: texto no fuerza ancho de la página. */
+.row-card > * { min-width: 0; }
+.row-card b,
+.row-card p,
+.row-card small {
+  overflow-wrap: anywhere;
+}
+
+/* Tablas heredadas: en móvil se desplazan dentro de su propio bloque. */
+.card table {
+  width: 100%;
+  max-width: 100%;
+}
+.card:has(> table),
+.card:has(.table) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 980px) {
+  .page { padding: 20px; }
+  .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  html { -webkit-text-size-adjust: 100%; }
+
+  .page {
+    width: 100%;
+    max-width: none;
+    padding: 14px 12px 28px;
+  }
+
+  .page-title {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .page-title h1 { font-size: clamp(1.45rem, 7vw, 1.85rem); }
+  .page-title h2 { font-size: clamp(1.25rem, 6vw, 1.55rem); }
+  .page-title h3 { font-size: 1.05rem; }
+  .page-title .actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .card {
+    padding: 15px;
+    border-radius: 16px;
+    margin-bottom: 12px;
+  }
+
+  .row-card {
+    padding: 13px;
+    border-radius: 13px;
+    gap: 10px;
+  }
+
+  .grid-4,
+  .grid-2,
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .metric {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .metric-value {
+    font-size: clamp(1.35rem, 7vw, 1.75rem);
+  }
+
+  /* Controles táctiles: al menos ~44px de alto. */
+  .btn,
+  .input,
+  select.input,
+  textarea.input {
+    min-height: 44px;
+  }
+
+  .btn { padding: 10px 13px; }
+  .input,
+  select.input,
+  textarea.input {
+    font-size: 16px; /* evita zoom de iOS al enfocar */
+  }
+
+  /* Filas de acciones pasan a wrap y ocupan ancho natural. */
+  .segment {
+    width: 100%;
+    gap: 8px;
+  }
+  .segment > .btn {
+    flex: 0 1 auto;
+  }
+  .segment > .input,
+  .segment > select.input {
+    flex: 1 1 170px;
+    width: auto;
+    max-width: none;
+  }
+
+  /* Cuando una tarjeta tiene contenido + acciones a la derecha, que no
+     quede comprimido en pantallas pequeñas. */
+  .row-card:not(.keep-row) {
+    flex-wrap: wrap;
+  }
+  .row-card:not(.keep-row) > .stack-gap-sm.text-right,
+  .row-card:not(.keep-row) > .segment {
+    width: 100%;
+    text-align: left;
+  }
+
+  .toast {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .page { padding-left: 10px; padding-right: 10px; }
+  .card { padding: 13px; }
+
+  .page-title .actions > .btn,
+  .page-title .actions > .input,
+  .page-title .actions > select.input {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+  }
+
+  /* En teléfonos estrechos, filtros/botones importantes ocupan ancho
+     completo y son más fáciles de tocar con una mano. */
+  .segment.mobile-stack > *,
+  .row-card .segment > .btn {
+    flex: 1 1 100%;
+  }
+
+  .badge {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.25;
+  }
+}
