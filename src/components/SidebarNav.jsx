@@ -1,20 +1,4 @@
 // src/components/SidebarNav.jsx
-//
-// Reemplaza a TopNav.jsx. Mismo formato de datos (MODULOS con
-// `submenu` opcional, definido en App.jsx) pero como panel fijo a la
-// izquierda en vez de mega-menú al hover — mejor para un catálogo de
-// páginas que va a seguir creciendo (Finanzas ya tiene 7+ sub-páginas).
-//
-// Comportamiento:
-// - El módulo activo se expande solo (acordeón: uno abierto a la vez,
-//   pero clic en el chevron de otro módulo lo abre sin necesidad de
-//   estar activo en él).
-// - Clic en el nombre del módulo → navega a su vista por defecto.
-// - Clic en el chevron → solo expande/colapsa, no navega.
-// - Modo colapsado (colapsado=true): sidebar angosto a solo íconos,
-//   sin submenús — pensado para recuperar espacio de pantalla.
-// - En móvil se abre como drawer (abiertoMovil) con backdrop, manejado
-//   desde App.jsx.
 import { useEffect, useState } from "react";
 
 const ChevronAbajo = ({ abierto }) => (
@@ -29,14 +13,32 @@ const ChevronColapsar = ({ colapsado }) => (
   </svg>
 );
 
-export default function SidebarNav({ modulos, vistaActiva, onNavigate, colapsado, onToggleColapso, abiertoMovil, brand, brandLabel }) {
-  // Qué módulo tiene su acordeón abierto — arranca en el módulo activo
-  // y se re-sincroniza cada vez que la vista cambia desde afuera (ej.
-  // el banner de prealertas del Dashboard salta directo a Paquetería).
+export default function SidebarNav({ modulos, vistaActiva, subvistaActiva, onNavigate, colapsado, onToggleColapso, abiertoMovil, brand, brandLabel }) {
   const [expandido, setExpandido] = useState(vistaActiva);
-  useEffect(() => { setExpandido(vistaActiva); }, [vistaActiva]);
+
+  useEffect(() => {
+    if (vistaActiva) setExpandido(vistaActiva);
+  }, [vistaActiva]);
 
   const toggleExpandido = (id) => setExpandido((actual) => (actual === id ? null : id));
+
+  const clickModulo = (m, activo, abierto, tieneSubmenu) => {
+    if (!tieneSubmenu) {
+      onNavigate(m.id);
+      return;
+    }
+
+    // Si ya estamos dentro del módulo, el clic sobre toda la fila funciona
+    // como acordeón: abre/cierra sin sacarnos de la subpágina actual.
+    if (activo) {
+      setExpandido(abierto ? null : m.id);
+      return;
+    }
+
+    // Si es otro módulo, navega a su vista por defecto y lo deja abierto.
+    onNavigate(m.id);
+    setExpandido(m.id);
+  };
 
   return (
     <aside className={`sidebar ${colapsado ? "sidebar--colapsado" : ""} ${abiertoMovil ? "sidebar--abierta-movil" : ""}`}>
@@ -56,8 +58,9 @@ export default function SidebarNav({ modulos, vistaActiva, onNavigate, colapsado
                 <button
                   type="button"
                   className="sidebar-modulo-btn"
-                  onClick={() => { onNavigate(m.id); if (tieneSubmenu) setExpandido(m.id); }}
+                  onClick={() => clickModulo(m, activo, abierto, tieneSubmenu)}
                   title={colapsado ? m.label : undefined}
+                  aria-expanded={tieneSubmenu ? abierto : undefined}
                 >
                   {m.icon && <m.icon className="sidebar-icono" size={19} strokeWidth={2} />}
                   {!colapsado && <span className="sidebar-modulo-label">{m.label}</span>}
@@ -78,21 +81,24 @@ export default function SidebarNav({ modulos, vistaActiva, onNavigate, colapsado
 
               {!colapsado && tieneSubmenu && abierto && (
                 <div className="sidebar-submenu" role="menu">
-                  {m.submenu.map((item) => (
-                    <button
-                      key={item.subvista}
-                      type="button"
-                      role="menuitem"
-                      className="sidebar-subitem"
-                      onClick={() => onNavigate(m.id, item.subvista)}
-                    >
-                      {item.icon && <item.icon className="sidebar-subitem-icono" size={15} strokeWidth={2} />}
-                      <span className="sidebar-subitem-texto">
-                        <b>{item.label}</b>
-                        <small>{item.descripcion}</small>
-                      </span>
-                    </button>
-                  ))}
+                  {m.submenu.map((item) => {
+                    const subActivo = activo && subvistaActiva === item.subvista;
+                    return (
+                      <button
+                        key={item.subvista}
+                        type="button"
+                        role="menuitem"
+                        className={`sidebar-subitem ${subActivo ? "active" : ""}`}
+                        onClick={() => onNavigate(m.id, item.subvista)}
+                      >
+                        {item.icon && <item.icon className="sidebar-subitem-icono" size={15} strokeWidth={2} />}
+                        <span className="sidebar-subitem-texto">
+                          <b>{item.label}</b>
+                          <small>{item.descripcion}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
