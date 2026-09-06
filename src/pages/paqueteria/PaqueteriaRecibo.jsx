@@ -103,7 +103,22 @@ function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, most
       const { numeroRecibo, envio } = await generarRecibo({
         cliente, trackings: trackingsIncluidos, tarifas, tarifaPerfil, tarifaPersonalizada, descuento, gastosExtras, nota, fecha, auth
       });
-      generarDetalleEnvio(envio, tarifas, empresa);
+      const envioPDF = {
+        ...envio,
+        numero: envio.numero_envios,
+        destino: envio.lugar,
+        tipoEnvio: envio.tipo_envios,
+        clienteCodigo: envio.cliente_codigo,
+        totalLibras: envio.total_libras,
+        tarifaPerfil: envio.tarifa_perfil,
+        tarifaPersonalizada: envio.tarifa_personalizada,
+        gastosExtras: envio.gastos_extras,
+        costoInternoTotal: envio.costo_interno_total,
+        gananciaReal: envio.ganancia_real,
+        fechaISO: envio.fecha,
+        trackings: (envio.trackings || []).map((t) => ({ ...t, codigo: t.codigo || t.tracking }))
+      };
+      generarDetalleEnvio(envioPDF, tarifas, empresa);
       mostrarToast(`Recibo ${numeroRecibo} generado desde Bodega OEX — los trackings siguen activos.`);
       await cargarDatos();
     } catch (err) {
