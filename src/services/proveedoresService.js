@@ -1,18 +1,4 @@
 // src/services/proveedoresService.js
-//
-// Dos tipos de proveedor, ambos van a COSTO (no a gasto operativo):
-//
-// - "Aduana / Flete" (Darío Import Logistic): la factura se genera
-//   eligiendo exactamente qué trackings cubre — los que están en
-//   "Bodega OEX" — y se compara el costo interno ESTIMADO (peso ×
-//   tarifa) contra el monto REAL que factura, para llevar el cuadre.
-// - "Transporte local" (pueden ser varios proveedores distintos): NO
-//   van ligados a tracking — es solo un monto que factura, sin cuadre
-//   posible porque no hay un "estimado" con qué compararlo.
-//
-// Ambos tipos comparten el mismo flujo de factura → pago → libro
-// diario; lo único que cambia es si piden trackings o no, y a qué
-// cuenta de costo postean (5010 vs. 5020).
 import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { firmarPayload, registrarAuditoria } from "./coreService";
@@ -22,45 +8,52 @@ import { ajustarSaldoCuentaDinero } from "./cuentasDineroService";
 import { postearAsiento } from "./ContabilidadService";
 
 export const TIPOS_PROVEEDOR = ["Aduana / Flete", "Transporte local"];
-
 const esAduanaFlete = (proveedor) => proveedor.tipo === "Aduana / Flete";
 const cuentaCostoDe = (proveedor) => (esAduanaFlete(proveedor) ? "5010" : "5020");
 
 export const crearProveedor = async ({ form, auth }) => {
   if (!form.nombre.trim()) throw new Error("Escribe el nombre del proveedor.");
+  const esAduana = (form.tipo || "") === "Aduana / Flete";
   const { error } = await supabase.from("proveedores").insert([{
     nombre: form.nombre,
     tipo: form.tipo || "Transporte local",
     contacto: form.contacto || "",
     telefono: form.telefono || "",
     correo: form.correo || "",
+    direccion: form.direccion || "",
+    tarifa_maritimo: esAduana && form.tarifaMaritimo !== "" ? numero(form.tarifaMaritimo) : null,
+    tarifa_aereo: esAduana && form.tarifaAereo !== "" ? numero(form.tarifaAereo) : null,
     notas: form.notas || "",
     ...firmarPayload(auth)
   }]);
   if (error) throw error;
-  await registrarAuditoria({ ...auth, accion: "Creó proveedor", modulo: "Finanzas", registroCodigo: form.nombre, detalle: form.tipo || "" });
+  await registrarAuditoria({ ...auth, accion:"Creó proveedor", modulo:"Finanzas", registroCodigo:form.nombre, detalle:form.tipo || "" });
 };
 
 export const eliminarProveedor = async ({ proveedor, auth }) => {
   const { error } = await supabase.from("proveedores").delete().eq("id", proveedor.id);
   if (error) throw error;
-  await registrarAuditoria({ ...auth, accion: "Eliminó proveedor", modulo: "Finanzas", registroCodigo: proveedor.nombre || "" });
+  await registrarAuditoria({ ...auth, accion:"Eliminó proveedor", modulo:"Finanzas", registroCodigo:proveedor.nombre || "" });
 };
 
 export const actualizarProveedor = async ({ proveedor, form, auth }) => {
   if (!form.nombre.trim()) throw new Error("Escribe el nombre del proveedor.");
+  const esAduana = form.tipo === "Aduana / Flete";
   const { error } = await supabase.from("proveedores").update({
     nombre: form.nombre,
     tipo: form.tipo,
     contacto: form.contacto || "",
     telefono: form.telefono || "",
     correo: form.correo || "",
+    direccion: form.direccion || "",
+    tarifa_maritimo: esAduana && form.tarifaMaritimo !== "" ? numero(form.tarifaMaritimo) : null,
+    tarifa_aereo: esAduana && form.tarifaAereo !== "" ? numero(form.tarifaAereo) : null,
     notas: form.notas || "",
     updated_by: auth.session?.user?.id || null,
     updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
   }).eq("id", proveedor.id);
   if (error) throw error;
-  await registrarAuditoria({ ...auth, accion: "Editó proveedor", modulo: "Finanzas", registroCodigo: form.nombre, detalle: form.tipo || "" });
+  await registrarAuditoria({ ...auth, accion:"Editó proveedor", modulo:"Finanzas", registroCodigo:form.nombre, detalle:form.tipo || "" });
 };
 
 const costoEstimadoTracking = (t) => {
@@ -72,21 +65,25 @@ export const calcularMontoEstimado = (trackings) => trackings.reduce((a, t) => a
 
 export const generarFacturaProveedor = async ({ proveedor, trackings = [], montoReal, numeroFactura, nota, link, fecha, auth }) => {
   const esAduana = esAduanaFlete(proveedor);
-
-  if (esAduana && trackings.length === 0) {
-    throw new Error("Selecciona al menos un tracking para esta factura.");
+  if (esAduana && trackings.length === 0) throw new Error("Selecciona al menos un tracking para esta factura.");
+  if (esAduana) {
+    const ajenos = trackings.filter((t) => t.proveedorAduanaId && String(t.proveedorAduanaId) !== String(proveedor.id));
+    if (ajenos.length) throw new Error("Hay trackings seleccionados que pertenecen a otro proveedor de Aduana / Flete.");
   }
   if (numero(montoReal) <= 0) throw new Error("Escribe el monto real que factura el proveedor.");
 
   const montoEstimado = esAduana ? calcularMontoEstimado(trackings) : numero(montoReal);
   const trackingsSnapshot = trackings.map((t) => ({
-    id: t.id,
-    codigo: t.tracking,
-    cliente: t.cliente,
-    destino: t.destino,
-    tipoEnvio: t.tipoEnvio,
-    peso: numero(t.peso),
-    costoEstimado: esAduana ? costoEstimadoTracking(t) : null
+    id:t.id,
+    codigo:t.tracking,
+    almacenId:t.almacenId || "",
+    cliente:t.cliente,
+    destino:t.destino,
+    tipoEnvio:t.tipoEnvio,
+    peso:numero(t.peso),
+    proveedorAduanaId:t.proveedorAduanaId || null,
+    costoInterno:numero(t.costoInterno),
+    costoEstimado:esAduana ? costoEstimadoTracking(t) : null
   }));
 
   const horaActual = new Date().toTimeString().slice(0, 8);
@@ -107,27 +104,11 @@ export const generarFacturaProveedor = async ({ proveedor, trackings = [], monto
   }]).select().single();
   if (error) throw error;
 
-  await postearAsiento({
-    fecha: fechaISO,
-    descripcion: `Factura ${numeroFactura || `#${creada.id}`} · ${proveedor.nombre}`,
-    origenModulo: "facturas_proveedor",
-    origenId: creada.id,
-    auth,
-    lineas: [
-      { cuentaCodigo: cuentaCostoDe(proveedor), debe: numero(montoReal), haber: 0 },
-      { cuentaCodigo: "2010", debe: 0, haber: numero(montoReal) }
-    ]
-  });
+  await postearAsiento({ fecha:fechaISO, descripcion:`Factura ${numeroFactura || `#${creada.id}`} · ${proveedor.nombre}`, origenModulo:"facturas_proveedor", origenId:creada.id, auth, lineas:[{cuentaCodigo:cuentaCostoDe(proveedor),debe:numero(montoReal),haber:0},{cuentaCodigo:"2010",debe:0,haber:numero(montoReal)}] });
 
   const diferencia = numero(montoReal) - montoEstimado;
-  await registrarAuditoria({
-    ...auth, accion: "Generó factura de proveedor", modulo: "Finanzas", registroCodigo: numeroFactura || `#${creada.id}`,
-    detalle: esAduana
-      ? `${proveedor.nombre} · ${trackings.length} tracking(s) · real $${numero(montoReal).toFixed(2)} vs. estimado $${montoEstimado.toFixed(2)} (dif. $${diferencia.toFixed(2)})`
-      : `${proveedor.nombre} · $${numero(montoReal).toFixed(2)}${trackings.length > 0 ? ` · ${trackings.length} tracking(s)` : ""}`
-  });
-
-  return { facturaId: creada.id, montoEstimado, diferencia };
+  await registrarAuditoria({ ...auth, accion:"Generó factura de proveedor", modulo:"Finanzas", registroCodigo:numeroFactura || `#${creada.id}`, detalle: esAduana ? `${proveedor.nombre} · ${trackings.length} tracking(s) · real $${numero(montoReal).toFixed(2)} vs. estimado $${montoEstimado.toFixed(2)} (dif. $${diferencia.toFixed(2)})` : `${proveedor.nombre} · $${numero(montoReal).toFixed(2)}` });
+  return { facturaId:creada.id, montoEstimado, diferencia };
 };
 
 export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo, cuentaDinero, referencia, nota, fecha, auth }) => {
@@ -139,78 +120,33 @@ export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo
 
   const horaActual = new Date().toTimeString().slice(0, 8);
   const fechaISO = fecha ? new Date(`${fecha}T${horaActual}`).toISOString() : new Date().toISOString();
-  const { data: pagoCreado, error: errorPago } = await supabase.from("pagos_proveedor").insert([{
-    factura_id: factura.id,
-    monto: montoNum,
-    metodo,
-    cuenta: cuentaDinero.nombre,
-    cuenta_dinero_id: cuentaDinero.id,
-    referencia: referencia || "",
-    nota: nota || "",
-    fecha: fechaISO,
-    ...firmarPayload(auth)
-  }]).select().single();
+  const { data:pagoCreado, error:errorPago } = await supabase.from("pagos_proveedor").insert([{ factura_id:factura.id, monto:montoNum, metodo, cuenta:cuentaDinero.nombre, cuenta_dinero_id:cuentaDinero.id, referencia:referencia || "", nota:nota || "", fecha:fechaISO, ...firmarPayload(auth) }]).select().single();
   if (errorPago) throw errorPago;
 
   const nuevoAbonado = numero(factura.abonado) + montoNum;
   const nuevoSaldo = Math.max(numero(factura.montoReal) - nuevoAbonado, 0);
   const nuevoEstado = nuevoSaldo <= 0.01 ? "Pagada" : "Parcial";
-
-  const { error } = await supabase.from("facturas_proveedor").update({
-    abonado: nuevoAbonado,
-    saldo: nuevoSaldo,
-    estado: nuevoEstado,
-    updated_by: auth.session?.user?.id || null,
-    updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
-  }).eq("id", factura.id);
+  const { error } = await supabase.from("facturas_proveedor").update({ abonado:nuevoAbonado, saldo:nuevoSaldo, estado:nuevoEstado, updated_by:auth.session?.user?.id || null, updated_by_name:auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario" }).eq("id", factura.id);
   if (error) throw error;
 
   if (nuevoEstado === "Pagada" && esAduanaFlete(proveedor || {}) && (factura.trackings || []).length > 0) {
-    await Promise.all(
-      factura.trackings.map((t) =>
-        supabase.from("tracking_registros").update({ estado: siguienteEstadoTrasRetiroProveedor(t.destino) }).eq("id", t.id)
-      )
-    );
+    await Promise.all(factura.trackings.map((t) => supabase.from("tracking_registros").update({ estado:siguienteEstadoTrasRetiroProveedor(t.destino) }).eq("id", t.id)));
   }
 
   await ajustarSaldoCuentaDinero(cuentaDinero.id, -montoNum);
-
   if (cuentaDinero.cuentaContableId) {
-    const { data: cuentaContable } = await supabase
-      .from("cuentas_contables").select("codigo").eq("id", cuentaDinero.cuentaContableId).single();
-    if (cuentaContable) {
-      await postearAsiento({
-        fecha: fechaISO,
-        descripcion: `Pago a proveedor · Factura ${factura.numeroFactura || `#${factura.id}`}`,
-        origenModulo: "pagos_proveedor",
-        origenId: pagoCreado.id,
-        auth,
-        lineas: [
-          { cuentaCodigo: "2010", debe: montoNum, haber: 0 },
-          { cuentaCodigo: cuentaContable.codigo, cuentaDineroId: cuentaDinero.id, debe: 0, haber: montoNum }
-        ]
-      });
-    }
+    const { data:cuentaContable } = await supabase.from("cuentas_contables").select("codigo").eq("id", cuentaDinero.cuentaContableId).single();
+    if (cuentaContable) await postearAsiento({ fecha:fechaISO, descripcion:`Pago a proveedor · Factura ${factura.numeroFactura || `#${factura.id}`}`, origenModulo:"pagos_proveedor", origenId:pagoCreado.id, auth, lineas:[{cuentaCodigo:"2010",debe:montoNum,haber:0},{cuentaCodigo:cuentaContable.codigo,cuentaDineroId:cuentaDinero.id,debe:0,haber:montoNum}] });
   }
-
-  await registrarAuditoria({
-    ...auth, accion: "Registró pago a proveedor", modulo: "Finanzas", registroCodigo: factura.numeroFactura || `#${factura.id}`,
-    detalle: `$${montoNum.toFixed(2)} · ${metodo} · ${cuentaDinero.nombre}`
-  });
+  await registrarAuditoria({ ...auth, accion:"Registró pago a proveedor", modulo:"Finanzas", registroCodigo:factura.numeroFactura || `#${factura.id}`, detalle:`$${montoNum.toFixed(2)} · ${metodo} · ${cuentaDinero.nombre}` });
 };
 
 export const listarPagosDeProveedor = async (proveedorId) => {
-  const { data: facturas, error: errorFacturas } = await supabase
-    .from("facturas_proveedor").select("id").eq("proveedor_id", proveedorId);
+  const { data:facturas, error:errorFacturas } = await supabase.from("facturas_proveedor").select("id").eq("proveedor_id", proveedorId);
   if (errorFacturas) throw errorFacturas;
-
   const facturaIds = facturas.map((f) => f.id);
-  if (facturaIds.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from("pagos_proveedor").select("*")
-    .in("factura_id", facturaIds)
-    .order("fecha", { ascending: false });
+  if (!facturaIds.length) return [];
+  const { data, error } = await supabase.from("pagos_proveedor").select("*").in("factura_id", facturaIds).order("fecha", { ascending:false });
   if (error) throw error;
   return data;
 };
