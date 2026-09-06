@@ -1,6 +1,6 @@
 // src/pages/paqueteria/TrackingsActivos.jsx
 import { useMemo, useState } from "react";
-import { Layers, CheckCircle2, XCircle, HelpCircle, Package, Weight, Clock3, ReceiptText } from "lucide-react";
+import { Layers, CheckCircle2, XCircle, HelpCircle, Package, Weight, Clock3, ReceiptText, Search } from "lucide-react";
 import { actualizarTracking, eliminarTracking } from "../../services/trackingsService";
 import { estadosPorDestino, badgeEstado, esListoParaRetirar, esPendienteDeConfirmar, esListoParaRetiroProveedor } from "../../utils/estadosEnvio";
 import { limpiarTelefono } from "../../utils/clientes";
@@ -10,6 +10,7 @@ import { calcularDeadlineTracking, formatoRangoDeadline, textoPromesa } from "..
 import { useFeriadosNicaragua } from "../../hooks/useFeriadosNicaragua";
 import PipelineProgress from "../../components/PipelineProgress";
 import ModalRegistrarPeso from "../../components/ModalRegistrarPeso";
+import "../../styles/TrackingsActivos.css";
 
 const vincularCliente = (tracking, clientes = []) => {
   const porId = tracking.clienteId ? clientes.find((c) => c.id === tracking.clienteId) : null;
@@ -33,8 +34,11 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [filtroTipo, setFiltroTipo] = useState("Todos");
   const [filtroDestino, setFiltroDestino] = useState("Todos");
+  const [filtroProveedor, setFiltroProveedor] = useState("Todos");
   const [pendientePeso, setPendientePeso] = useState(null);
   const [guardandoPeso, setGuardandoPeso] = useState(false);
+
+  const proveedoresAduana = useMemo(() => proveedores.filter((p) => p.tipo === "Aduana / Flete"), [proveedores]);
 
   const estadosDisponibles = useMemo(() => {
     const estados = prealertas
@@ -58,6 +62,7 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
       .filter((t) => filtroEstado === "Todos" || t.estado === filtroEstado)
       .filter((t) => filtroTipo === "Todos" || t.tipoEnvio === filtroTipo)
       .filter((t) => filtroDestino === "Todos" || t.destino === filtroDestino)
+      .filter((t) => filtroProveedor === "Todos" || String(t.proveedorAduanaId) === String(filtroProveedor))
       .filter((t) => {
         const c = t.vinculacion.cliente;
         return !q ||
@@ -71,7 +76,7 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
           (c?.codigo||"").toLowerCase().includes(q) ||
           (c?.telefono||"").toLowerCase().includes(q);
       });
-  }, [prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino]);
+  }, [prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor]);
 
   const actualizarCampo = async (t, campo, valor) => {
     try {
@@ -188,36 +193,51 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
     catch(err){mostrarToast(err.message||"No se pudo eliminar.","error");}
   };
 
-  return <div className="card">
-    <div className="page-title" style={{margin:"0 0 8px"}}>
-      <h3>Envíos activos ({activos.length})</h3>
-      <div className="segment" style={{flexWrap:"wrap"}}>
-        <button className="btn" onClick={()=>setLoteAbierto(v=>!v)}><Layers size={14} style={{verticalAlign:"-2px",marginRight:4}}/>{loteAbierto?"Ocultar carga por lote":"Cargar lote de Bodega OEX"}</button>
-        <select className="input input-sm" value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)}>
-          <option value="Todos">Aéreo + Marítimo</option>
-          <option value="Aéreo">Aéreos</option>
-          <option value="Marítimo">Marítimos</option>
-        </select>
-        <select className="input input-sm" value={filtroDestino} onChange={e=>setFiltroDestino(e.target.value)}>
-          <option value="Todos">Managua + Ometepe</option>
-          <option value="Managua">Managua</option>
-          <option value="Ometepe">Ometepe</option>
-        </select>
-        <select className="input input-sm" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
-          <option value="Todos">Todos los estados</option>
-          {estadosDisponibles.map(estado=><option key={estado} value={estado}>{estado}</option>)}
-        </select>
-        <input className="input input-sm" placeholder="Buscar cliente, tracking, recibo, proveedor o ID almacén" value={busqueda} onChange={e=>setBusqueda(e.target.value)}/>
+  return <div className="card tracking-activos-card">
+    <div className="tracking-activos-header">
+      <div>
+        <div className="tracking-activos-title"><h3>Envíos activos</h3><span className="tracking-count">{activos.length}</span></div>
+        <small className="tracking-help">Busca por tracking, recibo, cliente, proveedor o ID de almacén. Puedes combinar todos los filtros.</small>
       </div>
     </div>
-    <p><small>Los trackings con recibo siguen aquí para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. El deadline inicia al marcar Recibido en Miami.</small></p>
 
-    {loteAbierto&&<div className="card" style={{background:"var(--surface-2, #f7f8fa)",marginBottom:16}}>
+    <div className="tracking-toolbar">
+      <div style={{position:"relative"}}>
+        <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-faint)",pointerEvents:"none"}}/>
+        <input className="input tracking-search" style={{paddingLeft:35}} placeholder="Buscar tracking, cliente, recibo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}/>
+      </div>
+
+      <div className="tracking-filter-group" aria-label="Filtrar por tipo de envío">
+        {[['Todos','Todos'],['Aéreo','Aéreos'],['Marítimo','Marítimos']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroTipo===valor?'active':''}`} onClick={()=>setFiltroTipo(valor)}>{label}</button>)}
+      </div>
+
+      <div className="tracking-filter-group destino" aria-label="Filtrar por destino">
+        {[['Todos','Todos'],['Managua','Managua'],['Ometepe','Ometepe']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroDestino===valor?'active':''}`} onClick={()=>setFiltroDestino(valor)}>{label}</button>)}
+      </div>
+
+      <select className="input tracking-toolbar-select" value={filtroProveedor} onChange={e=>setFiltroProveedor(e.target.value)}>
+        <option value="Todos">Todos los proveedores</option>
+        {proveedoresAduana.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
+      </select>
+
+      <select className="input tracking-toolbar-select" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
+        <option value="Todos">Todos los estados</option>
+        {estadosDisponibles.map(estado=><option key={estado} value={estado}>{estado}</option>)}
+      </select>
+    </div>
+
+    <div className="tracking-toolbar-actions">
+      <button className="btn tracking-lote-btn" onClick={()=>setLoteAbierto(v=>!v)}><Layers size={14}/>{loteAbierto?"Ocultar carga por lote":"Cargar lote de Bodega OEX"}</button>
+    </div>
+
+    <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. El deadline inicia al marcar Recibido en Miami.</small>
+
+    {loteAbierto&&<div className="card" style={{background:"var(--surface-2, #f7f8fa)",marginTop:14,marginBottom:16}}>
       <h4 style={{margin:"0 0 4px"}}>Pegar lista del proveedor</h4>
       <p><small>Pega tal cual la lista que te manda el proveedor (ID de almacén + peso).</small></p>
       <textarea className="input" style={{minHeight:140,fontFamily:"monospace",fontSize:"0.85rem"}} value={textoLote} onChange={e=>setTextoLote(e.target.value)}/>
       <div className="segment mt-8"><button className="btn btn-primary" disabled={!textoLote.trim()} onClick={analizarLote}>Analizar lista</button>{resultadoLote&&<button className="btn btn-ghost" onClick={limpiarLote}>Limpiar</button>}</div>
-      {resultadoLote&&<div className="mt-16">
+      {resultadoLote&&<div className="mt-16 tracking-lote-results">
         <div className="grid-4"><div className="metric"><b>Con match</b><span className="metric-value" style={{color:"var(--success)"}}>{resultadoLote.emparejadas.filter(e=>e.tracking).length}</span></div><div className="metric"><b>Sin match</b><span className="metric-value">{resultadoLote.emparejadas.filter(e=>!e.tracking).length}</span></div><div className="metric"><b>Líneas no reconocidas</b><span className="metric-value">{resultadoLote.noReconocidas.length}</span></div><div className="metric"><b>Seleccionados</b><span className="metric-value">{seleccionLote.size}</span></div></div>
         <div className="list mt-16">{resultadoLote.emparejadas.map((item,i)=><label key={i} className="row-card" style={{cursor:item.tracking?"pointer":"default",opacity:item.tracking?1:.6}}><div style={{display:"flex",alignItems:"center",gap:10}}>{item.tracking?<CheckCircle2 size={18} style={{color:"var(--success)"}}/>:<XCircle size={18}/>}<input type="checkbox" style={{display:item.tracking?"inline":"none"}} checked={item.tracking?seleccionLote.has(item.tracking.id):false} onChange={()=>item.tracking&&toggleSeleccionLote(item.tracking.id)}/><div><b>{item.identificador}</b> → {item.peso.toFixed(2)} lb<p><small>{item.tracking?`${item.tracking.vinculacion?.cliente?.nombre||item.tracking.cliente} · ${item.tracking.estado}`:"Sin coincidencia"}</small></p></div></div></label>)}</div>
         {resultadoLote.noReconocidas.length>0&&<div className="mt-16"><p><HelpCircle size={16}/> <b>Líneas no reconocidas</b></p></div>}
@@ -225,7 +245,7 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
       </div>}
     </div>}
 
-    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar}/>)}{activos.length===0&&<p>Sin envíos activos con estos filtros.</p>}</div>
+    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
     {pendientePeso&&<ModalRegistrarPeso tracking={pendientePeso.tracking} nuevoEstado={pendientePeso.nuevoEstado} guardando={guardandoPeso} onConfirmar={confirmarPesoYContinuar} onCancelar={()=>setPendientePeso(null)}/>} 
   </div>;
 }
@@ -243,18 +263,20 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
   const textoEstado=deadline?.estadoDeadline==="vencido"?"Deadline vencido":deadline?.estadoDeadline==="proximo"?`${deadline.restantes} día${deadline.restantes===1?"":"s"} hábil${deadline.restantes===1?"":"es"}`:"En tiempo";
   const vinculado=Boolean(t.envioId);
 
-  return <div className="row-card" style={{flexDirection:"column",alignItems:"stretch"}}>
-    <button type="button" className="page-title" style={{margin:0,width:"100%",background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0}} onClick={()=>setExpandido(v=>!v)}>
-      <div>
-        <b>{t.tracking||t.almacenId||"Sin código"}</b>{" "}
-        <span className="badge badge-neutral">{t.tipoEnvio}</span>{" "}
-        <span className={`badge ${badgeEstado(t.estado)}`}>{t.estado}</span>{" "}
-        {t.proveedorAduana&&<span className="badge badge-info">{t.proveedorAduana.nombre}</span>}{" "}
-        {t.recibo&&<span className="badge badge-info"><ReceiptText size={12} style={{verticalAlign:"-2px",marginRight:3}}/>{t.recibo.numero}</span>}{" "}
-        {deadline&&<span className={`badge ${badgeDeadline}`}>{textoEstado}</span>}{" "}
-        {!vinculado&&t.estado==="Bodega OEX"&&<span className="badge badge-success">Listo para recibo</span>}{" "}
-        {esperandoPago&&!vinculado&&<span className="badge badge-warning">Falta pago proveedor</span>}
-        <p style={{margin:"2px 0 0"}}>{nombreMostrar} · {codigoMostrar}{telefonoMostrar?` · ${telefonoMostrar}`:""} · {t.destino}{numero(t.peso)>0&&` · ${numero(t.peso).toFixed(1)} lb`}</p>
+  return <div className="row-card tracking-item" style={{flexDirection:"column",alignItems:"stretch"}}>
+    <button type="button" className="page-title tracking-item-head" style={{margin:0,width:"100%",background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0}} onClick={()=>setExpandido(v=>!v)}>
+      <div className="tracking-item-main">
+        <div className="tracking-item-code">
+          <b>{t.tracking||t.almacenId||"Sin código"}</b>
+          <span className="badge badge-neutral">{t.tipoEnvio}</span>
+          <span className={`badge ${badgeEstado(t.estado)}`}>{t.estado}</span>
+          {t.proveedorAduana&&<span className="badge badge-info">{t.proveedorAduana.nombre}</span>}
+          {t.recibo&&<span className="badge badge-info"><ReceiptText size={12}/>{t.recibo.numero}</span>}
+          {deadline&&<span className={`badge ${badgeDeadline}`}>{textoEstado}</span>}
+          {!vinculado&&t.estado==="Bodega OEX"&&<span className="badge badge-success">Listo para recibo</span>}
+          {esperandoPago&&!vinculado&&<span className="badge badge-warning">Falta pago proveedor</span>}
+        </div>
+        <p className="tracking-item-meta">{nombreMostrar} · {codigoMostrar}{telefonoMostrar?` · ${telefonoMostrar}`:""} · {t.destino}{numero(t.peso)>0&&` · ${numero(t.peso).toFixed(1)} lb`}</p>
         {deadline&&<small style={{display:"block",marginTop:3}}><Clock3 size={12} style={{verticalAlign:"-2px",marginRight:4}}/>Entrega prometida: <b>{formatoRangoDeadline(deadline)}</b> · {textoPromesa(t.destino,t.tipoEnvio)}</small>}
         {t.proveedorAduana&&<small style={{display:"block"}}>Costo interno: ${numero(t.costoInterno).toFixed(2)}/lb · ID almacén: {t.almacenId||"pendiente"}</small>}
         {t.recibo&&<small style={{display:"block"}}>Incluido en recibo <b>{t.recibo.numero}</b> · el estado se administra como grupo.</small>}
@@ -268,10 +290,10 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
       <PipelineProgress estado={t.estado} destino={t.destino} tipoEnvio={t.tipoEnvio} auditLog={auditLog} registroCodigo={t.tracking||t.almacenId}/>
       {vinculado&&<div className="info-box mt-8"><ReceiptText size={15} style={{verticalAlign:"-3px",marginRight:5}}/>Este paquete pertenece al recibo <b>{t.recibo?.numero || t.envioId}</b>. Para mantener todos los paquetes sincronizados, cambia el estado desde Recibos.</div>}
       {esperandoPago&&!vinculado&&<div className="info-box mt-8">Esperando pago al proveedor para poder avanzar.</div>}
-      <div className="segment mt-8" style={{alignItems:"center",flexWrap:"wrap",gap:10}}>
+      <div className="tracking-detail-actions mt-8">
         <select className="input input-sm" value={t.estado} disabled={vinculado} onChange={e=>cambiarEstado(t,e.target.value)}>{opcionesEstado.map(s=><option key={s} value={s}>{s}</option>)}</select>
-        <div style={{display:"flex",flexDirection:"column",gap:2}}><small>ID almacén</small><div style={{display:"flex",alignItems:"center",gap:6,border:"1px solid var(--border)",borderRadius:8,padding:"3px 8px"}}><Package size={13}/><input disabled={vinculado} defaultValue={t.almacenId} placeholder="—" onBlur={e=>e.target.value!==(t.almacenId||"")&&actualizarCampo(t,"almacenId",e.target.value)} style={{border:"none",outline:"none",background:"transparent",width:90}}/></div></div>
-        <div style={{display:"flex",flexDirection:"column",gap:2}}><small>Peso</small><div style={{display:"flex",alignItems:"center",gap:6,border:"1px solid var(--border)",borderRadius:8,padding:"3px 8px"}}><Weight size={13}/><input disabled={vinculado} type="number" defaultValue={t.peso} placeholder="0.0" onBlur={e=>manejarBlurPeso(t,e)} style={{border:"none",outline:"none",background:"transparent",width:56}}/><span>lb</span></div></div>
+        <div className="tracking-inline-field"><small>ID almacén</small><div className="tracking-inline-control"><Package size={13}/><input disabled={vinculado} defaultValue={t.almacenId} placeholder="—" onBlur={e=>e.target.value!==(t.almacenId||"")&&actualizarCampo(t,"almacenId",e.target.value)} style={{width:90}}/></div></div>
+        <div className="tracking-inline-field"><small>Peso</small><div className="tracking-inline-control"><Weight size={13}/><input disabled={vinculado} type="number" defaultValue={t.peso} placeholder="0.0" onBlur={e=>manejarBlurPeso(t,e)} style={{width:56}}/><span>lb</span></div></div>
       </div>
     </div>}
   </div>;
