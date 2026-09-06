@@ -48,7 +48,7 @@ const MiniMetrica = ({ etiqueta, valor, detalle, activa, onClick }) => {
   );
 };
 
-const PanelResumen = ({ titulo, subtitulo, destacado, destacadoDetalle, items, columnas = 3 }) => (
+const PanelResumen = ({ titulo, subtitulo, destacado, destacadoDetalle, destacadoDetalleStyle, items, columnas = 3 }) => (
   <section className="card" style={{ margin: 0, padding: 18 }}>
     <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 14 }}>
       <div>
@@ -58,7 +58,18 @@ const PanelResumen = ({ titulo, subtitulo, destacado, destacadoDetalle, items, c
       {destacado !== undefined && (
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <strong style={{ fontSize: "2rem", lineHeight: 1 }}>{destacado}</strong>
-          {destacadoDetalle && <small style={{ display: "block", marginTop: 5, opacity: 0.5 }}>{destacadoDetalle}</small>}
+          {destacadoDetalle && (
+            <small
+              style={{
+                display: "block",
+                marginTop: 5,
+                opacity: destacadoDetalleStyle ? 1 : 0.5,
+                ...destacadoDetalleStyle
+              }}
+            >
+              {destacadoDetalle}
+            </small>
+          )}
         </div>
       )}
     </div>
@@ -221,8 +232,7 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
             },
             { etiqueta: "Ometepe", valor: activosOmetepe, detalle: "activos", activa: filtroDestino === "Ometepe", onClick: () => toggleDestino("Ometepe") },
             { etiqueta: "Managua", valor: activosManagua, detalle: "activos", activa: filtroDestino === "Managua", onClick: () => toggleDestino("Managua") },
-            { etiqueta: "Aéreos", valor: activosAereos, detalle: "activos", activa: filtroTipo === "Aéreo", onClick: () => toggleTipo("Aéreo") },
-            { etiqueta: "Marítimos", valor: activosMaritimos, detalle: "activos", activa: filtroTipo === "Marítimo", onClick: () => toggleTipo("Marítimo") }
+            { etiqueta: "Aéreos / Marítimos", valor: `${activosAereos} / ${activosMaritimos}`, detalle: "aéreos · marítimos" }
           ]}
         />
 
@@ -245,13 +255,13 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
           subtitulo="No entregados"
           destacado={resumenRecibos.total}
           destacadoDetalle={`${resumenRecibos.clientes} clientes únicos`}
+          destacadoDetalleStyle={{ color: "var(--primary, #2563eb)", fontWeight: 800, fontSize: "0.9rem" }}
           columnas={2}
           items={[
             { etiqueta: "Aéreos", valor: resumenRecibos.aereos, detalle: resumenRecibos.mixtos ? `${resumenRecibos.mixtos} mixto(s)` : undefined },
             { etiqueta: "Marítimos", valor: resumenRecibos.maritimos, detalle: resumenRecibos.mixtos ? `${resumenRecibos.mixtos} mixto(s)` : undefined },
             { etiqueta: "Managua", valor: resumenRecibos.managua },
-            { etiqueta: "Ometepe", valor: resumenRecibos.ometepe },
-            { etiqueta: "Clientes", valor: resumenRecibos.clientes, detalle: "únicos" }
+            { etiqueta: "Ometepe", valor: resumenRecibos.ometepe }
           ]}
         />
       </div>
