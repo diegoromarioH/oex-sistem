@@ -1,9 +1,7 @@
 // src/pages/paqueteria/PaqueteriaDashboard.jsx
-// Panel de control de Paquetería: cuántos trackings están prealertados,
-// cuántos paquetes activos hay por destino (Ometepe/Managua) y por tipo
-// (Aéreo/Marítimo), cuántas libras llevamos acumuladas de cada tipo, y una
-// lista filtrable por estado donde cada envío es clickeable (reutiliza
-// EnvioItem, que ya trae el detalle de trackings, PDF, WhatsApp, etc.).
+// Panel de control de Paquetería: prealertas, trackings activos por destino
+// y tipo, libras activas y recibos activos. Los trackings y los recibos se
+// cuentan por separado para no duplicar paquetes en las métricas.
 import { useMemo, useState } from "react";
 import { numero } from "../../utils/numero";
 import { PIPELINE_MANAGUA, PIPELINE_OMETEPE, esPendienteDeConfirmar } from "../../utils/estadosEnvio";
@@ -11,8 +9,6 @@ import EnvioItem from "./EnvioItem";
 
 const TODOS_LOS_ESTADOS = [...new Set([...PIPELINE_MANAGUA, ...PIPELINE_OMETEPE])];
 
-// Tipo real de un tracking: usa el propio si lo tiene, si no cae al tipo
-// general del envío (igual que en calculosPaqueteria.js).
 const tipoDeTracking = (envio, tracking) => tracking.tipoEnvio || envio.tipoEnvio;
 
 const TarjetaResumen = ({ etiqueta, valor, sublinea, activa, onClick }) => (
@@ -35,76 +31,58 @@ const TarjetaResumen = ({ etiqueta, valor, sublinea, activa, onClick }) => (
 );
 
 export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos }) {
-  // Filtros que se activan al hacer clic en una tarjeta (toggle: clic de
-  // nuevo la quita). Se combinan entre sí (AND).
   const [filtroDestino, setFiltroDestino] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState(null);
   const [mostrarPrealertas, setMostrarPrealertas] = useState(false);
-
-  // Filtro manual de estado, independiente de las tarjetas.
   const [filtroEstado, setFiltroEstado] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
 
-  const pendientesConfirmar = useMemo(() => prealertas.filter(esPendienteDeConfirmar), [prealertas]);
+  const pendientesConfirmar = useMemo(
+    () => prealertas.filter(esPendienteDeConfirmar),
+    [prealertas]
+  );
 
-  // Un paquete pasa la mayor parte de su vida como tracking SUELTO (en
-  // Envíos activos), no dentro de un recibo — los recibos solo se generan
-  // al final, cuando ya está listo para retirar. Antes las tarjetas solo
-  // contaban lo que ya estaba en un recibo, así que casi todo se quedaba
-  // sin sumar. Ahora se combinan ambas fuentes en una sola lista.
-  const todosLosTrackingsActivos = useMemo(() => {
-    const sueltos = prealertas
-      .filter((t) => !esPendienteDeConfirmar(t))
-      .map((t) => ({
-        peso: numero(t.peso),
-        tipoEnvio: t.tipoEnvio,
-        destino: t.destino,
-        estado: t.estado
-      }));
-
-    const dentroDeRecibos = envios.flatMap((e) =>
-      (e.trackings || []).map((t) => ({
-        peso: numero(t.peso),
-        tipoEnvio: t.tipoEnvio || e.tipoEnvio,
-        destino: e.destino,
-        estado: e.estado
-      }))
-    );
-
-    return [...sueltos, ...dentroDeRecibos];
-  }, [prealertas, envios]);
+  // Esta es exactamente la misma población que usa la pestaña
+  // "Envíos activos": trackings confirmados que todavía viven sueltos.
+  // Los trackings ya convertidos en recibo NO se vuelven a sumar aquí.
+  const trackingsActivos = useMemo(
+    () => prealertas.filter((t) => !esPendienteDeConfirmar(t)),
+    [prealertas]
+  );
 
   const activosOmetepe = useMemo(
-    () => todosLosTrackingsActivos.filter((t) => t.destino === "Ometepe" && t.estado !== "Entregado").length,
-    [todosLosTrackingsActivos]
+    () => trackingsActivos.filter((t) => t.destino === "Ometepe").length,
+    [trackingsActivos]
   );
   const activosManagua = useMemo(
-    () => todosLosTrackingsActivos.filter((t) => t.destino === "Managua" && t.estado !== "Entregado").length,
-    [todosLosTrackingsActivos]
+    () => trackingsActivos.filter((t) => t.destino === "Managua").length,
+    [trackingsActivos]
   );
   const activosAereos = useMemo(
-    () => todosLosTrackingsActivos.filter((t) => t.tipoEnvio === "Aéreo" && t.estado !== "Entregado").length,
-    [todosLosTrackingsActivos]
+    () => trackingsActivos.filter((t) => t.tipoEnvio === "Aéreo").length,
+    [trackingsActivos]
   );
   const activosMaritimos = useMemo(
-    () => todosLosTrackingsActivos.filter((t) => t.tipoEnvio === "Marítimo" && t.estado !== "Entregado").length,
-    [todosLosTrackingsActivos]
+    () => trackingsActivos.filter((t) => t.tipoEnvio === "Marítimo").length,
+    [trackingsActivos]
   );
 
-  // Libras acumuladas por tipo de tracking — total histórico y solo activos.
   const libras = useMemo(() => {
-    let aereoTotal = 0, maritimoTotal = 0, aereoActivo = 0, maritimoActivo = 0;
-    todosLosTrackingsActivos.forEach((t) => {
-      if (t.tipoEnvio === "Aéreo") {
-        aereoTotal += t.peso;
-        if (t.estado !== "Entregado") aereoActivo += t.peso;
-      } else if (t.tipoEnvio === "Marítimo") {
-        maritimoTotal += t.peso;
-        if (t.estado !== "Entregado") maritimoActivo += t.peso;
-      }
-    });
-    return { aereoTotal, maritimoTotal, aereoActivo, maritimoActivo };
-  }, [todosLosTrackingsActivos]);
+    return trackingsActivos.reduce(
+      (acc, t) => {
+        const peso = numero(t.peso);
+        if (t.tipoEnvio === "Aéreo") acc.aereo += peso;
+        if (t.tipoEnvio === "Marítimo") acc.maritimo += peso;
+        return acc;
+      },
+      { aereo: 0, maritimo: 0 }
+    );
+  }, [trackingsActivos]);
+
+  const recibosActivos = useMemo(
+    () => envios.filter((e) => e.estado !== "Entregado").length,
+    [envios]
+  );
 
   const toggleDestino = (d) => setFiltroDestino((actual) => (actual === d ? null : d));
   const toggleTipo = (t) => setFiltroTipo((actual) => (actual === t ? null : t));
@@ -143,42 +121,52 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
           onClick={() => setMostrarPrealertas((v) => !v)}
         />
         <TarjetaResumen
+          etiqueta="Envíos activos"
+          valor={trackingsActivos.length}
+          sublinea="Trackings confirmados"
+        />
+        <TarjetaResumen
           etiqueta="Paquetes Ometepe (activos)"
           valor={activosOmetepe}
-          sublinea="No entregados"
+          sublinea="Dentro de Envíos activos"
           activa={filtroDestino === "Ometepe"}
           onClick={() => toggleDestino("Ometepe")}
         />
         <TarjetaResumen
           etiqueta="Paquetes Managua (activos)"
           valor={activosManagua}
-          sublinea="No entregados"
+          sublinea="Dentro de Envíos activos"
           activa={filtroDestino === "Managua"}
           onClick={() => toggleDestino("Managua")}
         />
         <TarjetaResumen
-          etiqueta="Envíos aéreos activos"
+          etiqueta="Aéreos activos"
           valor={activosAereos}
-          sublinea="No entregados"
+          sublinea="Dentro de Envíos activos"
           activa={filtroTipo === "Aéreo"}
           onClick={() => toggleTipo("Aéreo")}
         />
         <TarjetaResumen
-          etiqueta="Envíos marítimos activos"
+          etiqueta="Marítimos activos"
           valor={activosMaritimos}
-          sublinea="No entregados"
+          sublinea="Dentro de Envíos activos"
           activa={filtroTipo === "Marítimo"}
           onClick={() => toggleTipo("Marítimo")}
         />
         <TarjetaResumen
-          etiqueta="Libras aéreas"
-          valor={`${libras.aereoActivo.toFixed(1)} lb`}
-          sublinea={`Activas · ${libras.aereoTotal.toFixed(1)} lb histórico total`}
+          etiqueta="Libras aéreas activas"
+          valor={`${libras.aereo.toFixed(1)} lb`}
+          sublinea="Solo Envíos activos"
         />
         <TarjetaResumen
-          etiqueta="Libras marítimas"
-          valor={`${libras.maritimoActivo.toFixed(1)} lb`}
-          sublinea={`Activas · ${libras.maritimoTotal.toFixed(1)} lb histórico total`}
+          etiqueta="Libras marítimas activas"
+          valor={`${libras.maritimo.toFixed(1)} lb`}
+          sublinea="Solo Envíos activos"
+        />
+        <TarjetaResumen
+          etiqueta="Recibos activos"
+          valor={recibosActivos}
+          sublinea="No entregados"
         />
       </div>
 
@@ -202,7 +190,7 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
 
       <div className="card">
         <div className="page-title" style={{ margin: 0 }}>
-          <h3> Recibos {filtroEstado ? `· ${filtroEstado}` : soloActivos ? "activos" : "(todos)"}</h3>
+          <h3>Recibos {filtroEstado ? `· ${filtroEstado}` : soloActivos ? "activos" : "(todos)"}</h3>
           <div className="segment">
             <select className="input input-sm" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
               <option value="">Filtrar por estado…</option>
@@ -220,7 +208,7 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
           {enviosFiltrados.map((e) => (
             <EnvioItem key={e.id} envio={e} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} mostrarPipeline={false} />
           ))}
-          {enviosFiltrados.length === 0 && <p>No hay envíos que coincidan con estos filtros.</p>}
+          {enviosFiltrados.length === 0 && <p>No hay recibos que coincidan con estos filtros.</p>}
         </div>
       </div>
     </div>
