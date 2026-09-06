@@ -1,8 +1,5 @@
-/* OEX — mejoras responsive globales
-   Capa final para que páginas y subpáginas mantengan jerarquía, espacio
-   y controles cómodos en tablet/teléfono sin reescribir cada pantalla. */
+/* OEX — responsive global para páginas y subpáginas */
 
-/* Evita desbordes horizontales accidentales en contenido largo. */
 .page,
 .card,
 .row-card,
@@ -13,13 +10,15 @@
 .list,
 .page-title,
 .page-title .actions,
-.segment {
+.segment,
+.main-column,
+.dashboard-section,
+.tracking-activos-card {
   min-width: 0;
 }
 
 img, svg { max-width: 100%; }
 
-/* Acciones más ordenadas y con targets táctiles consistentes. */
 .page-title .actions,
 .segment {
   align-items: center;
@@ -32,28 +31,62 @@ img, svg { max-width: 100%; }
   min-height: 42px;
 }
 
-/* Listas largas: texto no fuerza ancho de la página. */
-.row-card > * { min-width: 0; }
+.row-card > *,
+.card > *,
+.page-title > * { min-width: 0; }
+
 .row-card b,
 .row-card p,
-.row-card small {
+.row-card small,
+.card p,
+.card small,
+.page-title p,
+.page-title h1,
+.page-title h2,
+.page-title h3 {
   overflow-wrap: anywhere;
 }
 
-/* Tablas heredadas: en móvil se desplazan dentro de su propio bloque. */
-.card table {
-  width: 100%;
+button,
+.btn,
+.badge {
   max-width: 100%;
 }
+
+.btn {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+/* Tablas: nunca fuerzan el ancho de la pantalla. */
+table {
+  max-width: 100%;
+}
+.card table,
+.page table {
+  width: 100%;
+}
 .card:has(> table),
-.card:has(.table) {
+.card:has(.table),
+.page:has(> table) {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Cualquier contenido largo queda contenido en la columna principal. */
+.main-column,
+.page {
+  overflow-x: hidden;
 }
 
 @media (max-width: 980px) {
   .page { padding: 20px; }
   .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .main-column { width: 100%; }
+  .topbar-mini { width: 100%; }
 }
 
 @media (max-width: 720px) {
@@ -66,24 +99,33 @@ img, svg { max-width: 100%; }
   }
 
   .page-title {
+    width: 100%;
     gap: 10px;
     margin-bottom: 16px;
+    flex-direction: column;
+    align-items: stretch;
   }
-  .page-title h1 { font-size: clamp(1.45rem, 7vw, 1.85rem); }
-  .page-title h2 { font-size: clamp(1.25rem, 6vw, 1.55rem); }
+
+  .page-title h1 { font-size: clamp(1.45rem, 7vw, 1.85rem); line-height: 1.15; }
+  .page-title h2 { font-size: clamp(1.25rem, 6vw, 1.55rem); line-height: 1.18; }
   .page-title h3 { font-size: 1.05rem; }
+  .page-title p { line-height: 1.4; }
+
   .page-title .actions {
     width: 100%;
     gap: 8px;
+    margin: 0;
   }
 
   .card {
+    width: 100%;
     padding: 15px;
     border-radius: 16px;
     margin-bottom: 12px;
   }
 
   .row-card {
+    width: 100%;
     padding: 13px;
     border-radius: 13px;
     gap: 10px;
@@ -91,7 +133,9 @@ img, svg { max-width: 100%; }
 
   .grid-4,
   .grid-2,
-  .form-grid {
+  .form-grid,
+  .product-row,
+  .tracking-row {
     grid-template-columns: 1fr;
     gap: 10px;
   }
@@ -100,76 +144,112 @@ img, svg { max-width: 100%; }
     padding: 14px;
     border-radius: 14px;
   }
+
   .metric-value {
     font-size: clamp(1.35rem, 7vw, 1.75rem);
   }
 
-  /* Controles táctiles: al menos ~44px de alto. */
+  /* Inputs y botones cómodos para tacto. */
   .btn,
   .input,
   select.input,
-  textarea.input {
+  textarea.input,
+  input,
+  select,
+  textarea {
     min-height: 44px;
   }
 
   .btn { padding: 10px 13px; }
+
   .input,
   select.input,
-  textarea.input {
-    font-size: 16px; /* evita zoom de iOS al enfocar */
+  textarea.input,
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    font-size: 16px;
   }
 
-  /* Filas de acciones pasan a wrap y ocupan ancho natural. */
+  /* Acciones y filtros se acomodan sin salirse. */
   .segment {
     width: 100%;
     gap: 8px;
+    flex-wrap: wrap;
   }
-  .segment > .btn {
-    flex: 0 1 auto;
-  }
+
+  .segment > * { min-width: 0; }
+  .segment > .btn { flex: 0 1 auto; }
+
   .segment > .input,
-  .segment > select.input {
+  .segment > select.input,
+  .segment > select,
+  .segment > input {
     flex: 1 1 170px;
     width: auto;
     max-width: none;
   }
 
-  /* Cuando una tarjeta tiene contenido + acciones a la derecha, que no
-     quede comprimido en pantallas pequeñas. */
   .row-card:not(.keep-row) {
     flex-wrap: wrap;
   }
+
   .row-card:not(.keep-row) > .stack-gap-sm.text-right,
-  .row-card:not(.keep-row) > .segment {
+  .row-card:not(.keep-row) > .segment,
+  .row-card:not(.keep-row) > form {
     width: 100%;
     text-align: left;
   }
+
+  details,
+  summary {
+    max-width: 100%;
+  }
+
+  summary { overflow-wrap: anywhere; }
 
   .toast {
     left: 12px;
     right: 12px;
     bottom: 12px;
     min-width: 0;
+    max-width: none;
+  }
+
+  /* Modales y paneles flotantes, si existen, no se salen del teléfono. */
+  [role="dialog"],
+  .modal,
+  .modal-content,
+  .dialog,
+  .dialog-content {
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px);
   }
 }
 
 @media (max-width: 480px) {
-  .page { padding-left: 10px; padding-right: 10px; }
+  .page {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
   .card { padding: 13px; }
 
   .page-title .actions > .btn,
   .page-title .actions > .input,
-  .page-title .actions > select.input {
+  .page-title .actions > select.input,
+  .page-title .actions > select,
+  .page-title .actions > input {
     flex: 1 1 100%;
     width: 100%;
     max-width: none;
   }
 
-  /* En teléfonos estrechos, filtros/botones importantes ocupan ancho
-     completo y son más fáciles de tocar con una mano. */
   .segment.mobile-stack > *,
   .row-card .segment > .btn {
     flex: 1 1 100%;
+    width: 100%;
   }
 
   .badge {
@@ -177,4 +257,25 @@ img, svg { max-width: 100%; }
     white-space: normal;
     line-height: 1.25;
   }
+
+  .input-sm,
+  .input-tiny {
+    width: 100%;
+    max-width: none;
+  }
+
+  .mini-tracking-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .timeline-item {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .page { padding-left: 8px; padding-right: 8px; }
+  .card { padding: 12px; }
+  .btn { width: 100%; }
 }
