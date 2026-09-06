@@ -8,7 +8,16 @@ import { estadosPorDestino } from "../utils/estadosEnvio";
 import { tarifaDesdePerfil, costoInternoDefaultPorTipo, tipoEnvioResumen } from "../utils/calculosPaqueteria";
 import { postearAsiento } from "./ContabilidadService";
 
-export const confirmarTracking = async ({ tracking, clientesEnMemoria, auth }) => {
+const costoProveedorPorTipo = (proveedor, tipoEnvio) => {
+  if (!proveedor) return costoInternoDefaultPorTipo(tipoEnvio);
+  const costo = tipoEnvio === "Aéreo" ? proveedor.tarifaAereo : proveedor.tarifaMaritimo;
+  return costo !== undefined && costo !== null && costo !== "" ? numero(costo) : costoInternoDefaultPorTipo(tipoEnvio);
+};
+
+export const confirmarTracking = async ({ tracking, clientesEnMemoria, proveedorAduana, almacenId, auth }) => {
+  if (!proveedorAduana?.id) throw new Error("Selecciona el proveedor de Aduana / Flete.");
+  if (!String(almacenId || "").trim()) throw new Error("Escribe el ID de almacén.");
+
   let clienteResuelto = null;
   if (tracking.clienteId) {
     const existentePorId = clientesEnMemoria.find((c) => c.id === tracking.clienteId);
@@ -16,14 +25,22 @@ export const confirmarTracking = async ({ tracking, clientesEnMemoria, auth }) =
   }
   if (!clienteResuelto) clienteResuelto = await resolverCliente({ clientesEnMemoria, nombre: tracking.cliente, telefono: tracking.contacto, tipo: "General", codigo: tracking.clienteCodigo, auth });
 
+  const costoInterno = costoProveedorPorTipo(proveedorAduana, tracking.tipoEnvio);
   const { error } = await supabase.from("tracking_registros").update({
-    estado: "Miami", cliente_id: clienteResuelto.id, cliente_codigo: clienteResuelto.codigo, cliente_tipo: clienteResuelto.tipo,
-    cliente: clienteResuelto.nombre || tracking.cliente, contacto: clienteResuelto.telefono || tracking.contacto,
+    estado: "Miami",
+    cliente_id: clienteResuelto.id,
+    cliente_codigo: clienteResuelto.codigo,
+    cliente_tipo: clienteResuelto.tipo,
+    cliente: clienteResuelto.nombre || tracking.cliente,
+    contacto: clienteResuelto.telefono || tracking.contacto,
+    almacen_id: String(almacenId).trim(),
+    proveedor_aduana_id: proveedorAduana.id,
+    costo_interno: costoInterno,
     updated_by: auth.session?.user?.id || null,
     updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
   }).eq("id", tracking.id);
   if (error) throw error;
-  await registrarAuditoria({ ...auth, accion: "Confirmó tracking recibido", modulo: "Trackings", registroCodigo: tracking.tracking || tracking.almacenId || "", detalle: clienteResuelto.nombre || tracking.cliente || "" });
+  await registrarAuditoria({ ...auth, accion: "Confirmó tracking recibido", modulo: "Trackings", registroCodigo: tracking.tracking || almacenId || "", detalle: `${clienteResuelto.nombre || tracking.cliente || ""} · ${proveedorAduana.nombre} · $${costoInterno.toFixed(2)}/lb` });
 };
 
 export const actualizarPrealerta = async ({ tracking, cambios, auth }) => {
@@ -51,21 +68,46 @@ export const actualizarPrealerta = async ({ tracking, cambios, auth }) => {
   await registrarAuditoria({ ...auth, accion: "Editó prealerta", modulo: "Trackings", registroCodigo: codigo || almacenId, detalle: cliente });
 };
 
-export const registrarTracking = async ({ form, clientesEnMemoria, auth }) => {
-  const { cliente, contacto, destino, tipoEnvio, codigo, almacenId, nota } = form;
+export const registrarTracking = async ({ form, clientesEnMemoria, proveedorAduana, auth }) => {
+  const { cliente, contacto, destino, tipoEnvio, codigo, almacenId, nota, estadoInicial = "Prealertado" } = form;
   if (!cliente.trim()) throw new Error("Escribe el nombre del cliente.");
   if (!contacto.trim()) throw new Error("Escribe el WhatsApp del cliente.");
-  if (!codigo.trim() && !almacenId.trim()) throw new Error("Escribe el número de tracking o el ID de almacén.");
+  if (!codigo.trim()) throw new Error("Escribe el número de tracking.");
+  if (!proveedorAduana?.id) throw new Error("Selecciona el proveedor de Aduana / Flete.");
+  if (estadoInicial === "Miami" && !String(almacenId || "").trim()) throw new Error("Para registrar como Recibido en Miami debes escribir el ID de almacén.");
+
   const clienteResuelto = await resolverCliente({ clientesEnMemoria, nombre: cliente, telefono: contacto, tipo: "General", auth });
-  const { error } = await supabase.from("tracking_registros").insert([{ cliente, contacto, destino, tipo_envio: tipoEnvio, tracking: codigo, almacen_id: almacenId, nota, peso: 0, estado: "Miami", cliente_id: clienteResuelto.id, cliente_codigo: clienteResuelto.codigo, cliente_tipo: clienteResuelto.tipo, fecha: new Date().toISOString(), ...firmarPayload(auth) }]);
+  const costoInterno = costoProveedorPorTipo(proveedorAduana, tipoEnvio);
+  const { error } = await supabase.from("tracking_registros").insert([{
+    cliente,
+    contacto,
+    destino,
+    tipo_envio: tipoEnvio,
+    tracking: codigo.trim(),
+    almacen_id: String(almacenId || "").trim(),
+    nota,
+    peso: 0,
+    estado: estadoInicial,
+    origen_registro: "manual",
+    proveedor_aduana_id: proveedorAduana.id,
+    costo_interno: costoInterno,
+    cliente_id: clienteResuelto.id,
+    cliente_codigo: clienteResuelto.codigo,
+    cliente_tipo: clienteResuelto.tipo,
+    fecha: new Date().toISOString(),
+    ...firmarPayload(auth)
+  }]);
   if (error) throw error;
-  await registrarAuditoria({ ...auth, accion: "Registró tracking", modulo: "Trackings", registroCodigo: codigo || almacenId, detalle: cliente });
+  await registrarAuditoria({ ...auth, accion: "Registró tracking", modulo: "Trackings", registroCodigo: codigo || almacenId, detalle: `${cliente} · ${estadoInicial === "Miami" ? "Recibido en Miami" : "Prealertado"} · ${proveedorAduana.nombre} · $${costoInterno.toFixed(2)}/lb` });
 };
 
 const COLUMNAS_EDITABLES = { peso: "peso", estado: "estado", almacenId: "almacen_id", costoInterno: "costo_interno", nota: "nota", tipoEnvio: "tipo_envio" };
 export const actualizarTracking = async ({ tracking, field, value, auth }) => {
   const columna = COLUMNAS_EDITABLES[field];
   if (!columna) throw new Error(`Campo no editable: ${field}`);
+  if (field === "estado" && value === "Miami" && !String(tracking.almacenId || "").trim()) {
+    throw new Error("Antes de marcar como Recibido en Miami, registra el ID de almacén.");
+  }
   const { error } = await supabase.from("tracking_registros").update({ [columna]: value, updated_by: auth.session?.user?.id || null, updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario" }).eq("id", tracking.id);
   if (error) throw error;
   await registrarAuditoria({ ...auth, accion: field === "peso" ? "Registró peso" : "Actualizó tracking", modulo: "Trackings", registroCodigo: tracking.tracking || tracking.almacenId || "", detalle: `${field}: ${value}` });
