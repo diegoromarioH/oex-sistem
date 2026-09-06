@@ -22,16 +22,17 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
   };
 
   const cambiarEstado = async (nuevoEstado) => {
-    // Los estados tienen un orden jerárquico (Miami → ... → Entregado). Si
-    // el nuevo estado queda ANTES del actual en ese orden, es un retroceso —
-    // se permite (puede ser una corrección legítima), pero se advierte y
-    // pide confirmación para evitar clics accidentales.
     const pipeline = estadosPorDestino(envio.destino);
     const idxActual = pipeline.indexOf(envio.estado);
     const idxNuevo = pipeline.indexOf(nuevoEstado);
+    const idxBodega = pipeline.indexOf("Bodega OEX");
+    if (idxNuevo !== -1 && idxNuevo < idxBodega) {
+      mostrarToast("Un recibo generado desde Bodega OEX no puede retroceder a estados anteriores a Bodega OEX.", "warning");
+      return;
+    }
     if (idxActual !== -1 && idxNuevo !== -1 && idxNuevo < idxActual) {
       const confirmar = window.confirm(
-        `Vas a RETROCEDER el estado de "${envio.estado}" a "${nuevoEstado}".\n\n¿Seguro que quieres hacer esto?`
+        `Vas a RETROCEDER el estado de "${envio.estado}" a "${nuevoEstado}".\n\nEste cambio también se aplicará a todos los trackings del recibo. ¿Seguro que quieres hacerlo?`
       );
       if (!confirmar) return;
     }
@@ -44,7 +45,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
           pedirReferencia: () => window.prompt("Referencia o comprobante:")
         }
       });
-      mostrarToast(`Envío ${envio.numero} → ${nuevoEstado}`);
+      mostrarToast(`Recibo ${envio.numero} → ${nuevoEstado}. Trackings sincronizados.`);
       cargarDatos();
     } catch (err) {
       mostrarToast(err.message || "No se pudo actualizar el estado.", "error");
@@ -53,33 +54,33 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
 
   const eliminar = async () => {
     if (rol !== "admin") return mostrarToast("Solo un administrador puede eliminar envíos.", "error");
-    if (!confirmarAccionCritica(`Vas a eliminar el envío ${envio.numero}.`)) return;
+    if (!confirmarAccionCritica(`Vas a eliminar el recibo ${envio.numero}. Los trackings quedarán nuevamente independientes.`)) return;
     try {
       await eliminarEnvio({ envio, auth });
-      mostrarToast("Envío eliminado.");
+      mostrarToast("Recibo eliminado. Los trackings quedaron desvinculados.");
       cargarDatos();
     } catch (err) {
       mostrarToast(err.message || "No se pudo eliminar.", "error");
     }
   };
 
-  // WhatsApp no permite adjuntar archivos desde un link wa.me (solo texto).
-  // Por eso primero descargamos el PDF de detalle (para que lo adjuntes tú
-  // manualmente en el chat) y abrimos WhatsApp con un mensaje completo:
-  // punto de retiro, dirección (si la configuraste en Configuración) y saldo.
   const avisarListoParaRetirar = () => {
     generarDetalleEnvio(envio, tarifas, empresa);
     const direccion = empresa.direccionesRetiro?.[envio.estado] || "";
     const saldo = numero(envio.saldo);
     const lineas = [
-      `¡Buenas noticias, ${envio.cliente} , tu envío ${envio.numero} ya llegó y está listo para que lo retires en ${envio.estado}.`,
+      `¡Buenas noticias, ${envio.cliente}! Tu envío ${envio.numero} ya llegó y está listo para que lo retires en ${envio.estado}.`,
       direccion ? `Dirección: ${direccion}` : null,
       saldo > 0 ? `Saldo pendiente: $${saldo.toFixed(2)}` : "Sin saldo pendiente.",
-      "Revisa el PDF adjunto con el detalle de tu envío. ¡Por favor, responde este mensaje para coordinar la entrega o el retiro de tu paquete. ! Muchas Gracias."
+      "Revisa el PDF adjunto con el detalle de tu envío. Por favor, responde este mensaje para coordinar la entrega o el retiro. ¡Muchas gracias!"
     ].filter(Boolean).join("\n");
     window.open(`https://wa.me/${(envio.contacto || "").replace(/\D/g, "")}?text=${encodeURIComponent(lineas)}`, "_blank");
     mostrarToast("PDF descargado — adjúntalo manualmente en el chat de WhatsApp que se abrió.");
   };
+
+  const pipeline = estadosPorDestino(envio.destino);
+  const idxBodega = pipeline.indexOf("Bodega OEX");
+  const estadosRecibo = pipeline.slice(Math.max(idxBodega, 0)).filter((e) => e !== "Entregado");
 
   return (
     <div className="row-card" style={{ flexDirection: "column", alignItems: "stretch" }}>
@@ -101,7 +102,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
       <div className="segment mt-8">
         {envio.estado !== "Entregado" && (
           <select className="input input-sm" value={envio.estado} onChange={(e) => cambiarEstado(e.target.value)}>
-            {estadosPorDestino(envio.destino).filter((e) => e !== "Entregado").map((e) => <option key={e} value={e}>{e}</option>)}
+            {estadosRecibo.map((e) => <option key={e} value={e}>{e}</option>)}
           </select>
         )}
         <button className="btn" onClick={() => generarDetalleEnvio(envio, tarifas, empresa)}>PDF detalle</button>
@@ -120,9 +121,10 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
         <div className="mini-tracking-list">
           {envio.trackings.map((t, i) => (
             <div className="mini-tracking-row" key={i}>
-              <b>{t.codigo || "Sin código"}</b>
+              <b>{t.tracking || t.codigo || "Sin código"}</b>
               {t.almacenId && <span className="badge badge-info">Almacén: {t.almacenId} (interno)</span>}
               <span className="badge badge-neutral">{t.tipoEnvio || envio.tipoEnvio}</span>
+              <span className={`badge ${badgeEstado(t.estado || envio.estado)}`}>{t.estado || envio.estado}</span>
               <input
                 className="input input-tiny"
                 type="number"
