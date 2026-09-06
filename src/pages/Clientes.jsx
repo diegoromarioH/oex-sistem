@@ -1,6 +1,6 @@
 // src/pages/Clientes.jsx
 import { useMemo, useState } from "react";
-import { UserPlus, PieChart as PieChartIcon, History as HistoryIcon, Pencil, X, ArrowLeft, Search, FileText, Weight } from "lucide-react";
+import { UserPlus, PieChart as PieChartIcon, History as HistoryIcon, Pencil, X, ArrowLeft, Search, FileText, Weight, Trophy, DollarSign } from "lucide-react";
 import { numero } from "../utils/numero";
 import { guardarClienteManual, eliminarCliente } from "../services/clientesService";
 import { exportarClientesExcel } from "../services/excelService";
@@ -37,6 +37,30 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
 
   const enviosDe = (clienteId) => envios.filter((e) => e.clienteId === clienteId);
   const totalGastadoDe = (clienteId) => enviosDe(clienteId).reduce((a, e) => a + numero(e.total), 0);
+
+  // Top histórico de clientes: volumen total transportado y monto total
+  // facturado en recibos. Usa cliente_id cuando existe y cae al código para
+  // recibos antiguos que todavía no tengan la relación por UUID.
+  const topClientes = useMemo(() => {
+    const resumen = new Map(clientes.map((c) => [c.id, { cliente: c, libras: 0, facturado: 0, recibos: 0 }]));
+    const porCodigo = new Map(clientes.filter((c) => c.codigo).map((c) => [String(c.codigo).trim().toUpperCase(), c.id]));
+
+    envios.forEach((e) => {
+      let clienteId = e.clienteId;
+      if (!clienteId && e.clienteCodigo) clienteId = porCodigo.get(String(e.clienteCodigo).trim().toUpperCase());
+      if (!clienteId || !resumen.has(clienteId)) return;
+
+      const r = resumen.get(clienteId);
+      r.libras += numero(e.totalLibras);
+      r.facturado += numero(e.total);
+      r.recibos += 1;
+    });
+
+    const conActividad = [...resumen.values()].filter((r) => r.recibos > 0);
+    const topLibras = [...conActividad].sort((a, b) => b.libras - a.libras)[0] || null;
+    const topFacturado = [...conActividad].sort((a, b) => b.facturado - a.facturado)[0] || null;
+    return { topLibras, topFacturado };
+  }, [clientes, envios]);
 
   // === Clientes por tipo (pastel con porcentaje) ===
   const clientesPorTipo = useMemo(() => {
@@ -203,6 +227,40 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
           </div>
         </div>
       )}
+
+      <div className="grid-2 mt-16">
+        <div className="card" style={{ margin: 0, borderTop: "3px solid #f59e0b" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
+            <div>
+              <small style={{ fontWeight: 800, color: "#b7791f", textTransform: "uppercase", letterSpacing: ".04em" }}>Top 1 por libras</small>
+              {topClientes.topLibras ? (
+                <>
+                  <h3 style={{ margin: "6px 0 2px" }}>{topClientes.topLibras.cliente.nombre}</h3>
+                  <p style={{ margin: 0 }}>{topClientes.topLibras.cliente.codigo || "Sin código"} · {topClientes.topLibras.recibos} recibo(s)</p>
+                  <strong style={{ display: "block", marginTop: 10, fontSize: "1.8rem" }}>{topClientes.topLibras.libras.toFixed(1)} lb</strong>
+                </>
+              ) : <p className="mt-8">Sin recibos registrados todavía.</p>}
+            </div>
+            <Trophy size={30} style={{ color: "#f59e0b", flexShrink: 0 }} />
+          </div>
+        </div>
+
+        <div className="card" style={{ margin: 0, borderTop: "3px solid #22c55e" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
+            <div>
+              <small style={{ fontWeight: 800, color: "#15803d", textTransform: "uppercase", letterSpacing: ".04em" }}>Top 1 por monto facturado</small>
+              {topClientes.topFacturado ? (
+                <>
+                  <h3 style={{ margin: "6px 0 2px" }}>{topClientes.topFacturado.cliente.nombre}</h3>
+                  <p style={{ margin: 0 }}>{topClientes.topFacturado.cliente.codigo || "Sin código"} · {topClientes.topFacturado.recibos} recibo(s)</p>
+                  <strong style={{ display: "block", marginTop: 10, fontSize: "1.8rem" }}>${topClientes.topFacturado.facturado.toFixed(2)}</strong>
+                </>
+              ) : <p className="mt-8">Sin recibos registrados todavía.</p>}
+            </div>
+            <DollarSign size={30} style={{ color: "#22c55e", flexShrink: 0 }} />
+          </div>
+        </div>
+      </div>
 
       <div className="card mt-16">
         <h3><PieChartIcon size={18} style={{ verticalAlign: "-3px", marginRight: 6 }} />Clientes por tipo</h3>
