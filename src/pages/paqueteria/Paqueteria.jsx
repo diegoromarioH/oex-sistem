@@ -9,20 +9,10 @@ import RegistrarTracking from "./Registrartracking";
 import TrackingsActivos from "./TrackingsActivos";
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 
-export default function Paqueteria({ envios, prealertas, facturasProveedor, auditLog, clientes, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, vistaInicial = "dashboard" }) {
+export default function Paqueteria({ envios, prealertas, facturasProveedor, auditLog, clientes, proveedores = [], rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, vistaInicial = "dashboard" }) {
   const [vista, setVista] = useState(vistaInicial);
-
-  // Si App pide abrir una sub-página concreta (sidebar, alerta, etc.),
-  // sincroniza la vista interna.
   useEffect(() => { setVista(vistaInicial); }, [vistaInicial]);
-
-  // La navegación dentro de Paquetería también debe persistir. Antes solo
-  // App conocía la subvista cuando se entraba desde el sidebar; al pulsar
-  // estos botones internos el estado cambiaba localmente y al recargar se
-  // perdía, regresando al Dashboard de Paquetería.
-  useEffect(() => {
-    localStorage.setItem("oex_subvista_paqueteria", vista);
-  }, [vista]);
+  useEffect(() => { localStorage.setItem("oex_subvista_paqueteria", vista); }, [vista]);
 
   const pendientesConfirmar = prealertas.filter(esPendienteDeConfirmar).length;
   const trackingsActivos = prealertas.length - pendientesConfirmar;
@@ -40,9 +30,9 @@ export default function Paqueteria({ envios, prealertas, facturasProveedor, audi
 
       {vista === "dashboard" && <PaqueteriaDashboard envios={envios} prealertas={prealertas} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "nuevo" && <PaqueteriaRecibo prealertas={prealertas} clientes={clientes} tarifas={tarifas} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
-      {vista === "registrar" && <RegistrarTracking clientes={clientes} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
-      {vista === "prealertas" && <Prealertas prealertas={prealertas} clientes={clientes} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
-      {vista === "activos" && <TrackingsActivos prealertas={prealertas} clientes={clientes} facturasProveedor={facturasProveedor} auditLog={auditLog} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+      {vista === "registrar" && <RegistrarTracking clientes={clientes} proveedores={proveedores} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+      {vista === "prealertas" && <Prealertas prealertas={prealertas} clientes={clientes} proveedores={proveedores} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+      {vista === "activos" && <TrackingsActivos prealertas={prealertas} clientes={clientes} proveedores={proveedores} facturasProveedor={facturasProveedor} auditLog={auditLog} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "lista" && <EnviosList envios={envios} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
     </div>
   );
