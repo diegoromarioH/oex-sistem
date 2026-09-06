@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import * as XLSX from "xlsx";
 import { supabase } from "../../supabase";
 import { numero } from "../../utils/numero";
-import FinanzasEstadoResultados from "./FinanzasEstadoResultados";
+import EstadoResultadosReporte from "./EstadoResultadosReporte";
 import FinanzasLibroDiario from "./FinanzasLibroDiario";
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
@@ -28,6 +28,7 @@ function BalanceGeneral({ cuentasContables=[], mostrarToast }) {
 }
 
 export default function FinanzasReportes({ cuentasContables=[], mostrarToast }) {
- const [reporte,setReporte]=useState("resultados");
- return <div><div className="card"><div className="page-title" style={{margin:0}}><div><h3>Reportes financieros</h3><p>Estado de resultados, Libro diario y Balance general en un solo lugar.</p></div></div><div className="segment mt-16"><button className={`segment-btn ${reporte==="resultados"?"active":""}`} onClick={()=>setReporte("resultados")}><BarChart3 size={14}/> Estado de resultados</button><button className={`segment-btn ${reporte==="libro"?"active":""}`} onClick={()=>setReporte("libro")}><BookOpen size={14}/> Libro diario</button><button className={`segment-btn ${reporte==="balance"?"active":""}`} onClick={()=>setReporte("balance")}><Scale size={14}/> Balance general</button></div></div>{reporte==="resultados"&&<FinanzasEstadoResultados/>}{reporte==="libro"&&<FinanzasLibroDiario/>}{reporte==="balance"&&<BalanceGeneral cuentasContables={cuentasContables} mostrarToast={mostrarToast}/>}</div>;
+ const [reporte,setReporte]=useState(()=>localStorage.getItem("oex_finanzas_reporte")||"resultados");
+ useEffect(()=>{localStorage.setItem("oex_finanzas_reporte",reporte);},[reporte]);
+ return <div><div className="card"><div className="page-title" style={{margin:0}}><div><h3>Reportes financieros</h3><p>Estado de resultados, Libro diario y Balance general en un solo lugar.</p></div></div><div className="segment mt-16"><button className={`segment-btn ${reporte==="resultados"?"active":""}`} onClick={()=>setReporte("resultados")}><BarChart3 size={14}/> Estado de resultados</button><button className={`segment-btn ${reporte==="libro"?"active":""}`} onClick={()=>setReporte("libro")}><BookOpen size={14}/> Libro diario</button><button className={`segment-btn ${reporte==="balance"?"active":""}`} onClick={()=>setReporte("balance")}><Scale size={14}/> Balance general</button></div></div>{reporte==="resultados"&&<EstadoResultadosReporte/>}{reporte==="libro"&&<FinanzasLibroDiario/>}{reporte==="balance"&&<BalanceGeneral cuentasContables={cuentasContables} mostrarToast={mostrarToast}/>}</div>;
 }
