@@ -64,7 +64,7 @@ const COLUMNAS_EDITABLES={peso:"peso",estado:"estado",almacenId:"almacen_id",cos
 export const actualizarTracking=async({tracking,field,value,auth})=>{
   const columna=COLUMNAS_EDITABLES[field];
   if(!columna) throw new Error(`Campo no editable: ${field}`);
-  if(field==="estado"&&tracking.envioId) throw new Error("Este tracking ya pertenece a un recibo. Cambia el estado desde el recibo para mover todos sus paquetes juntos.");
+  if(tracking.envioId && ["estado","peso","tipoEnvio"].includes(field)) throw new Error("Este tracking ya pertenece a un recibo. Haz el cambio desde el recibo para mantener todo sincronizado.");
   if(field==="estado"&&value==="Miami"&&!String(tracking.almacenId||"").trim()) throw new Error("Antes de marcar como Recibido en Miami, registra el ID de almacén.");
   const cambios={[columna]:value,updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"};
   if(field==="estado"&&value==="Miami"&&!tracking.fechaMiami) cambios.fecha_miami=new Date().toISOString();
@@ -117,13 +117,13 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
     fechaMiami:t.fechaMiami||""
   }));
   const payload={
-    numero:numeroRecibo,
+    numero_envios:numeroRecibo,
     cliente:cliente.nombre,
     cliente_id:cliente.id,
     cliente_codigo:cliente.codigo,
     cliente_tipo:cliente.tipo,
     contacto:cliente.telefono,
-    destino,
+    lugar:destino,
     tipo_envios:tipoEnvioRecibo,
     trackings:snapshotTrackings,
     total_libras:totalLibras,
