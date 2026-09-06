@@ -1,7 +1,7 @@
 // src/pages/paqueteria/PaqueteriaDashboard.jsx
 // Panel de control de Paquetería: prealertas, trackings activos por destino
-// y tipo, libras activas y recibos activos. Los trackings y los recibos se
-// cuentan por separado para no duplicar paquetes en las métricas.
+// y tipo, libras activas/históricas y resumen de recibos activos. Los
+// trackings y los recibos se cuentan por separado para no duplicar paquetes.
 import { useMemo, useState } from "react";
 import { numero } from "../../utils/numero";
 import { PIPELINE_MANAGUA, PIPELINE_OMETEPE, esPendienteDeConfirmar } from "../../utils/estadosEnvio";
@@ -42,9 +42,6 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
     [prealertas]
   );
 
-  // Esta es exactamente la misma población que usa la pestaña
-  // "Envíos activos": trackings confirmados que todavía viven sueltos.
-  // Los trackings ya convertidos en recibo NO se vuelven a sumar aquí.
   const trackingsActivos = useMemo(
     () => prealertas.filter((t) => !esPendienteDeConfirmar(t)),
     [prealertas]
@@ -67,7 +64,7 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
     [trackingsActivos]
   );
 
-  const libras = useMemo(() => {
+  const librasActivas = useMemo(() => {
     return trackingsActivos.reduce(
       (acc, t) => {
         const peso = numero(t.peso);
@@ -79,10 +76,70 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
     );
   }, [trackingsActivos]);
 
-  const recibosActivos = useMemo(
-    () => envios.filter((e) => e.estado !== "Entregado").length,
+  // Histórico = trackings que siguen activos + trackings que ya pasaron a
+  // un recibo (incluyendo recibos entregados). Al generar un recibo los
+  // trackings dejan la tabla de activos, por eso ambas fuentes no se duplican.
+  const librasHistoricas = useMemo(() => {
+    const acumulado = { aereo: 0, maritimo: 0 };
+
+    trackingsActivos.forEach((t) => {
+      const peso = numero(t.peso);
+      if (t.tipoEnvio === "Aéreo") acumulado.aereo += peso;
+      if (t.tipoEnvio === "Marítimo") acumulado.maritimo += peso;
+    });
+
+    envios.forEach((e) => {
+      (e.trackings || []).forEach((t) => {
+        const peso = numero(t.peso);
+        const tipo = tipoDeTracking(e, t);
+        if (tipo === "Aéreo") acumulado.aereo += peso;
+        if (tipo === "Marítimo") acumulado.maritimo += peso;
+      });
+    });
+
+    return { ...acumulado, total: acumulado.aereo + acumulado.maritimo };
+  }, [trackingsActivos, envios]);
+
+  const recibosActivosLista = useMemo(
+    () => envios.filter((e) => e.estado !== "Entregado"),
     [envios]
   );
+
+  const resumenRecibos = useMemo(() => {
+    let aereos = 0;
+    let maritimos = 0;
+    let mixtos = 0;
+    let managua = 0;
+    let ometepe = 0;
+    const clientesUnicos = new Set();
+
+    recibosActivosLista.forEach((e) => {
+      const tipos = new Set((e.trackings || []).map((t) => tipoDeTracking(e, t)).filter(Boolean));
+      if (tipos.size === 0 && e.tipoEnvio) tipos.add(e.tipoEnvio);
+
+      if (tipos.size > 1) mixtos += 1;
+      else if (tipos.has("Aéreo")) aereos += 1;
+      else if (tipos.has("Marítimo")) maritimos += 1;
+
+      if (e.destino === "Managua") managua += 1;
+      if (e.destino === "Ometepe") ometepe += 1;
+
+      if (e.clienteId) clientesUnicos.add(`id:${e.clienteId}`);
+      else if (e.clienteCodigo) clientesUnicos.add(`codigo:${String(e.clienteCodigo).toUpperCase()}`);
+      else if (e.contacto) clientesUnicos.add(`tel:${String(e.contacto).replace(/\D/g, "")}`);
+      else if (e.cliente) clientesUnicos.add(`nombre:${String(e.cliente).trim().toLowerCase()}`);
+    });
+
+    return {
+      total: recibosActivosLista.length,
+      aereos,
+      maritimos,
+      mixtos,
+      managua,
+      ometepe,
+      clientes: clientesUnicos.size
+    };
+  }, [recibosActivosLista]);
 
   const toggleDestino = (d) => setFiltroDestino((actual) => (actual === d ? null : d));
   const toggleTipo = (t) => setFiltroTipo((actual) => (actual === t ? null : t));
@@ -155,18 +212,48 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
         />
         <TarjetaResumen
           etiqueta="Libras aéreas activas"
-          valor={`${libras.aereo.toFixed(1)} lb`}
+          valor={`${librasActivas.aereo.toFixed(1)} lb`}
           sublinea="Solo Envíos activos"
         />
         <TarjetaResumen
           etiqueta="Libras marítimas activas"
-          valor={`${libras.maritimo.toFixed(1)} lb`}
+          valor={`${librasActivas.maritimo.toFixed(1)} lb`}
           sublinea="Solo Envíos activos"
         />
         <TarjetaResumen
+          etiqueta="Libras históricas"
+          valor={`${librasHistoricas.total.toFixed(1)} lb`}
+          sublinea={`Aéreo ${librasHistoricas.aereo.toFixed(1)} lb · Marítimo ${librasHistoricas.maritimo.toFixed(1)} lb`}
+        />
+        <TarjetaResumen
           etiqueta="Recibos activos"
-          valor={recibosActivos}
+          valor={resumenRecibos.total}
           sublinea="No entregados"
+        />
+        <TarjetaResumen
+          etiqueta="Recibos aéreos"
+          valor={resumenRecibos.aereos}
+          sublinea={resumenRecibos.mixtos ? `${resumenRecibos.mixtos} mixto(s) aparte` : "Activos"}
+        />
+        <TarjetaResumen
+          etiqueta="Recibos marítimos"
+          valor={resumenRecibos.maritimos}
+          sublinea={resumenRecibos.mixtos ? `${resumenRecibos.mixtos} mixto(s) aparte` : "Activos"}
+        />
+        <TarjetaResumen
+          etiqueta="Recibos Managua"
+          valor={resumenRecibos.managua}
+          sublinea="Activos"
+        />
+        <TarjetaResumen
+          etiqueta="Recibos Ometepe"
+          valor={resumenRecibos.ometepe}
+          sublinea="Activos"
+        />
+        <TarjetaResumen
+          etiqueta="Clientes con recibos activos"
+          valor={resumenRecibos.clientes}
+          sublinea="Clientes únicos"
         />
       </div>
 
