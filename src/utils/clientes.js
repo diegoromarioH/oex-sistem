@@ -81,6 +81,7 @@ export const normalizarPrealerta = (t) => ({
   origenRegistro:t.origen_registro||"landing",
   nota:t.nota||"",
   estado:t.estado||"Miami",
+  fechaMiami:t.fecha_miami||"",
   fechaISO:t.fecha||"",
   fecha:t.fecha?new Date(t.fecha).toLocaleString("es-NI"):""
 });
