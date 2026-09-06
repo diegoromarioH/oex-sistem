@@ -78,6 +78,7 @@ export const normalizarPrealerta = (t) => ({
   peso:numero(t.peso),
   costoInterno:t.costo_interno??"",
   proveedorAduanaId:t.proveedor_aduana_id||null,
+  envioId:t.envio_id||null,
   origenRegistro:t.origen_registro||"landing",
   nota:t.nota||"",
   estado:t.estado||"Miami",
