@@ -23,8 +23,10 @@ export const confirmarTracking = async ({ tracking, clientesEnMemoria, proveedor
   }
   if (!clienteResuelto) clienteResuelto = await resolverCliente({ clientesEnMemoria, nombre: tracking.cliente, telefono: tracking.contacto, tipo: "General", codigo: tracking.clienteCodigo, auth });
   const costoInterno = costoProveedorPorTipo(proveedorAduana, tracking.tipoEnvio);
+  const ahora = new Date().toISOString();
   const { error } = await supabase.from("tracking_registros").update({
-    estado:"Miami", cliente_id:clienteResuelto.id, cliente_codigo:clienteResuelto.codigo, cliente_tipo:clienteResuelto.tipo,
+    estado:"Miami", fecha_miami:tracking.fechaMiami || ahora,
+    cliente_id:clienteResuelto.id, cliente_codigo:clienteResuelto.codigo, cliente_tipo:clienteResuelto.tipo,
     cliente:clienteResuelto.nombre || tracking.cliente, contacto:clienteResuelto.telefono || tracking.contacto,
     almacen_id:String(almacenId).trim(), proveedor_aduana_id:proveedorAduana.id, costo_interno:costoInterno,
     updated_by:auth.session?.user?.id || null,
@@ -53,7 +55,8 @@ export const registrarTracking = async ({ form, clientesEnMemoria, proveedorAdua
   if(estadoInicial==="Miami"&&!String(almacenId||"").trim()) throw new Error("Para registrar como Recibido en Miami debes escribir el ID de almacén.");
   const clienteResuelto=await resolverCliente({clientesEnMemoria,nombre:cliente,telefono:contacto,tipo:"General",auth});
   const costoInterno=costoProveedorPorTipo(proveedorAduana,tipoEnvio);
-  const {error}=await supabase.from("tracking_registros").insert([{cliente,contacto,destino,tipo_envio:tipoEnvio,tracking:codigo.trim(),almacen_id:String(almacenId||"").trim(),nota,peso:0,estado:estadoInicial,origen_registro:"manual",proveedor_aduana_id:proveedorAduana.id,costo_interno:costoInterno,cliente_id:clienteResuelto.id,cliente_codigo:clienteResuelto.codigo,cliente_tipo:clienteResuelto.tipo,fecha:new Date().toISOString(),...firmarPayload(auth)}]);
+  const ahora=new Date().toISOString();
+  const {error}=await supabase.from("tracking_registros").insert([{cliente,contacto,destino,tipo_envio:tipoEnvio,tracking:codigo.trim(),almacen_id:String(almacenId||"").trim(),nota,peso:0,estado:estadoInicial,fecha_miami:estadoInicial==="Miami"?ahora:null,origen_registro:"manual",proveedor_aduana_id:proveedorAduana.id,costo_interno:costoInterno,cliente_id:clienteResuelto.id,cliente_codigo:clienteResuelto.codigo,cliente_tipo:clienteResuelto.tipo,fecha:ahora,...firmarPayload(auth)}]);
   if(error) throw error;
   await registrarAuditoria({...auth,accion:"Registró tracking",modulo:"Trackings",registroCodigo:codigo||almacenId,detalle:`${cliente} · ${estadoInicial==="Miami"?"Recibido en Miami":"Prealertado"} · ${proveedorAduana.nombre} · $${costoInterno.toFixed(2)}/lb`});
 };
@@ -63,7 +66,9 @@ export const actualizarTracking=async({tracking,field,value,auth})=>{
   const columna=COLUMNAS_EDITABLES[field];
   if(!columna) throw new Error(`Campo no editable: ${field}`);
   if(field==="estado"&&value==="Miami"&&!String(tracking.almacenId||"").trim()) throw new Error("Antes de marcar como Recibido en Miami, registra el ID de almacén.");
-  const {error}=await supabase.from("tracking_registros").update({[columna]:value,updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"}).eq("id",tracking.id);
+  const cambios={[columna]:value,updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"};
+  if(field==="estado"&&value==="Miami"&&!tracking.fechaMiami) cambios.fecha_miami=new Date().toISOString();
+  const {error}=await supabase.from("tracking_registros").update(cambios).eq("id",tracking.id);
   if(error) throw error;
   await registrarAuditoria({...auth,accion:field==="peso"?"Registró peso":"Actualizó tracking",modulo:"Trackings",registroCodigo:tracking.tracking||tracking.almacenId||"",detalle:`${field}: ${value}`});
 };
@@ -79,7 +84,7 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
   const total=Math.max(bruto-numero(descuento),0);
   const costoInternoTotal=trackings.reduce((a,t)=>{const costo=t.costoInterno!==undefined&&t.costoInterno!==""?numero(t.costoInterno):costoInternoDefaultPorTipo(t.tipoEnvio);return a+numero(t.peso)*costo;},0);
   const gananciaReal=total-costoInternoTotal-numero(gastosExtras), numeroRecibo=await generarCodigoRecibo(), fechaRecibo=fecha||new Date().toISOString();
-  const snapshotTrackings=trackings.map(t=>({id:t.id,tracking:t.tracking||"",almacenId:t.almacenId||"",cliente:t.cliente||"",clienteId:t.clienteId||null,clienteCodigo:t.clienteCodigo||"",destino:t.destino||destino,tipoEnvio:t.tipoEnvio||"",peso:numero(t.peso),costoInterno:numero(t.costoInterno),proveedorAduanaId:t.proveedorAduanaId||null,estado:t.estado||""}));
+  const snapshotTrackings=trackings.map(t=>({id:t.id,tracking:t.tracking||"",almacenId:t.almacenId||"",cliente:t.cliente||"",clienteId:t.clienteId||null,clienteCodigo:t.clienteCodigo||"",destino:t.destino||destino,tipoEnvio:t.tipoEnvio||"",peso:numero(t.peso),costoInterno:numero(t.costoInterno),proveedorAduanaId:t.proveedorAduanaId||null,estado:t.estado||"",fechaMiami:t.fechaMiami||""}));
   const payload={numero:numeroRecibo,cliente:cliente.nombre,cliente_id:cliente.id,cliente_codigo:cliente.codigo,cliente_tipo:cliente.tipo,contacto:cliente.telefono,destino,tipo_envios:tipoEnvioRecibo,trackings:snapshotTrackings,total_libras:totalLibras,tarifa:tarifaBase,descuento:numero(descuento),gastos_extras:numero(gastosExtras),total,costo_interno_total:costoInternoTotal,ganancia_real:gananciaReal,abono:0,saldo:total,estado:estadosPorDestino(destino)[0],nota:nota||"",fecha:fechaRecibo,...firmarPayload(auth)};
   const {data:envio,error}=await supabase.from("envios").insert([payload]).select().single(); if(error)throw error;
   const ids=trackings.map(t=>t.id).filter(Boolean); if(ids.length){const{error:deleteError}=await supabase.from("tracking_registros").delete().in("id",ids);if(deleteError)throw deleteError;}
