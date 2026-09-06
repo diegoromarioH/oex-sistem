@@ -1,0 +1,27 @@
+/* Finanzas: dejar solo las secciones operativas principales y agrupar los informes en Reportes. */
+.page-title .actions:has(> .nav-btn:nth-child(9)) > .nav-btn:nth-child(6),
+.page-title .actions:has(> .nav-btn:nth-child(9)) > .nav-btn:nth-child(7) {
+  display: none;
+}
+
+.page-title .actions:has(> .nav-btn:nth-child(9)) > .nav-btn:nth-child(9) {
+  font-size: 0;
+}
+
+.page-title .actions:has(> .nav-btn:nth-child(9)) > .nav-btn:nth-child(9)::after {
+  content: "Reportes";
+  font-size: 13.5px;
+}
+
+@media (max-width: 520px) {
+  .page-title .actions:has(> .nav-btn:nth-child(9)) {
+    gap: 6px;
+  }
+  .page-title .actions:has(> .nav-btn:nth-child(9)) > .nav-btn {
+    padding: 9px 13px 9px 28px;
+    font-size: 12px;
+  }
+  .page-title .actions:has(> .nav-btn:nth-child(9)) > .nav-btn:nth-child(9)::after {
+    font-size: 12px;
+  }
+}
