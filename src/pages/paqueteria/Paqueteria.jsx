@@ -18,7 +18,7 @@ export default function Paqueteria({ envios, prealertas, facturasProveedor, audi
   const trackingsActivos = prealertas.filter((t) => !esPendienteDeConfirmar(t) && t.estado !== "Entregado").length;
 
   return (
-    <div className="page">
+    <div className="page paqueteria-page">
       <PageTitle title="Paquetería" subtitle="Trackings, tarifas por destino/tipo y seguimiento de envíos">
         <button className={`nav-btn ${vista === "dashboard" ? "active" : ""}`} onClick={() => setVista("dashboard")}>Dashboard</button>
         <button className={`nav-btn ${vista === "lista" ? "active" : ""}`} onClick={() => setVista("lista")}>Recibos</button>
