@@ -11,11 +11,19 @@ import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 
 export default function Paqueteria({ envios, prealertas, facturasProveedor, auditLog, clientes, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, vistaInicial = "dashboard" }) {
   const [vista, setVista] = useState(vistaInicial);
-  // El mega-menú del TopNav (App.jsx) puede pedir que Paquetería abra
-  // directo en una sub-página específica aunque el módulo ya esté
-  // montado — este efecto es lo que hace que el clic en el mega-menú
-  // realmente navegue, no solo la primera vez que se entra al módulo.
+
+  // Si App pide abrir una sub-página concreta (sidebar, alerta, etc.),
+  // sincroniza la vista interna.
   useEffect(() => { setVista(vistaInicial); }, [vistaInicial]);
+
+  // La navegación dentro de Paquetería también debe persistir. Antes solo
+  // App conocía la subvista cuando se entraba desde el sidebar; al pulsar
+  // estos botones internos el estado cambiaba localmente y al recargar se
+  // perdía, regresando al Dashboard de Paquetería.
+  useEffect(() => {
+    localStorage.setItem("oex_subvista_paqueteria", vista);
+  }, [vista]);
+
   const pendientesConfirmar = prealertas.filter(esPendienteDeConfirmar).length;
   const trackingsActivos = prealertas.length - pendientesConfirmar;
 
