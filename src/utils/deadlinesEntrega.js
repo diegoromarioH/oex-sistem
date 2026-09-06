@@ -53,6 +53,11 @@ export const diasHabilesEntre = (desde, hasta, feriados = []) => {
   return total;
 };
 
+const umbralAlertaPorTipo = (tipoEnvio = "") => {
+  const tipo = String(tipoEnvio).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return tipo.includes("marit") ? 3 : tipo.includes("aereo") ? 1 : 2;
+};
+
 export const calcularDeadlineTracking = (tracking, feriados = [], hoy = new Date()) => {
   const promesa = promesaPorDestinoTipo(tracking?.destino, tracking?.tipoEnvio);
   const inicio = fechaLocal(tracking?.fechaMiami);
@@ -60,10 +65,11 @@ export const calcularDeadlineTracking = (tracking, feriados = [], hoy = new Date
   const fechaMin = sumarDiasHabiles(inicio, promesa[0], feriados);
   const fechaMax = sumarDiasHabiles(inicio, promesa[1], feriados);
   const restantes = diasHabilesEntre(hoy, fechaMax, feriados);
+  const umbralAlerta = umbralAlertaPorTipo(tracking?.tipoEnvio);
   let estadoDeadline = "en_tiempo";
   if (restantes < 0) estadoDeadline = "vencido";
-  else if (restantes <= 2) estadoDeadline = "proximo";
-  return { fechaMin, fechaMax, diasMin: promesa[0], diasMax: promesa[1], restantes, estadoDeadline };
+  else if (restantes <= umbralAlerta) estadoDeadline = "proximo";
+  return { fechaMin, fechaMax, diasMin: promesa[0], diasMax: promesa[1], restantes, umbralAlerta, estadoDeadline };
 };
 
 export const formatoRangoDeadline = (deadline) => {
