@@ -504,7 +504,7 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
         <>
           <div className="page-title mt-16" style={{ margin: "0 0 4px" }}>
             <span className="field-label" style={{ margin: 0 }}>
-              Trackings {esAduana ? "(obligatorio elegir al menos 1)" : "(opcional)"}
+              {esAduana ? `Trackings de ${proveedorSeleccionado.nombre} (obligatorio elegir al menos 1)` : "Trackings (opcional)"}
             </span>
             {!esAduana && (
               <input
