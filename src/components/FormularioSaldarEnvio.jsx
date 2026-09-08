@@ -17,12 +17,13 @@ import { numero } from "../utils/numero";
 import { formatoMoneda } from "../utils/moneda";
 import { saldarEnvio } from "../services/enviosService";
 
-export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], auth, mostrarToast, cargarDatos, etiquetaBoton = "Marcar retirado y saldar" }) {
+export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empresa, auth, mostrarToast, cargarDatos, etiquetaBoton = "Marcar retirado y saldar" }) {
   const [abierto, setAbierto] = useState(false);
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [metodo, setMetodo] = useState("Transferencia");
   const [recibidoPor, setRecibidoPor] = useState("");
   const [cuentaDineroId, setCuentaDineroId] = useState("");
+  const [tasaCambio, setTasaCambio] = useState(String(empresa?.tipoCambio || ""));
   const [guardando, setGuardando] = useState(false);
 
   // Ya está entregado y sin saldo: no hay nada que saldar, no mostramos nada.
@@ -51,6 +52,7 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], auth,
         pago: { metodo, recibidoPor: metodo === "Efectivo" ? recibidoPor : undefined },
         cuentaDinero: cuentaDineroSeleccionada,
         fecha,
+        tasaCambio,
         auth
       });
       mostrarToast(`Envío ${envio.numero} saldado y marcado como retirado.`);
@@ -107,6 +109,14 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], auth,
             <p style={{ color: "var(--danger)" }}>
               No tienes cuentas de dinero tipo "{metodo === "Transferencia" ? "banco" : "efectivo"}" — créala en Finanzas → Cuentas antes de continuar.
             </p>
+          )}
+
+          {cuentaDineroSeleccionada?.moneda === "NIO" && (
+            <label>
+              <span className="field-label">Tipo de cambio (C$ por US$1)</span>
+              <input className="input" type="number" min="0" step="0.01" value={tasaCambio} onChange={(e) => setTasaCambio(e.target.value)} />
+              <small>Entrarán {formatoMoneda(numero(envio.saldo) * numero(tasaCambio), "NIO")} a la cuenta.</small>
+            </label>
           )}
 
           <button className="btn btn-primary" disabled={guardando || !cuentaDineroSeleccionada} onClick={confirmar} style={{ alignSelf: "end" }}>
