@@ -8,7 +8,7 @@ import { confirmarAccionCritica } from "../services/coreService";
 import ModalRecibo from "../components/ModalRecibo";
 import PageTitle from "../components/PageTitle";
 
-const formVacio = { nombre: "", telefono: "", correo: "", direccion: "", tipo: "General", observaciones: "" };
+const formVacio = { nombre: "", telefono: "+505 ", correo: "", direccion: "", tipo: "General", observaciones: "" };
 
 // Paleta para el pastel de tipos de cliente.
 const COLORES_TIPO = ["#7e3bed", "#22c55e", "#f59e0b", "#3b82f6", "#ec4899", "#14b8a6"];
@@ -21,6 +21,7 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
   // "Agregar cliente", igual que el resto de flujos de "+ X" del sistema.
   const [formAbierto, setFormAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [tipoFiltro, setTipoFiltro] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   // Antes "Ver historial" expandía la fila del cliente inline. Ahora
@@ -32,8 +33,8 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
 
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase();
-    return clientes.filter((c) => !q || c.nombre.toLowerCase().includes(q) || c.telefono.includes(q) || c.codigo.toLowerCase().includes(q));
-  }, [clientes, busqueda]);
+    return clientes.filter((c) => (!tipoFiltro || (c.tipo || "General") === tipoFiltro) && (!q || c.nombre.toLowerCase().includes(q) || c.telefono.includes(q) || c.codigo.toLowerCase().includes(q)));
+  }, [clientes, busqueda, tipoFiltro]);
 
   const enviosDe = (clienteId) => envios.filter((e) => e.clienteId === clienteId);
   const totalGastadoDe = (clienteId) => enviosDe(clienteId).reduce((a, e) => a + numero(e.total), 0);
@@ -302,7 +303,10 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
       <div className="card mt-16">
         <div className="page-title" style={{ margin: "0 0 8px" }}>
           <h3>Directorio</h3>
-          <input className="input input-sm" placeholder="Buscar nombre, teléfono o código" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <div className="segment">
+            <select className="input input-sm" value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}><option value="">Todos los tipos</option>{["General","Emprendedor","Empresarial"].map((t)=><option key={t}>{t}</option>)}</select>
+            <input className="input input-sm" placeholder="Buscar nombre, teléfono o código" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          </div>
         </div>
         <div className="list">
           {filtrados.map((c) => {
@@ -328,7 +332,7 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
                   </div>
                 ) : (
                   <div className="page-title" style={{ margin: 0 }}>
-                    <div>
+                    <div role="button" tabIndex={0} onClick={() => verDetalle(c)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && verDetalle(c)} style={{ cursor: "pointer", flex: 1 }} title="Abrir detalle del cliente">
                       <b>{c.nombre}</b> <span className="badge badge-info">{c.codigo || "Sin código"}</span> <span className="badge badge-neutral">{c.tipo || "General"}</span>
                       <p>{c.telefono} {c.correo && `· ${c.correo}`}</p>
                       <small>
