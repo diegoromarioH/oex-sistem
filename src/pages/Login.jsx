@@ -2,10 +2,10 @@
 import { useState } from "react";
 import logo from "../assets/logo.svg";
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onLogout, bloqueado = false, errorInicial = "" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(errorInicial);
   const [cargando, setCargando] = useState(false);
 
   const enviar = async (e) => {
@@ -20,6 +20,21 @@ export default function Login({ onLogin }) {
       setCargando(false);
     }
   };
+
+  if (bloqueado) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <img src={logo} alt="OEX" />
+          <h2>Acceso restringido</h2>
+          <p>{errorInicial || "Tu cuenta no tiene permiso para entrar al sistema."}</p>
+          <button className="btn btn-primary" type="button" onClick={onLogout}>
+            Volver al inicio de sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">
