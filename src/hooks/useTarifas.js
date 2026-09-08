@@ -29,7 +29,7 @@ const filaATarifa = (fila) => ({
   aereo: Number(fila.aereo)
 });
 
-export const useTarifas = () => {
+export const useTarifas = (habilitado = true) => {
   const [tarifas, setTarifasState] = useState(TARIFAS_DEFAULT);
   const [cargando, setCargando] = useState(true);
 
@@ -45,13 +45,16 @@ export const useTarifas = () => {
     setCargando(false);
   }, []);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    if (habilitado) cargar();
+  }, [cargar, habilitado]);
 
   // Guarda el objeto completo de tarifas en Supabase (upsert por id). Si
   // el usuario no es admin, la política de la base rechaza el cambio — en
   // ese caso se recarga lo que realmente hay guardado, para que la
   // pantalla no se quede mostrando un valor que nunca se guardó.
   const setTarifas = async (nuevas) => {
+    if (!habilitado) return;
     setTarifasState(nuevas);
     const filas = Object.entries(nuevas).map(([id, t]) => ({
       id,
