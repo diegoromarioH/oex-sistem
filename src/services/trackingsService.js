@@ -5,6 +5,7 @@ import { resolverCliente } from "./clientesService";
 import { generarCodigoRecibo, firmarPayload, registrarAuditoria } from "./coreService";
 import { costoInternoDefaultPorTipo, tarifaDesdePerfil, tipoEnvioResumen } from "../utils/calculosPaqueteria";
 import { postearAsiento } from "./ContabilidadService";
+import { esEstadoDisponibleParaRecibo } from "../utils/estadosEnvio";
 
 const costoProveedorPorTipo = (proveedor, tipoEnvio) => {
   if (!proveedor) return costoInternoDefaultPorTipo(tipoEnvio);
@@ -81,14 +82,17 @@ export const eliminarTracking=async({tracking,auth})=>{
 };
 
 export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil, tarifaPersonalizada, descuento, gastosExtras, nota, fecha, auth }) => {
-  if(!trackings||trackings.length===0) throw new Error("Selecciona al menos un tracking en Bodega OEX.");
+  if(!trackings||trackings.length===0) throw new Error("Selecciona al menos un tracking disponible.");
   const destinos=new Set(trackings.map(t=>t.destino));
   if(destinos.size>1) throw new Error("Todos los trackings de un mismo recibo deben ser del mismo destino.");
-  if(trackings.some(t=>t.estado!=="Bodega OEX")) throw new Error("El recibo solo puede generarse cuando todos los trackings seleccionados están en Bodega OEX.");
+  if(trackings.some(t=>!esEstadoDisponibleParaRecibo(t.estado,t.destino))) throw new Error("El recibo solo puede generarse desde Tránsito Managua/Ometepe o un estado posterior.");
+  const estados=new Set(trackings.map(t=>t.estado));
+  if(estados.size>1) throw new Error("Todos los trackings de un recibo deben tener el mismo estado actual.");
   if(trackings.some(t=>numero(t.peso)<=0)) throw new Error("Todos los trackings deben tener peso registrado antes de generar el recibo.");
   if(trackings.some(t=>t.envioId)) throw new Error("Uno o más trackings seleccionados ya pertenecen a otro recibo.");
 
   const destino=trackings[0].destino;
+  const estadoActual=trackings[0].estado;
   const tipoEnvioRecibo=tipoEnvioResumen(trackings);
   const tarifaBase=tarifaDesdePerfil(tarifas,tarifaPerfil,tipoEnvioRecibo,tarifaPersonalizada);
   const totalLibras=trackings.reduce((a,t)=>a+numero(t.peso),0);
@@ -114,7 +118,7 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
     costoInterno:numero(t.costoInterno),
     nota:String(t.nota||"").slice(0,160),
     proveedorAduanaId:t.proveedorAduanaId||null,
-    estado:"Bodega OEX",
+    estado:t.estado||estadoActual,
     fechaMiami:t.fechaMiami||""
   }));
   const payload={
@@ -138,7 +142,7 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
     ganancia_real:gananciaReal,
     abono:0,
     saldo:total,
-    estado:"Bodega OEX",
+    estado:estadoActual,
     nota:nota||"",
     fecha:fechaRecibo,
     ...firmarPayload(auth)
@@ -151,7 +155,6 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
   if(ids.length){
     const {error:linkError}=await supabase.from("tracking_registros").update({
       envio_id:envio.id,
-      estado:"Bodega OEX",
       updated_by:auth.session?.user?.id||null,
       updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"
     }).in("id",ids).is("envio_id",null);
@@ -162,6 +165,6 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
   }
 
   await postearAsiento({fecha:fechaRecibo,descripcion:`Venta paquetería · Recibo ${numeroRecibo} · ${cliente.nombre}`,origenModulo:"envios",origenId:envio.id,auth,lineas:[{cuentaCodigo:"1030",debe:total,haber:0},{cuentaCodigo:"4010",debe:0,haber:total}]});
-  await registrarAuditoria({...auth,accion:"Generó recibo",modulo:"Paquetería",registroCodigo:numeroRecibo,detalle:`${cliente.nombre} · ${trackings.length} tracking(s) desde Bodega OEX · $${total.toFixed(2)}`});
+  await registrarAuditoria({...auth,accion:"Generó recibo",modulo:"Paquetería",registroCodigo:numeroRecibo,detalle:`${cliente.nombre} · ${trackings.length} tracking(s) · ${estadoActual} · $${total.toFixed(2)}`});
   return { numeroRecibo, envio };
 };
