@@ -55,7 +55,8 @@ export default function ClienteSelector({ clientes, clienteId, onSeleccionar, on
 
       <label>
         <span className="field-label">WhatsApp / Teléfono</span>
-        <input className="input" placeholder="8888-8888" value={telefono} onChange={(e) => onEscribirTelefono(e.target.value)} />
+        <input className="input" type="tel" placeholder="+505 8888-8888" value={telefono} onChange={(e) => onEscribirTelefono(e.target.value)} />
+        <small>Incluye el código del país. Puedes cambiar +505 por el país del WhatsApp del cliente.</small>
       </label>
     </div>
   );
