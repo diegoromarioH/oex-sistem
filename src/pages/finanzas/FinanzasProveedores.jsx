@@ -19,7 +19,7 @@ import {
 import { esListoParaRetiroProveedor, esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 import { confirmarAccionCritica } from "../../services/coreService";
 
-const proveedorVacio = { nombre: "", tipo: "Aduana / Flete", contacto: "", telefono: "", correo: "", notas: "" };
+const proveedorVacio = { nombre: "", tipo: "Aduana / Flete", aplicaDestino: "General", contacto: "", telefono: "", correo: "", notas: "" };
 
 export default function FinanzasProveedores({ proveedores, prealertas, facturasProveedor, cuentasDinero = [], empresa, rol, auth, mostrarToast, cargarDatos }) {
   const [form, setForm] = useState(proveedorVacio);
@@ -108,7 +108,7 @@ export default function FinanzasProveedores({ proveedores, prealertas, facturasP
     }
   };
 
-  const iniciarEdicion = (p) => setFormEdicion({ id: p.id, nombre: p.nombre, tipo: p.tipo, contacto: p.contacto || "", telefono: p.telefono || "", correo: p.correo || "", notas: p.notas || "" });
+  const iniciarEdicion = (p) => setFormEdicion({ id: p.id, nombre: p.nombre, tipo: p.tipo, aplicaDestino: p.aplicaDestino || "General", contacto: p.contacto || "", telefono: p.telefono || "", correo: p.correo || "", notas: p.notas || "" });
   const cancelarEdicion = () => setFormEdicion(null);
 
   const guardarEdicion = async () => {
@@ -198,6 +198,14 @@ export default function FinanzasProveedores({ proveedores, prealertas, facturasP
                 {TIPOS_PROVEEDOR.map((t) => <option key={t}>{t}</option>)}
               </select>
             </label>
+            <label>
+              <span className="field-label">Aplica a</span>
+              <select className="input" value={form.aplicaDestino} onChange={(e) => setForm({ ...form, aplicaDestino: e.target.value })}>
+                <option value="General">General (Ometepe y Managua)</option>
+                <option value="Ometepe">Solo Ometepe</option>
+                <option value="Managua">Solo Managua</option>
+              </select>
+            </label>
             <label><span className="field-label">Contacto</span><input className="input" value={form.contacto} onChange={(e) => setForm({ ...form, contacto: e.target.value })} /></label>
             <label><span className="field-label">Teléfono</span><input className="input" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} /></label>
           </div>
@@ -219,6 +227,14 @@ export default function FinanzasProveedores({ proveedores, prealertas, facturasP
                           {TIPOS_PROVEEDOR.map((t) => <option key={t}>{t}</option>)}
                         </select>
                       </label>
+                      <label>
+                        <span className="field-label">Aplica a</span>
+                        <select className="input" value={formEdicion.aplicaDestino} onChange={(e) => setFormEdicion({ ...formEdicion, aplicaDestino: e.target.value })}>
+                          <option value="General">General (Ometepe y Managua)</option>
+                          <option value="Ometepe">Solo Ometepe</option>
+                          <option value="Managua">Solo Managua</option>
+                        </select>
+                      </label>
                       <label><span className="field-label">Contacto</span><input className="input" value={formEdicion.contacto} onChange={(e) => setFormEdicion({ ...formEdicion, contacto: e.target.value })} /></label>
                       <label><span className="field-label">Teléfono</span><input className="input" value={formEdicion.telefono} onChange={(e) => setFormEdicion({ ...formEdicion, telefono: e.target.value })} /></label>
                     </div>
@@ -233,7 +249,7 @@ export default function FinanzasProveedores({ proveedores, prealertas, facturasP
               return (
                 <div key={p.id} className="row-card" style={{ cursor: "pointer" }} onClick={() => setProveedorDetalleId(p.id)}>
                   <div>
-                    <b>{p.nombre}</b> <span className="badge badge-neutral">{p.tipo}</span>
+                    <b>{p.nombre}</b> <span className="badge badge-neutral">{p.tipo}</span>{" "}<span className="badge badge-info">{p.aplicaDestino || "General"}</span>
                     <p>{p.contacto} {p.telefono && `· ${p.telefono}`}</p>
                     <small>Clic para ver historial completo</small>
                   </div>
@@ -296,7 +312,7 @@ function ProveedorDetalle({ proveedor, facturas, cuentasDinero = [], empresa, au
   const [pagos, setPagos] = useState([]);
   const [cargandoPagos, setCargandoPagos] = useState(true);
   const [editando, setEditando] = useState(false);
-  const [form, setForm] = useState(() => ({ nombre: proveedor.nombre, tipo: proveedor.tipo, contacto: proveedor.contacto || "", telefono: proveedor.telefono || "", correo: proveedor.correo || "", notas: proveedor.notas || "" }));
+  const [form, setForm] = useState(() => ({ nombre: proveedor.nombre, tipo: proveedor.tipo, aplicaDestino: proveedor.aplicaDestino || "General", contacto: proveedor.contacto || "", telefono: proveedor.telefono || "", correo: proveedor.correo || "", notas: proveedor.notas || "" }));
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -343,6 +359,14 @@ function ProveedorDetalle({ proveedor, facturas, cuentasDinero = [], empresa, au
                 {TIPOS_PROVEEDOR.map((t) => <option key={t}>{t}</option>)}
               </select>
             </label>
+            <label>
+              <span className="field-label">Aplica a</span>
+              <select className="input" value={form.aplicaDestino} onChange={(e) => setForm({ ...form, aplicaDestino: e.target.value })}>
+                <option value="General">General (Ometepe y Managua)</option>
+                <option value="Ometepe">Solo Ometepe</option>
+                <option value="Managua">Solo Managua</option>
+              </select>
+            </label>
             <label><span className="field-label">Contacto</span><input className="input" value={form.contacto} onChange={(e) => setForm({ ...form, contacto: e.target.value })} /></label>
             <label><span className="field-label">Teléfono</span><input className="input" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} /></label>
           </div>
@@ -356,7 +380,7 @@ function ProveedorDetalle({ proveedor, facturas, cuentasDinero = [], empresa, au
         <div className="page-title" style={{ margin: 0 }}>
           <div>
             <h3 style={{ margin: 0 }}>{proveedor.nombre}</h3>
-            <p><span className="badge badge-neutral">{proveedor.tipo}</span> {proveedor.contacto} {proveedor.telefono && `· ${proveedor.telefono}`}</p>
+            <p><span className="badge badge-neutral">{proveedor.tipo}</span>{" "}<span className="badge badge-info">{proveedor.aplicaDestino || "General"}</span> {proveedor.contacto} {proveedor.telefono && `· ${proveedor.telefono}`}</p>
             {proveedor.notas && <small>{proveedor.notas}</small>}
           </div>
           <button className="btn" onClick={() => setEditando(true)}>Editar</button>
@@ -420,8 +444,13 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
   // puede tener varios traslados locales en su vida, así que no se
   // restringe por estado ni por si ya está en otra factura.
   const poolBase = useMemo(() => {
-    if (!esAduana) return trackingsActivos;
-    return trackingsListosAduana.filter(
+    const destinoProveedor = proveedorSeleccionado?.aplicaDestino || "General";
+    const filtrarDestino = (trackings) => destinoProveedor === "General"
+      ? trackings
+      : trackings.filter((t) => t.destino === destinoProveedor);
+
+    if (!esAduana) return filtrarDestino(trackingsActivos);
+    return filtrarDestino(trackingsListosAduana).filter(
       (t) => String(t.proveedorAduanaId) === String(proveedorSeleccionado.id)
     );
   }, [esAduana, proveedorSeleccionado, trackingsListosAduana, trackingsActivos]);
@@ -496,7 +525,7 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
         <span className="field-label">Proveedor</span>
         <select className="input" value={proveedorParaFactura} onChange={(e) => { setProveedorParaFactura(e.target.value); setSeleccionados(new Set()); setBusquedaTracking(""); }}>
           <option value="">Selecciona un proveedor…</option>
-          {proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre} ({p.tipo})</option>)}
+          {proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre} ({p.tipo} · {p.aplicaDestino || "General"})</option>)}
         </select>
       </label>
 
