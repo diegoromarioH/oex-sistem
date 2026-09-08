@@ -112,6 +112,7 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
     tipoEnvio:t.tipoEnvio||"",
     peso:numero(t.peso),
     costoInterno:numero(t.costoInterno),
+    nota:String(t.nota||"").slice(0,160),
     proveedorAduanaId:t.proveedorAduanaId||null,
     estado:"Bodega OEX",
     fechaMiami:t.fechaMiami||""
