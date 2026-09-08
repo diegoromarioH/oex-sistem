@@ -40,7 +40,7 @@ export const actualizarPrealerta = async ({ tracking, cambios, auth }) => {
   if(!cliente) throw new Error("Escribe el nombre del cliente.");
   if(!contacto) throw new Error("Escribe el WhatsApp del cliente.");
   if(!codigo&&!almacenId) throw new Error("Escribe el número de tracking o el ID de almacén.");
-  const {error}=await supabase.from("tracking_registros").update({cliente,contacto,cliente_codigo:String(cambios.clienteCodigo||"").trim()||null,destino:cambios.destino,tipo_envio:cambios.tipoEnvio,tracking:codigo,almacen_id:almacenId,nota:cambios.nota||"",updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"}).eq("id",tracking.id);
+  const {error}=await supabase.from("tracking_registros").update({cliente,contacto,cliente_codigo:String(cambios.clienteCodigo||"").trim()||null,destino:cambios.destino,tipo_envio:cambios.tipoEnvio,tracking:codigo,almacen_id:almacenId,nota:String(cambios.nota||"").slice(0,160),updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"}).eq("id",tracking.id);
   if(error) throw error;
   await registrarAuditoria({...auth,accion:"Editó prealerta",modulo:"Trackings",registroCodigo:codigo||almacenId,detalle:cliente});
 };
@@ -55,7 +55,7 @@ export const registrarTracking = async ({ form, clientesEnMemoria, proveedorAdua
   const clienteResuelto=await resolverCliente({clientesEnMemoria,nombre:cliente,telefono:contacto,tipo:"General",auth});
   const costoInterno=costoProveedorPorTipo(proveedorAduana,tipoEnvio);
   const ahora=new Date().toISOString();
-  const {error}=await supabase.from("tracking_registros").insert([{cliente,contacto,destino,tipo_envio:tipoEnvio,tracking:codigo.trim(),almacen_id:String(almacenId||"").trim(),nota,peso:0,estado:estadoInicial,fecha_miami:estadoInicial==="Miami"?ahora:null,origen_registro:"manual",proveedor_aduana_id:proveedorAduana.id,costo_interno:costoInterno,cliente_id:clienteResuelto.id,cliente_codigo:clienteResuelto.codigo,cliente_tipo:clienteResuelto.tipo,fecha:ahora,...firmarPayload(auth)}]);
+  const {error}=await supabase.from("tracking_registros").insert([{cliente,contacto,destino,tipo_envio:tipoEnvio,tracking:codigo.trim(),almacen_id:String(almacenId||"").trim(),nota:String(nota||"").slice(0,160),peso:0,estado:estadoInicial,fecha_miami:estadoInicial==="Miami"?ahora:null,origen_registro:"manual",proveedor_aduana_id:proveedorAduana.id,costo_interno:costoInterno,cliente_id:clienteResuelto.id,cliente_codigo:clienteResuelto.codigo,cliente_tipo:clienteResuelto.tipo,fecha:ahora,...firmarPayload(auth)}]);
   if(error) throw error;
   await registrarAuditoria({...auth,accion:"Registró tracking",modulo:"Trackings",registroCodigo:codigo||almacenId,detalle:`${cliente} · ${estadoInicial==="Miami"?"Recibido en Miami":"Prealertado"} · ${proveedorAduana.nombre} · $${costoInterno.toFixed(2)}/lb`});
 };
