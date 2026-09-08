@@ -291,6 +291,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
           ingresos={ingresos}
           clientes={clientes}
           cuentasDinero={cuentasDinero}
+          empresa={empresa}
           rol={rol}
           auth={auth}
           mostrarToast={mostrarToast}
@@ -303,6 +304,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
           gastos={gastos}
           proveedores={proveedores}
           cuentasDinero={cuentasDinero}
+          empresa={empresa}
           rol={rol}
           auth={auth}
           mostrarToast={mostrarToast}
