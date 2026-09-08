@@ -413,11 +413,18 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
   const proveedorSeleccionado = proveedores.find((p) => String(p.id) === String(proveedorParaFactura));
   const esAduana = proveedorSeleccionado?.tipo === "Aduana / Flete";
 
-  // Aduana/Flete: solo lo que Darío tiene disponible en Bodega OEX.
+  // Aduana/Flete: solo los trackings disponibles en Bodega OEX que
+  // pertenecen al proveedor seleccionado. Cada tracking queda ligado al
+  // proveedor mediante proveedorAduanaId al confirmarlo o registrarlo.
   // Transporte local: cualquier tracking activo — un mismo paquete
   // puede tener varios traslados locales en su vida, así que no se
   // restringe por estado ni por si ya está en otra factura.
-  const poolBase = esAduana ? trackingsListosAduana : trackingsActivos;
+  const poolBase = useMemo(() => {
+    if (!esAduana) return trackingsActivos;
+    return trackingsListosAduana.filter(
+      (t) => String(t.proveedorAduanaId) === String(proveedorSeleccionado.id)
+    );
+  }, [esAduana, proveedorSeleccionado, trackingsListosAduana, trackingsActivos]);
   const poolFiltrado = useMemo(() => {
     if (esAduana || !busquedaTracking.trim()) return poolBase;
     const q = busquedaTracking.toLowerCase();
@@ -520,7 +527,7 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
               </label>
             ))}
             {poolFiltrado.length === 0 && (
-              <p>{esAduana ? "No hay trackings en \"Bodega OEX\" ahora mismo." : "Ningún tracking coincide con la búsqueda."}</p>
+              <p>{esAduana ? `No hay trackings de ${proveedorSeleccionado.nombre} listos para facturar.` : "Ningún tracking coincide con la búsqueda."}</p>
             )}
           </div>
         </>
