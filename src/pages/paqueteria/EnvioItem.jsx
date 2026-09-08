@@ -90,6 +90,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
       <div className="page-title" style={{ margin: 0 }}>
         <div>
           <b>{envio.numero || "Sin cliente"}</b> <span className={`badge ${badgeEstado(envio.estado)}`}>{envio.estado}</span>{" "}
+          <span className={`badge ${numero(envio.saldo) <= 0.005 ? "badge-success" : "badge-warning"}`}>{numero(envio.saldo) <= 0.005 ? "Pagado" : "No pagado"}</span>{" "}
           <span className="badge badge-neutral">{envio.tipoEnvio}</span>
           <p>{envio.cliente || "Sin cliente"} · {envio.clienteCodigo || "Sin registrar"} · {envio.destino}</p>
           <small>{envio.fecha}</small>
