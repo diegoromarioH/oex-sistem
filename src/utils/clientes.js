@@ -87,7 +87,7 @@ export const normalizarPrealerta = (t) => ({
   fecha:t.fecha?new Date(t.fecha).toLocaleString("es-NI"):""
 });
 
-export const normalizarGasto = (g) => ({ id:g.id, fechaISO:g.fecha_iso||"", fecha:g.fecha_iso?new Date(g.fecha_iso).toLocaleString("es-NI"):"", categoria:g.categoria||"General", descripcion:g.descripcion||"", monto:numero(g.monto), proveedorId:g.proveedor_id||null, proveedorNombre:g.proveedor_nombre||"", cuentaDineroId:g.cuenta_dinero_id||null, creadoPor:g.creado_por||g.created_by_name||"" });
+export const normalizarGasto = (g) => ({ id:g.id, fechaISO:g.fecha_iso||"", fecha:g.fecha_iso?new Date(g.fecha_iso).toLocaleString("es-NI"):"", categoria:g.categoria||"General", descripcion:g.descripcion||"", monto:numero(g.monto), moneda:g.moneda||"USD", tasaCambio:numero(g.tasa_cambio), montoCuenta:numero(g.monto_cuenta), proveedorId:g.proveedor_id||null, proveedorNombre:g.proveedor_nombre||"", cuentaDineroId:g.cuenta_dinero_id||null, creadoPor:g.creado_por||g.created_by_name||"" });
 
 export const normalizarIngreso = (i) => ({ id:i.id, fechaISO:i.fecha_iso||"", fecha:i.fecha_iso?new Date(i.fecha_iso).toLocaleString("es-NI"):"", categoria:i.categoria||"General", descripcion:i.descripcion||"", monto:numero(i.monto), clienteId:i.cliente_id||null, clienteNombre:i.cliente_nombre||"", cuentaDineroId:i.cuenta_dinero_id||null, creadoPor:i.created_by_name||"" });
 
