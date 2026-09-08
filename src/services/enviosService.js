@@ -19,9 +19,12 @@ const sincronizarTrackingsVivos = async ({ envioId, cambios, auth }) => {
   if (error) throw error;
 };
 
-const postearCobro = async ({ envio, monto, cuentaDinero, fecha, auth }) => {
+const postearCobro = async ({ envio, monto, cuentaDinero, fecha, tasaCambio, auth }) => {
   if (!cuentaDinero?.id || monto <= 0) return;
-  await ajustarSaldoCuentaDinero(cuentaDinero.id, monto);
+  const tasa = numero(tasaCambio);
+  if (cuentaDinero.moneda === "NIO" && tasa <= 0) throw new Error("Escribe una tasa de cambio válida para acreditar el pago en córdobas.");
+  const montoCuenta = cuentaDinero.moneda === "NIO" ? monto * tasa : monto;
+  await ajustarSaldoCuentaDinero(cuentaDinero.id, montoCuenta);
   if (!cuentaDinero.cuentaContableId) return;
 
   const { data: cuentaContable } = await supabase
@@ -67,9 +70,9 @@ export const actualizarTrackingEnvio = async ({ envio, trackingIndex, field, val
   if (error) throw error;
 
   const trackingId = nuevosTrackings[trackingIndex]?.id;
-  if (trackingId && field === "peso") {
+  if (trackingId && ["peso", "nota"].includes(field)) {
     const { error: trackingError } = await supabase.from("tracking_registros").update({
-      peso: value,
+      [field]: field === "nota" ? String(value || "").slice(0,160) : value,
       updated_by: auth.session?.user?.id || null,
       updated_by_name: nombreUsuario(auth)
     }).eq("id", trackingId).eq("envio_id", envio.id);
@@ -133,7 +136,7 @@ export const actualizarEstadoEnvio = async ({ envio, nuevoEstado, prompts, cuent
   await registrarAuditoria({ ...auth, accion: "Cambió estado", modulo: "Paquetería", registroCodigo: envio.numero, detalle: `${envio.estado} → ${nuevoEstado} · ${trackingsActualizados.length} tracking(s)` });
 };
 
-export const saldarEnvio = async ({ envio, pago, cuentaDinero, fecha, auth }) => {
+export const saldarEnvio = async ({ envio, pago, cuentaDinero, fecha, tasaCambio, auth }) => {
   if (!pago?.metodo) throw new Error("Selecciona el método de pago.");
   if (!cuentaDinero?.id) throw new Error("Selecciona a qué cuenta de dinero entra el pago (créala en Finanzas → Cuentas si no tienes ninguna).");
 
@@ -150,6 +153,9 @@ export const saldarEnvio = async ({ envio, pago, cuentaDinero, fecha, auth }) =>
   const horaActual = new Date().toTimeString().slice(0, 8);
   const fechaISO = fecha ? new Date(`${fecha}T${horaActual}`).toISOString() : new Date().toISOString();
   const montoCobrado = Math.max(numero(envio.total) - numero(envio.abono), 0);
+  const tasa = numero(tasaCambio);
+  if (cuentaDinero.moneda === "NIO" && tasa <= 0) throw new Error("Escribe una tasa de cambio válida.");
+  const montoCuenta = cuentaDinero.moneda === "NIO" ? montoCobrado * tasa : montoCobrado;
   const nuevoEstado = pago.marcarEntregado === false ? envio.estado : "Entregado";
   const trackingsActualizados = (envio.trackings || []).map((t) => ({ ...t, estado: nuevoEstado }));
 
@@ -160,6 +166,10 @@ export const saldarEnvio = async ({ envio, pago, cuentaDinero, fecha, auth }) =>
     referencia_pago: referencia,
     abono: numero(envio.total),
     saldo: 0,
+    moneda_pago: "USD",
+    tasa_cambio_pago: tasa > 0 ? tasa : null,
+    monto_cuenta_pago: montoCuenta,
+    cuenta_dinero_pago_id: cuentaDinero.id,
     updated_by: auth.session?.user?.id || null,
     updated_by_name: nombreUsuario(auth)
   }).eq("id", envio.id);
@@ -169,7 +179,7 @@ export const saldarEnvio = async ({ envio, pago, cuentaDinero, fecha, auth }) =>
     await sincronizarTrackingsVivos({ envioId: envio.id, cambios: { estado: "Entregado" }, auth });
   }
 
-  await postearCobro({ envio, monto: montoCobrado, cuentaDinero, fecha: fechaISO, auth });
+  await postearCobro({ envio, monto: montoCobrado, cuentaDinero, fecha: fechaISO, tasaCambio: tasa, auth });
   await registrarAuditoria({
     ...auth,
     accion: nuevoEstado === "Entregado" ? "Saldó y entregó envío" : "Saldó envío",
