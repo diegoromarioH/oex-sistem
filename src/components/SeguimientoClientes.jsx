@@ -18,7 +18,7 @@ const FilaEnvio = ({ envio, empresa, cuentasDinero, auth, mostrarToast, cargarDa
       <div className="stack-gap-sm text-right">
         <b>Saldo: ${numero(envio.saldo).toFixed(2)}</b>
         {permiteSaldar && (
-        <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />
+        <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />
         )}
       </div>
     </div>
