@@ -114,7 +114,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
           <button className="btn btn-primary" onClick={avisarListoParaRetirar}>📦 Avisar listo para retirar</button>
         )}
         <div style={{ flexBasis: "100%" }}>
-          <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />
+          <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />
         </div>
         <button className="btn btn-ghost" onClick={() => setExpandido((v) => !v)}>{expandido ? "Ocultar trackings" : `Ver trackings (${envio.trackings.length})`}</button>
         <button className="btn btn-danger" onClick={eliminar}>Eliminar</button>
@@ -135,6 +135,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
                 placeholder="Peso lb"
                 onBlur={(e) => e.target.value !== String(t.peso) && guardarPeso(i, "peso", e.target.value)}
               />
+              <input className="input input-sm" maxLength={160} defaultValue={t.nota || ""} placeholder="Nota del tracking" onBlur={(e) => e.target.value !== String(t.nota || "") && guardarPeso(i, "nota", e.target.value.slice(0,160))} />
             </div>
           ))}
         </div>
