@@ -13,6 +13,7 @@ export default function Prealertas({ prealertas, clientes, proveedores = [], rol
   const [confirmForm, setConfirmForm] = useState({});
 
   const proveedoresAduana = useMemo(() => proveedores.filter((p) => p.tipo === "Aduana / Flete"), [proveedores]);
+  const diasEnPrealerta = (t) => Math.max(0, Math.floor((Date.now() - new Date(t.fechaISO || t.fecha).getTime()) / 86400000));
 
   const resolverVinculo = (t) => {
     const codigo = String(t.clienteCodigo || "").trim().toUpperCase();
@@ -90,7 +91,7 @@ export default function Prealertas({ prealertas, clientes, proveedores = [], rol
       const proveedorSel=proveedoresAduana.find((p)=>String(p.id)===String(cf.proveedorId));
       const tarifa=proveedorSel ? (t.tipoEnvio==="Aéreo"?proveedorSel.tarifaAereo:proveedorSel.tarifaMaritimo) : null;
       return <div key={t.id} className="row-card" style={{flexDirection:"column",alignItems:"stretch",borderLeft:"3px solid #F4562D"}}>
-        <div className="page-title" style={{margin:0}}><div><b>{t.tracking||t.almacenId||"Sin código"}</b> <span className="badge badge-neutral">{t.tipoEnvio}</span>{" "}<span className="badge badge-warning">{t.estado||"Sin confirmar"}</span>{c&&<>{" "}<span className="badge badge-success">Vinculado por {vinculo.motivo}</span></>}<p><b>{nombre}</b> · {codigo} · {tel} · {t.destino}</p><small style={{display:"block"}}>{t.fecha}</small></div>
+        <div className="page-title" style={{margin:0}}><div><b>{t.tracking||t.almacenId||"Sin código"}</b> <span className="badge badge-neutral">{t.tipoEnvio}</span>{" "}<span className="badge badge-warning">{t.estado||"Sin confirmar"}</span>{diasEnPrealerta(t)>=7&&<>{" "}<span className="badge badge-warning" title="Esta prealerta lleva una semana o más sin confirmarse">⚠ {diasEnPrealerta(t)} días en prealerta</span></>}{c&&<>{" "}<span className="badge badge-success">Vinculado por {vinculo.motivo}</span></>}<p><b>{nombre}</b> · {codigo} · {tel} · {t.destino}</p><small style={{display:"block"}}>{t.fecha}</small></div>
         <div className="segment"><button className="btn btn-ghost" onClick={()=>estaEditando?setEditando(null):abrirEdicion(t)}>{estaEditando?"Cancelar edición":"Editar"}</button><button className="btn btn-primary" disabled={estaEditando} onClick={()=>abrirConfirmacion(t)}>{estaConfirmando?"Cancelar confirmación":"Confirmar recibido"}</button><button className="btn btn-danger" onClick={()=>eliminar(t)}>Eliminar</button></div></div>
 
         {estaConfirmando && !estaEditando && <div className="mt-8" style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:10,padding:14}}>
