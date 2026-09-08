@@ -39,7 +39,7 @@ const filaAEmpresa = (fila) => ({
   cuentasBancarias: Array.isArray(fila.cuentas_bancarias) ? fila.cuentas_bancarias : []
 });
 
-export const useEmpresa = () => {
+export const useEmpresa = (habilitado = true) => {
   const [empresa, setEmpresaState] = useState(EMPRESA_DEFAULT);
   const [cargando, setCargando] = useState(true);
 
@@ -53,13 +53,16 @@ export const useEmpresa = () => {
     setCargando(false);
   }, []);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    if (habilitado) cargar();
+  }, [cargar, habilitado]);
 
   // Guarda el objeto completo en Supabase (upsert de la fila única id=1).
   // Si el usuario no es admin, la política de la base rechaza el cambio —
   // en ese caso se recarga lo que realmente hay guardado, para que la
   // pantalla no se quede mostrando un valor que nunca se guardó.
   const setEmpresa = async (nueva) => {
+    if (!habilitado) return;
     setEmpresaState(nueva);
     const { error } = await supabase.from("empresa_config").upsert([{
       id: 1,
