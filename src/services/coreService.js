@@ -162,13 +162,20 @@ export const cargarDatos = async () => {
   if (balanceAperturaRes.error) console.log("Error balance de apertura", balanceAperturaRes.error);
   if (configuracionContableRes.error) console.log("Error configuración contable", configuracionContableRes.error);
 
+  const clientesNormalizados = (clientesRes.data || []).map(normalizarCliente);
+  const clientesPorId = new Map(clientesNormalizados.map((cliente) => [String(cliente.id), cliente]));
+  const prealertasNormalizadas = (prealertasRes.data || []).map(normalizarPrealerta).map((tracking) => ({
+    ...tracking,
+    cliente: tracking.cliente || clientesPorId.get(String(tracking.clienteId))?.nombre || ""
+  }));
+
   return {
     pedidos: (pedidosRes.data || []).map(normalizarPedido),
     envios: (enviosRes.data || []).map(normalizarEnvio),
-    prealertas: (prealertasRes.data || []).map(normalizarPrealerta),
+    prealertas: prealertasNormalizadas,
     gastos: (gastosRes.data || []).map(normalizarGasto),
     ingresos: (ingresosRes.data || []).map(normalizarIngreso),
-    clientes: (clientesRes.data || []).map(normalizarCliente),
+    clientes: clientesNormalizados,
     auditLog: (auditRes.data || []).map(normalizarAudit),
     proveedores: (proveedoresRes.data || []).map(normalizarProveedor),
     facturasProveedor: (facturasProveedorRes.data || []).map(normalizarFacturaProveedor),
