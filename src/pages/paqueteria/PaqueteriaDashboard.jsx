@@ -85,6 +85,8 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
   const [mostrarPrealertas, setMostrarPrealertas] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
+  const [filtroPago, setFiltroPago] = useState("");
+  const [busquedaRecibo, setBusquedaRecibo] = useState("");
 
   const pendientesConfirmar = useMemo(
     () => prealertas.filter(esPendienteDeConfirmar),
@@ -195,6 +197,8 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
     setFiltroTipo(null);
     setFiltroEstado("");
     setSoloActivos(true);
+    setFiltroPago("");
+    setBusquedaRecibo("");
     setMostrarPrealertas(false);
   };
 
@@ -207,11 +211,15 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
       }
       if (filtroDestino && e.destino !== filtroDestino) return false;
       if (filtroTipo && !(e.trackings || []).some((t) => tipoDeTracking(e, t) === filtroTipo)) return false;
+      if (filtroPago === "pagado" && numero(e.saldo) > 0.005) return false;
+      if (filtroPago === "pendiente" && numero(e.saldo) <= 0.005) return false;
+      const q = busquedaRecibo.trim().toLowerCase();
+      if (q && !(e.cliente || "").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [envios, filtroEstado, soloActivos, filtroDestino, filtroTipo]);
+  }, [envios, filtroEstado, soloActivos, filtroDestino, filtroTipo, filtroPago, busquedaRecibo]);
 
-  const hayFiltrosActivos = filtroDestino || filtroTipo || filtroEstado || !soloActivos || mostrarPrealertas;
+  const hayFiltrosActivos = filtroDestino || filtroTipo || filtroEstado || filtroPago || busquedaRecibo || !soloActivos || mostrarPrealertas;
 
   return (
     <div>
@@ -288,6 +296,8 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
         <div className="page-title" style={{ margin: 0 }}>
           <h3>Recibos {filtroEstado ? `· ${filtroEstado}` : soloActivos ? "activos" : "(todos)"}</h3>
           <div className="segment">
+            <input className="input input-sm" placeholder="Buscar por nombre" value={busquedaRecibo} onChange={(e) => setBusquedaRecibo(e.target.value)} />
+            <select className="input input-sm" value={filtroPago} onChange={(e) => setFiltroPago(e.target.value)}><option value="">Pagados y no pagados</option><option value="pagado">Pagados</option><option value="pendiente">No pagados</option></select>
             <select className="input input-sm" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
               <option value="">Filtrar por estado…</option>
               {TODOS_LOS_ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
