@@ -6,7 +6,7 @@ import ClienteSelector from "../../components/ClienteSelector";
 
 export default function RegistrarTracking({ clientes, proveedores = [], auth, mostrarToast, cargarDatos }) {
   const [cliente, setCliente] = useState("");
-  const [contacto, setContacto] = useState("");
+  const [contacto, setContacto] = useState("+505 ");
   const [clienteId, setClienteId] = useState(null);
   const [destino, setDestino] = useState("Ometepe");
   const [tipoEnvio, setTipoEnvio] = useState("Marítimo");
@@ -31,7 +31,7 @@ export default function RegistrarTracking({ clientes, proveedores = [], auth, mo
     try {
       await registrarTracking({ form: { cliente, contacto, destino, tipoEnvio, codigo, almacenId, nota, estadoInicial }, clientesEnMemoria: clientes, proveedorAduana: proveedorSeleccionado, auth });
       mostrarToast(estadoInicial === "Miami" ? "Tracking registrado como Recibido en Miami." : "Tracking registrado como Prealertado en Envíos activos.");
-      setCliente(""); setContacto(""); setClienteId(null); setCodigo(""); setAlmacenId(""); setNota(""); setEstadoInicial("Prealertado");
+      setCliente(""); setContacto("+505 "); setClienteId(null); setCodigo(""); setAlmacenId(""); setNota(""); setEstadoInicial("Prealertado");
       await cargarDatos();
     } catch (err) { mostrarToast(err.message || "No se pudo guardar el tracking.", "error"); }
     finally { setGuardando(false); }
