@@ -6,6 +6,7 @@ import { generarDetalleEnvio } from "../../services/pdfService";
 import { perfilEstandarDestino, tarifaDesdePerfil } from "../../utils/calculosPaqueteria";
 import ClienteSelector from "../../components/ClienteSelector";
 import TarifaSelect from "../../components/TarifaSelect";
+import { badgeEstado, esEstadoDisponibleParaRecibo } from "../../utils/estadosEnvio";
 
 export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empresa, auth, mostrarToast, cargarDatos }) {
   const [clienteId, setClienteId] = useState(null);
@@ -19,7 +20,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
     if (!clienteSeleccionado) return [];
     return prealertas.filter((t) =>
       t.clienteId === clienteSeleccionado.id &&
-      t.estado === "Bodega OEX" &&
+      esEstadoDisponibleParaRecibo(t.estado, t.destino) &&
       numero(t.peso) > 0 &&
       !t.envioId
     );
@@ -28,8 +29,9 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
   const gruposPorDestino = useMemo(() => {
     const mapa = {};
     trackingsListos.forEach((t) => {
-      if (!mapa[t.destino]) mapa[t.destino] = [];
-      mapa[t.destino].push(t);
+      const clave = `${t.destino}|${t.estado}`;
+      if (!mapa[clave]) mapa[clave] = [];
+      mapa[clave].push(t);
     });
     return mapa;
   }, [trackingsListos]);
@@ -37,7 +39,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
   return (
     <div className="card">
       <h3>Generar recibo</h3>
-      <p>El recibo puede generarse cuando los paquetes ya están en <b>Bodega OEX</b> y tienen peso registrado. Los trackings seguirán visibles en Envíos activos y avanzarán junto con el recibo.</p>
+      <p>El recibo puede generarse desde <b>Tránsito Managua</b> o <b>Tránsito Ometepe</b>, y en cualquier estado posterior. Debe tener peso registrado y saldrá con su estado actual.</p>
 
       <ClienteSelector
         clientes={clientes} clienteId={clienteId} nombre={clienteNombre} telefono={clienteTelefono}
@@ -48,14 +50,17 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
       {!clienteSeleccionado && <p className="mt-16">Selecciona un cliente existente de la lista para continuar.</p>}
 
       {clienteSeleccionado && trackingsListos.length === 0 && (
-        <p className="mt-16">{clienteSeleccionado.nombre} no tiene trackings disponibles en Bodega OEX con peso registrado.</p>
+        <p className="mt-16">{clienteSeleccionado.nombre} no tiene trackings disponibles desde Tránsito Managua/Ometepe con peso registrado.</p>
       )}
 
-      {clienteSeleccionado && Object.entries(gruposPorDestino).map(([destino, trackings]) => (
+      {clienteSeleccionado && Object.entries(gruposPorDestino).map(([clave, trackings]) => {
+        const [destino, estadoActual] = clave.split("|");
+        return (
         <GrupoRecibo
-          key={destino}
+          key={clave}
           cliente={clienteSeleccionado}
           destino={destino}
+          estadoActual={estadoActual}
           trackings={trackings}
           tarifas={tarifas}
           empresa={empresa}
@@ -65,12 +70,13 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
           generando={generando}
           setGenerando={setGenerando}
         />
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, mostrarToast, cargarDatos, generando, setGenerando }) {
+function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, empresa, auth, mostrarToast, cargarDatos, generando, setGenerando }) {
   const [tarifaPerfil, setTarifaPerfil] = useState(perfilEstandarDestino(destino));
   const [tarifaPersonalizada, setTarifaPersonalizada] = useState("");
   const [descuento, setDescuento] = useState("");
@@ -119,7 +125,7 @@ function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, most
         trackings: (envio.trackings || []).map((t) => ({ ...t, codigo: t.codigo || t.tracking }))
       };
       generarDetalleEnvio(envioPDF, tarifas, empresa);
-      mostrarToast(`Recibo ${numeroRecibo} generado desde Bodega OEX — los trackings siguen activos.`);
+      mostrarToast(`Recibo ${numeroRecibo} generado con estado ${estadoActual}.`);
       await cargarDatos();
     } catch (err) {
       mostrarToast(err.message || "No se pudo generar el recibo.", "error");
@@ -130,7 +136,7 @@ function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, most
 
   return (
     <div className="mt-16" style={{ borderTop: "1px solid #D8DADD", paddingTop: 16 }}>
-      <h4>{destino} — {trackings.length} tracking(s) en Bodega OEX</h4>
+      <h4>{destino} — {trackings.length} tracking(s) · {estadoActual}</h4>
       <div className="mini-tracking-list">
         {trackings.map((t) => (
           <label key={t.id} className="mini-tracking-row" style={{ cursor: "pointer" }}>
@@ -138,7 +144,7 @@ function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, most
             <b>{t.tracking || t.almacenId || "Sin código"}</b>
             <span className="badge badge-neutral">{t.tipoEnvio}</span>
             <span>{numero(t.peso).toFixed(2)} lb</span>
-            <span className="badge badge-info">Bodega OEX</span>
+            <span className={`badge ${badgeEstado(t.estado)}`}>{t.estado}</span>
             {t.nota && <small title={t.nota}>Nota: {t.nota}</small>}
           </label>
         ))}
