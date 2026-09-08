@@ -95,6 +95,7 @@ export const normalizarProveedor = (p) => ({
   id:p.id,
   nombre:p.nombre||"",
   tipo:p.tipo||"Otro",
+  aplicaDestino:p.aplica_destino||"General",
   contacto:p.contacto||"",
   telefono:p.telefono||"",
   correo:p.correo||"",
