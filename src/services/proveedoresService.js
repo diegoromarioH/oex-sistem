@@ -17,6 +17,7 @@ export const crearProveedor = async ({ form, auth }) => {
   const { error } = await supabase.from("proveedores").insert([{
     nombre: form.nombre,
     tipo: form.tipo || "Transporte local",
+    aplica_destino: form.aplicaDestino || "General",
     contacto: form.contacto || "",
     telefono: form.telefono || "",
     correo: form.correo || "",
@@ -42,6 +43,7 @@ export const actualizarProveedor = async ({ proveedor, form, auth }) => {
   const { error } = await supabase.from("proveedores").update({
     nombre: form.nombre,
     tipo: form.tipo,
+    aplica_destino: form.aplicaDestino || "General",
     contacto: form.contacto || "",
     telefono: form.telefono || "",
     correo: form.correo || "",
