@@ -23,6 +23,16 @@ export const esListoParaRetiroProveedor = (estado) => estado === ESTADO_LISTO_RE
 
 export const siguienteEstadoTrasRetiroProveedor = (destino) => destino === "Managua" ? "Tránsito Managua" : "Tránsito Ometepe";
 
+// Un recibo se genera cuando el paquete ya salió de Bodega OEX hacia su
+// destino final. También puede generarse en cualquiera de los estados
+// posteriores, conservando el estado operativo real en el recibo.
+export const esEstadoDisponibleParaRecibo = (estado, destino) => {
+  const pipeline = estadosPorDestino(destino);
+  const inicio = pipeline.indexOf(destino === "Managua" ? "Tránsito Managua" : "Tránsito Ometepe");
+  const actual = pipeline.indexOf(estado);
+  return inicio >= 0 && actual >= inicio;
+};
+
 export const CATEGORIA_TRANSITO = "transito";
 export const CATEGORIA_POR_RETIRAR = "retirar";
 export const CATEGORIA_ENTREGADO = "entregado";
