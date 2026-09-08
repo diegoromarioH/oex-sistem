@@ -51,7 +51,7 @@ export default function RegistrarTracking({ clientes, proveedores = [], auth, mo
       <label><span className="field-label">Estado inicial</span><select className="input" value={estadoInicial} onChange={(e) => { setEstadoInicial(e.target.value); if (e.target.value !== "Miami") setAlmacenId(""); }}><option value="Prealertado">Prealertado</option><option value="Miami">Recibido en Miami</option></select></label>
       {estadoInicial === "Miami" && <label><span className="field-label">ID almacén</span><input className="input" value={almacenId} onChange={(e) => setAlmacenId(e.target.value)} placeholder="Obligatorio" /></label>}
     </div>
-    <textarea className="input" placeholder="Nota" value={nota} onChange={(e) => setNota(e.target.value)} />
+    <textarea className="input" maxLength={160} placeholder="Nota de este tracking (máximo 160 caracteres)" value={nota} onChange={(e) => setNota(e.target.value)} />
     <button className="btn btn-primary mt-16" disabled={guardando} onClick={guardar}>{guardando ? "Guardando..." : "Registrar tracking"}</button>
   </div>;
 }
