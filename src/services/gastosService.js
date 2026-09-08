@@ -30,12 +30,25 @@ export const guardarGasto = async ({ form, auth }) => {
   // pasado) combinada con la hora real del momento en que se guarda.
   const horaActual = new Date().toTimeString().slice(0, 8); // HH:MM:SS
   const monto = numero(form.monto);
+  const moneda = form.moneda === "NIO" ? "NIO" : "USD";
+  const monedaCuenta = form.cuentaDinero?.moneda || moneda;
+  const tasaCambio = numero(form.tasaCambio);
+  if ((moneda === "NIO" || (form.cuentaDinero?.id && moneda !== monedaCuenta)) && tasaCambio <= 0) {
+    throw new Error("Escribe una tasa de cambio válida para registrar el gasto en córdobas.");
+  }
+  const montoUSD = moneda === "NIO" ? monto / tasaCambio : monto;
+  const montoCuenta = monedaCuenta === moneda
+    ? monto
+    : monedaCuenta === "NIO" ? montoUSD * tasaCambio : montoUSD;
   const fechaISO = new Date(`${form.fecha}T${horaActual}`).toISOString();
   const { data: creado, error } = await supabase.from("gastos_operativos").insert([{
     fecha_iso: fechaISO,
     categoria: form.categoria || "General",
     descripcion: form.descripcion,
     monto,
+    moneda,
+    tasa_cambio: tasaCambio > 0 ? tasaCambio : null,
+    monto_cuenta: form.cuentaDinero?.id ? montoCuenta : null,
     // Vínculo opcional a proveedor — para pagos a proveedores que no son
     // Aduana/Flete (esos van por el flujo de factura por tracking en
     // proveedoresService.js). form.proveedor es el objeto completo del
@@ -50,7 +63,7 @@ export const guardarGasto = async ({ form, auth }) => {
   if (error) throw error;
 
   if (form.cuentaDinero?.id) {
-    await ajustarSaldoCuentaDinero(form.cuentaDinero.id, -monto);
+    await ajustarSaldoCuentaDinero(form.cuentaDinero.id, -montoCuenta);
 
     // Solo se postea al libro diario si la cuenta de dinero elegida
     // está vinculada a una cuenta contable de Activo (campo
@@ -68,8 +81,8 @@ export const guardarGasto = async ({ form, auth }) => {
           origenId: creado.id,
           auth,
           lineas: [
-            { cuentaCodigo: cuentaDeCategoria(form.categoria), debe: monto, haber: 0 },
-            { cuentaCodigo: cuentaContable.codigo, cuentaDineroId: form.cuentaDinero.id, debe: 0, haber: monto }
+            { cuentaCodigo: cuentaDeCategoria(form.categoria), debe: montoUSD, haber: 0 },
+            { cuentaCodigo: cuentaContable.codigo, cuentaDineroId: form.cuentaDinero.id, debe: 0, haber: montoUSD }
           ]
         });
       }
@@ -78,7 +91,7 @@ export const guardarGasto = async ({ form, auth }) => {
 
   await registrarAuditoria({
     ...auth, accion: "Registró gasto", modulo: "Finanzas", registroCodigo: form.categoria || "General",
-    detalle: `${form.descripcion} · $${monto.toFixed(2)}${form.proveedor?.nombre ? " · " + form.proveedor.nombre : ""}${form.cuentaDinero?.nombre ? " · " + form.cuentaDinero.nombre : ""}`
+    detalle: `${form.descripcion} · ${moneda === "NIO" ? "C$" : "$"}${monto.toFixed(2)}${form.cuentaDinero?.nombre ? ` · salió ${monedaCuenta === "NIO" ? "C$" : "$"}${montoCuenta.toFixed(2)} de ${form.cuentaDinero.nombre}` : ""}`
   });
 };
 
@@ -89,7 +102,7 @@ export const eliminarGasto = async ({ gasto, auth }) => {
   // Si el gasto estaba vinculado a una cuenta de dinero, se le devuelve
   // el monto (el gasto ya no existe, así que ese dinero "vuelve").
   if (gasto.cuentaDineroId) {
-    await ajustarSaldoCuentaDinero(gasto.cuentaDineroId, numero(gasto.monto));
+    await ajustarSaldoCuentaDinero(gasto.cuentaDineroId, numero(gasto.montoCuenta || gasto.monto));
   }
 
   // Reversa el asiento si existía (no falla si nunca se posteó uno,
