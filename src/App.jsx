@@ -50,8 +50,8 @@ const subvistaGuardadaValida = (moduloId, fallback) => { const modulo = MODULOS.
 const detectarTemaSistema = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
 export default function App() {
-  const { session, usuarioActual, rol, cargandoAuth, login, logout } = useAuth();
-  const datos = useDatosOEX(session); const { tarifas, setTarifas } = useTarifas(); const { empresa, setEmpresa } = useEmpresa(); const { toast, mostrarToast } = useToast();
+  const { session, usuarioActual, rol, autorizado, errorAuth, cargandoAuth, login, logout } = useAuth();
+  const datos = useDatosOEX(autorizado ? session : null); const { tarifas, setTarifas } = useTarifas(autorizado); const { empresa, setEmpresa } = useEmpresa(autorizado); const { toast, mostrarToast } = useToast();
   const [vista, setVista] = useState(vistaGuardadaValida);
   const [subvistaPaqueteria, setSubvistaPaqueteria] = useState(() => subvistaGuardadaValida("paqueteria", "dashboard"));
   const [subvistaFinanzas, setSubvistaFinanzas] = useState(() => subvistaGuardadaValida("finanzas", "resumen"));
@@ -67,7 +67,9 @@ export default function App() {
   const [sidebarColapsado, setSidebarColapsado] = useState(() => localStorage.getItem("oex_sidebar_colapsado") === "1"); const [sidebarAbiertoMovil, setSidebarAbiertoMovil] = useState(false);
   const toggleSidebarColapsado = () => setSidebarColapsado(actual => { const nuevo = !actual; localStorage.setItem("oex_sidebar_colapsado", nuevo ? "1" : "0"); return nuevo; });
   const cambiarTema = nuevo => { setTema(nuevo); localStorage.setItem("oex_tema", nuevo); };
-  if (cargandoAuth) return <div className="page">Cargando…</div>; if (!session) return <Login onLogin={login} />;
+  if (cargandoAuth) return <div className="page">Verificando acceso…</div>;
+  if (!session) return <Login onLogin={login} />;
+  if (!autorizado) return <Login bloqueado errorInicial={errorAuth} onLogout={logout} />;
   const auth = { session, usuarioActual }; const moduloActivo = MODULOS.find(m => m.id === vista); const subvistaActiva = vista === "paqueteria" ? subvistaPaqueteria : vista === "finanzas" ? subvistaFinanzas : null;
   const propsFinanzas = { pedidos:datos.pedidos, envios:datos.envios, gastos:datos.gastos, ingresos:datos.ingresos, clientes:datos.clientes, prealertas:datos.prealertas, proveedores:datos.proveedores, facturasProveedor:datos.facturasProveedor, cuentasContables:datos.cuentasContables, cuentasDinero:datos.cuentasDinero, balanceApertura:datos.balanceApertura, fechaApertura:datos.fechaApertura, empresa, rol, auth, mostrarToast, cargarDatos:datos.cargarDatos };
   return <div className="app-shell app-shell--sidebar" data-theme={temaResuelto} style={{ "--module-color": moduloActivo?.color }}>
