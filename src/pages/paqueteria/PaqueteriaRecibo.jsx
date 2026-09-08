@@ -139,6 +139,7 @@ function GrupoRecibo({ cliente, destino, trackings, tarifas, empresa, auth, most
             <span className="badge badge-neutral">{t.tipoEnvio}</span>
             <span>{numero(t.peso).toFixed(2)} lb</span>
             <span className="badge badge-info">Bodega OEX</span>
+            {t.nota && <small title={t.nota}>Nota: {t.nota}</small>}
           </label>
         ))}
       </div>
