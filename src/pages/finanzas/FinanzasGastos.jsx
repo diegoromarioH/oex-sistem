@@ -17,11 +17,13 @@ const nombreMes = (fechaISO) => {
   return txt.charAt(0).toUpperCase() + txt.slice(1);
 };
 
-export default function FinanzasGastos({ gastos, proveedores = [], cuentasDinero = [], rol, auth, mostrarToast, cargarDatos }) {
+export default function FinanzasGastos({ gastos, proveedores = [], cuentasDinero = [], empresa, rol, auth, mostrarToast, cargarDatos }) {
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [categoria, setCategoria] = useState("General");
   const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
+  const [moneda, setMoneda] = useState("USD");
+  const [tasaCambio, setTasaCambio] = useState(String(empresa?.tipoCambio || ""));
   // Vínculo opcional a proveedor — para pagos a proveedores que NO son
   // Aduana/Flete (esos van por factura-por-tracking en Finanzas → Proveedores).
   // "" = sin proveedor, gasto normal (luz, internet, etc.).
@@ -46,12 +48,13 @@ export default function FinanzasGastos({ gastos, proveedores = [], cuentasDinero
     [gastos, mesFiltro]
   );
 
-  const totalGastos = gastosFiltrados.reduce((a, g) => a + numero(g.monto), 0);
+  const montoUSD = (g) => g.moneda === "NIO" && numero(g.tasaCambio) > 0 ? numero(g.monto) / numero(g.tasaCambio) : numero(g.monto);
+  const totalGastos = gastosFiltrados.reduce((a, g) => a + montoUSD(g), 0);
   const gastosVinculados = gastosFiltrados.filter((g) => g.proveedorNombre).length;
 
   const gastosPorCategoria = useMemo(() => {
     const mapa = new Map();
-    gastosFiltrados.forEach((g) => mapa.set(g.categoria, (mapa.get(g.categoria) || 0) + numero(g.monto)));
+    gastosFiltrados.forEach((g) => mapa.set(g.categoria, (mapa.get(g.categoria) || 0) + montoUSD(g)));
     return [...mapa.entries()]
       .map(([categoria, monto]) => ({ categoria, monto, pct: totalGastos > 0 ? (monto / totalGastos) * 100 : 0 }))
       .sort((a, b) => b.monto - a.monto);
@@ -64,7 +67,7 @@ export default function FinanzasGastos({ gastos, proveedores = [], cuentasDinero
     try {
       const proveedor = proveedores.find((p) => String(p.id) === String(proveedorGastoId)) || null;
       const cuentaDinero = cuentasDinero.find((c) => String(c.id) === String(cuentaDineroId)) || null;
-      await guardarGasto({ form: { fecha, categoria, descripcion, monto, proveedor, cuentaDinero }, auth });
+      await guardarGasto({ form: { fecha, categoria, descripcion, monto, moneda, tasaCambio, proveedor, cuentaDinero }, auth });
       mostrarToast("Gasto registrado.");
       setDescripcion(""); setMonto(""); setProveedorGastoId(""); setCuentaDineroId("");
       cargarDatos();
@@ -127,7 +130,10 @@ export default function FinanzasGastos({ gastos, proveedores = [], cuentasDinero
             </label>
           </div>
           <label className="mt-8"><span className="field-label">Descripción</span><input className="input" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} /></label>
-          <label className="mt-8"><span className="field-label">Monto ($)</span><input className="input" type="number" value={monto} onChange={(e) => setMonto(e.target.value)} /></label>
+          <div className="form-grid mt-8">
+            <label><span className="field-label">Moneda del gasto</span><select className="input" value={moneda} onChange={(e) => setMoneda(e.target.value)}><option value="USD">Dólares (USD)</option><option value="NIO">Córdobas (NIO)</option></select></label>
+            <label><span className="field-label">Monto ({moneda === "NIO" ? "C$" : "$"})</span><input className="input" type="number" min="0" step="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} /></label>
+          </div>
           {proveedores.length > 0 && (
             <div className="mt-8">
               <Select
@@ -149,10 +155,13 @@ export default function FinanzasGastos({ gastos, proveedores = [], cuentasDinero
                 onChange={(e) => setCuentaDineroId(e.target.value)}
                 options={[
                   { value: "", label: "No registrar seguimiento de dinero" },
-                  ...cuentasDinero.map((c) => ({ value: c.id, label: `${c.nombre} (saldo ${formatoMoneda(c.saldoActual ?? c.saldo_actual, c.moneda)})` }))
+                  ...cuentasDinero.filter((c) => c.activa !== false).map((c) => ({ value: c.id, label: `${c.nombre} · ${c.moneda} (saldo ${formatoMoneda(c.saldoActual ?? c.saldo_actual, c.moneda)})` }))
                 ]}
               />
             </div>
+          )}
+          {(moneda === "NIO" || (cuentaDineroId && cuentasDinero.find((c) => String(c.id) === String(cuentaDineroId))?.moneda !== moneda)) && (
+            <label className="mt-8"><span className="field-label">Tipo de cambio (C$ por US$1)</span><input className="input" type="number" min="0" step="0.01" value={tasaCambio} onChange={(e) => setTasaCambio(e.target.value)} /></label>
           )}
           <button className="btn btn-primary mt-16" disabled={guardando} onClick={guardar}>{guardando ? "Guardando..." : "Registrar gasto"}</button>
         </div>
@@ -168,7 +177,7 @@ export default function FinanzasGastos({ gastos, proveedores = [], cuentasDinero
                   <small>{g.fecha}</small>
                 </div>
                 <div className="stack-gap-sm text-right">
-                  <b>${numero(g.monto).toFixed(2)}</b>
+                  <b>{formatoMoneda(numero(g.monto), g.moneda)}</b>
                   <button className="btn btn-danger" onClick={() => eliminar(g)}>Eliminar</button>
                 </div>
               </div>
