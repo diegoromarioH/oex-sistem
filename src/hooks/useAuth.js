@@ -1,5 +1,5 @@
 // src/hooks/useAuth.js
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "../supabase";
 
 export const useAuth = () => {
@@ -9,9 +9,11 @@ export const useAuth = () => {
   const [autorizado, setAutorizado] = useState(false);
   const [errorAuth, setErrorAuth] = useState("");
   const [cargandoAuth, setCargandoAuth] = useState(true);
+  const perfilVerificadoId = useRef(null);
 
   const cargarPerfil = useCallback(async (sesion) => {
     if (!sesion?.user) {
+      perfilVerificadoId.current = null;
       setUsuarioActual(null);
       setRol(null);
       setAutorizado(false);
@@ -25,6 +27,7 @@ export const useAuth = () => {
       .maybeSingle();
 
     if (error) {
+      perfilVerificadoId.current = null;
       setUsuarioActual(null);
       setRol(null);
       setAutorizado(false);
@@ -33,11 +36,13 @@ export const useAuth = () => {
     }
 
     if (data && ["admin", "operador"].includes(data.rol)) {
+      perfilVerificadoId.current = sesion.user.id;
       setUsuarioActual({ nombre: data.nombre || sesion.user.email, email: sesion.user.email });
       setRol(data.rol);
       setAutorizado(true);
       setErrorAuth("");
     } else {
+      perfilVerificadoId.current = null;
       setUsuarioActual(null);
       setRol(null);
       setAutorizado(false);
@@ -56,10 +61,32 @@ export const useAuth = () => {
       cargarPerfil(data.session).finally(() => setCargandoAuth(false));
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nuevaSesion) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((evento, nuevaSesion) => {
       setSession(nuevaSesion);
-      setCargandoAuth(true);
-      cargarPerfil(nuevaSesion).finally(() => setCargandoAuth(false));
+
+      if (!nuevaSesion?.user) {
+        perfilVerificadoId.current = null;
+        setUsuarioActual(null);
+        setRol(null);
+        setAutorizado(false);
+        setErrorAuth("");
+        setCargandoAuth(false);
+        return;
+      }
+
+      // Supabase puede emitir SIGNED_IN nuevamente al recuperar el foco y
+      // TOKEN_REFRESHED al renovar el JWT. Si el mismo usuario ya fue
+      // autorizado, solo actualizamos la sesión: no mostramos la pantalla de
+      // carga ni desmontamos los formularios que el usuario está completando.
+      const mismoPerfil = perfilVerificadoId.current === nuevaSesion.user.id;
+      if (mismoPerfil && ["SIGNED_IN", "TOKEN_REFRESHED"].includes(evento)) return;
+
+      if (!mismoPerfil) setCargandoAuth(true);
+      // Diferimos la consulta para no ejecutar otra llamada de Supabase dentro
+      // del callback síncrono de cambio de autenticación.
+      setTimeout(() => {
+        cargarPerfil(nuevaSesion).finally(() => setCargandoAuth(false));
+      }, 0);
     });
 
     return () => listener?.subscription?.unsubscribe();
