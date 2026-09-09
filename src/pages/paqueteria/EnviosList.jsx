@@ -45,30 +45,36 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
     <div className="card recibos-card">
       <div className="page-title recibos-title">
         <div><h3>Todos los recibos</h3><small>{filtrados.length} de {envios.length} recibos</small></div>
-        <div className="actions recibos-filtros">
-          <input className="input input-sm" placeholder="Buscar cliente, número, tracking o ID almacén" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-          <select className="input input-sm" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-            <option value="">Todos los estados</option>
-            {TODOS_LOS_ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
-          </select>
-          <select className="input input-sm" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
-            <option value="">Aéreo y marítimo</option>
-            <option value="Aéreo">Aéreo</option>
-            <option value="Marítimo">Marítimo</option>
-          </select>
-          <select className="input input-sm" value={filtroDestino} onChange={(e) => setFiltroDestino(e.target.value)}>
-            <option value="">Managua y Ometepe</option>
-            <option value="Managua">Managua</option>
-            <option value="Ometepe">Ometepe</option>
-          </select>
-          <select className="input input-sm" value={filtroPago} onChange={(e) => setFiltroPago(e.target.value)}>
-            <option value="">Pagados y no pagados</option>
-            <option value="pagado">Pagados</option>
-            <option value="pendiente">No pagados</option>
-          </select>
-          {hayFiltros && <button className="btn btn-ghost" onClick={limpiarFiltros}>Limpiar</button>}
-          <button className="btn" onClick={() => exportarEnviosExcel(filtrados)}>Exportar Excel</button>
+        <button className="btn recibos-exportar" onClick={() => exportarEnviosExcel(filtrados)}>Exportar Excel</button>
+      </div>
+
+      <div className="recibos-toolbar">
+        <input className="input input-sm recibos-search" placeholder="Buscar cliente, número, tracking o ID almacén" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+
+        <div className="tracking-filter-group" aria-label="Filtrar recibos por tipo de envío">
+          {[["", "Todos"], ["Aéreo", "Aéreos"], ["Marítimo", "Marítimos"]].map(([valor, etiqueta]) => (
+            <button key={etiqueta} type="button" className={`tracking-filter-btn ${filtroTipo === valor ? "active" : ""}`} onClick={() => setFiltroTipo(valor)}>{etiqueta}</button>
+          ))}
         </div>
+
+        <div className="tracking-filter-group destino" aria-label="Filtrar recibos por destino">
+          {[["", "Todos"], ["Managua", "Managua"], ["Ometepe", "Ometepe"]].map(([valor, etiqueta]) => (
+            <button key={etiqueta} type="button" className={`tracking-filter-btn ${filtroDestino === valor ? "active" : ""}`} onClick={() => setFiltroDestino(valor)}>{etiqueta}</button>
+          ))}
+        </div>
+
+        <div className="tracking-filter-group recibos-pago" aria-label="Filtrar recibos por pago">
+          {[["", "Todos"], ["pagado", "Pagados"], ["pendiente", "No pagados"]].map(([valor, etiqueta]) => (
+            <button key={etiqueta} type="button" className={`tracking-filter-btn ${filtroPago === valor ? "active" : ""}`} onClick={() => setFiltroPago(valor)}>{etiqueta}</button>
+          ))}
+        </div>
+
+        <select className="input input-sm recibos-estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+          <option value="">Todos los estados</option>
+          {TODOS_LOS_ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
+        </select>
+
+        {hayFiltros && <button className="btn btn-ghost recibos-limpiar" onClick={limpiarFiltros}>Limpiar</button>}
       </div>
 
       <div className="list recibos-list">

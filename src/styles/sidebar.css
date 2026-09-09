@@ -512,18 +512,27 @@
 
 /* Recibos: filtros y tarjetas de alta densidad para revisar más registros. */
 .recibos-card {
-  width: min(100%, 980px);
-  margin-right: auto;
-  margin-left: auto;
+  width: 100%;
+  max-width: none;
   padding: 14px;
 }
 .recibos-title { margin: 0 0 10px; gap: 8px; }
 .recibos-title h3 { margin-bottom: 2px; }
-.recibos-filtros { gap: 6px; }
-.recibos-filtros .input { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
-.recibos-filtros input { width: min(300px, 100%); }
-.recibos-filtros select { width: 142px; }
-.recibos-filtros .btn { min-height: 36px; padding: 6px 10px; }
+.recibos-exportar { min-height: 36px; padding: 6px 11px; }
+.recibos-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.35fr) auto auto auto minmax(155px, .65fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.recibos-toolbar .input { min-height: 38px; background: var(--surface); }
+.recibos-search, .recibos-estado { width: 100% !important; min-width: 0; }
+.recibos-toolbar .tracking-filter-btn { padding: 7px 9px; }
+.recibos-limpiar { min-height: 38px; padding: 7px 10px; }
 .recibos-list { gap: 6px; margin-top: 10px; }
 .recibo-item--compacto { padding: 8px 10px; gap: 2px; border-radius: 10px; }
 .recibo-item--compacto .page-title { margin: 0; gap: 8px; }
@@ -534,19 +543,23 @@
 .recibo-item--compacto .recibo-acciones-principales > .btn,
 .recibo-item--compacto .recibo-acciones-principales > .input { min-height: 32px; padding: 5px 9px; font-size: .78rem; }
 
+@media (max-width: 1250px) {
+  .recibos-toolbar { grid-template-columns: minmax(240px, 1fr) auto auto; }
+  .recibos-pago, .recibos-estado { min-width: 0; }
+}
+
 @media (max-width: 720px) {
   .recibos-card { width: 100%; padding: 11px; }
-  .recibos-filtros { display: grid; grid-template-columns: 1fr 1fr; }
-  .recibos-filtros > * { width: 100% !important; }
-  .recibos-filtros > input { grid-column: 1 / -1; }
+  .recibos-toolbar { display: flex; flex-direction: column; align-items: stretch; padding: 9px; }
+  .recibos-toolbar .tracking-filter-group { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
+  .recibos-toolbar .tracking-filter-btn { padding: 9px 5px; }
+  .recibos-toolbar .input, .recibos-limpiar { width: 100% !important; min-height: 42px; }
   .recibo-item--compacto .page-title { flex-direction: row; align-items: flex-start; }
   .recibo-item--compacto .recibo-acciones-principales { flex-direction: row; flex-wrap: wrap; }
   .recibo-item--compacto .recibo-acciones-principales > .input { flex: 1 1 165px; }
 }
 
 @media (max-width: 480px) {
-  .recibos-filtros { grid-template-columns: 1fr; }
-  .recibos-filtros > input { grid-column: auto; }
   .recibos-card { padding: 9px; }
   .recibo-item--compacto { padding: 8px; }
   .recibo-item--compacto .page-title { flex-direction: column; }
