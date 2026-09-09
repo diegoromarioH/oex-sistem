@@ -561,6 +561,12 @@
 
 @media (max-width: 480px) {
   .recibos-card { padding: 9px; }
+  .recibos-title { align-items: stretch; }
+  .recibos-exportar { width: 100%; min-height: 42px; }
+  .recibos-toolbar .tracking-filter-group,
+  .recibos-toolbar .tracking-filter-group.destino { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .recibos-toolbar .tracking-filter-btn { min-width: 0; padding: 8px 3px; font-size: 11.5px; text-align: center; }
   .recibo-item--compacto { padding: 8px; }
   .recibo-item--compacto .page-title { flex-direction: column; }
+  .recibo-item--compacto .page-title > * { width: 100%; }
 }
