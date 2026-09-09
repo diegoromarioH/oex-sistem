@@ -166,7 +166,7 @@ export const saldarEnvio = async ({ envio, pago, cuentaDinero, fecha, tasaCambio
     referencia_pago: referencia,
     abono: numero(envio.total),
     saldo: 0,
-    moneda_pago: "USD",
+    moneda_pago: pago.moneda === "NIO" ? "NIO" : "USD",
     tasa_cambio_pago: tasa > 0 ? tasa : null,
     monto_cuenta_pago: montoCuenta,
     cuenta_dinero_pago_id: cuentaDinero.id,

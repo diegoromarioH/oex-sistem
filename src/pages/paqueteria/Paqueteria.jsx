@@ -9,10 +9,11 @@ import RegistrarTracking from "./Registrartracking";
 import TrackingsActivos from "./TrackingsActivos";
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 
-export default function Paqueteria({ envios, prealertas, facturasProveedor, auditLog, clientes, proveedores = [], rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, vistaInicial = "dashboard" }) {
+export default function Paqueteria({ envios, prealertas, facturasProveedor, auditLog, clientes, proveedores = [], rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, vistaInicial = "dashboard", onVistaChange, onNavigate }) {
   const [vista, setVista] = useState(vistaInicial);
   useEffect(() => { setVista(vistaInicial); }, [vistaInicial]);
   useEffect(() => { localStorage.setItem("oex_subvista_paqueteria", vista); }, [vista]);
+  useEffect(() => { onVistaChange?.(vista); }, [vista, onVistaChange]);
 
   const pendientesConfirmar = prealertas.filter(esPendienteDeConfirmar).length;
   const trackingsActivos = prealertas.filter((t) => !esPendienteDeConfirmar(t) && t.estado !== "Entregado").length;
@@ -32,7 +33,7 @@ export default function Paqueteria({ envios, prealertas, facturasProveedor, audi
       {vista === "nuevo" && <PaqueteriaRecibo prealertas={prealertas} clientes={clientes} tarifas={tarifas} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "registrar" && <RegistrarTracking clientes={clientes} proveedores={proveedores} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "prealertas" && <Prealertas prealertas={prealertas} clientes={clientes} proveedores={proveedores} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
-      {vista === "activos" && <TrackingsActivos prealertas={prealertas} envios={envios} clientes={clientes} proveedores={proveedores} facturasProveedor={facturasProveedor} auditLog={auditLog} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+      {vista === "activos" && <TrackingsActivos prealertas={prealertas} envios={envios} clientes={clientes} proveedores={proveedores} facturasProveedor={facturasProveedor} auditLog={auditLog} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} onNavigate={onNavigate} />}
       {vista === "lista" && <EnviosList envios={envios} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
     </div>
   );

@@ -630,7 +630,7 @@ function FacturaRow({ factura, proveedores, cuentasDinero = [], empresa, auth, m
       await registrarPagoProveedor({
         factura, proveedor, monto, metodo,
         cuentaDinero: cuentaDineroSeleccionada,
-        referencia, fecha, auth
+        referencia, fecha, tasaCambio: empresa?.tipoCambio, auth
       });
       mostrarToast("Pago registrado.");
       setMonto(""); setReferencia(""); setCuentaDineroId(""); setAbierto(false);
@@ -734,6 +734,11 @@ function FacturaRow({ factura, proveedores, cuentasDinero = [], empresa, auth, m
               </p>
             );
           })()}
+          {cuentaDineroSeleccionada?.moneda === "NIO" && numero(empresa?.tipoCambio) > 0 && (
+            <p style={{ gridColumn: "1 / -1", margin: 0 }}>
+              Se descontarán <b>{formatoMoneda(numero(monto) * numero(empresa.tipoCambio), "NIO")}</b> de {cuentaDineroSeleccionada.nombre} por el pago de ${numero(monto).toFixed(2)}.
+            </p>
+          )}
 
           <button className="btn btn-primary" disabled={guardando || !cuentaDineroSeleccionada} onClick={pagar} style={{ alignSelf: "end" }}>
             {guardando ? "Guardando..." : `Confirmar pago de $${numero(monto).toFixed(2)}`}

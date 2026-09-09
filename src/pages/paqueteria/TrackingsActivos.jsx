@@ -28,7 +28,7 @@ const vincularCliente = (tracking, clientes = []) => {
   return { cliente: null, motivo: null };
 };
 
-export default function TrackingsActivos({ prealertas, envios = [], clientes = [], proveedores = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos }) {
+export default function TrackingsActivos({ prealertas, envios = [], clientes = [], proveedores = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos, onNavigate }) {
   const feriados = useFeriadosNicaragua();
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
@@ -245,12 +245,12 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
       </div>}
     </div>}
 
-    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
+    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
     {pendientePeso&&<ModalRegistrarPeso tracking={pendientePeso.tracking} nuevoEstado={pendientePeso.nuevoEstado} guardando={guardandoPeso} onConfirmar={confirmarPesoYContinuar} onCancelar={()=>setPendientePeso(null)}/>} 
   </div>;
 }
 
-function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, actualizarCampo, manejarBlurPeso, eliminar }) {
+function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, actualizarCampo, manejarBlurPeso, eliminar, onNavigate }) {
   const [expandido,setExpandido]=useState(false);
   const c=t.vinculacion?.cliente;
   const nombreMostrar=c?.nombre||t.cliente;
@@ -284,12 +284,14 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
       <div className="stack-gap-sm text-right"><small>{expandido?"Ocultar ▲":"Ver detalle ▼"}</small></div>
     </button>
 
+    {esperandoPago&&!vinculado&&<div className="tracking-provider-alert">Disponible para gestionar el pago en <button type="button" onClick={()=>onNavigate?.("finanzas","proveedores")}>Proveedores</button>.</div>}
+
     {expandido&&<div className="mt-8" style={{borderTop:"1px solid var(--border)",paddingTop:10}}>
       <div className="page-title" style={{margin:"0 0 4px"}}><small>{t.fecha}</small>{!vinculado&&<button className="btn btn-danger" onClick={()=>eliminar(t)}>Eliminar</button>}</div>
       {deadline&&<div className="info-box mt-8" style={{background:deadline.estadoDeadline==="vencido"?"var(--danger-soft)":deadline.estadoDeadline==="proximo"?"var(--warning-soft)":"var(--success-soft)",color:deadline.estadoDeadline==="vencido"?"var(--danger)":deadline.estadoDeadline==="proximo"?"var(--warning)":"var(--success)"}}><b>Promesa OEX:</b> {formatoRangoDeadline(deadline)} · {textoEstado}. Inicio: recibido en Miami el {new Date(t.fechaMiami).toLocaleDateString("es-NI")}.</div>}
       <PipelineProgress estado={t.estado} destino={t.destino} tipoEnvio={t.tipoEnvio} auditLog={auditLog} registroCodigo={t.tracking||t.almacenId}/>
-      {vinculado&&<div className="info-box mt-8"><ReceiptText size={15} style={{verticalAlign:"-3px",marginRight:5}}/>Este paquete pertenece al recibo <b>{t.recibo?.numero || t.envioId}</b>. Para mantener todos los paquetes sincronizados, cambia el estado desde Recibos.</div>}
-      {esperandoPago&&!vinculado&&<div className="info-box mt-8">Esperando pago al proveedor para poder avanzar.</div>}
+      {vinculado&&<div className="info-box mt-8"><ReceiptText size={15} style={{verticalAlign:"-3px",marginRight:5}}/>Este paquete pertenece al recibo <b>{t.recibo?.numero || t.envioId}</b>. Para mantener todos los paquetes sincronizados, cambia el estado desde <button type="button" className="inline-navigation-link" onClick={()=>onNavigate?.("paqueteria","lista")}>Recibos</button>.</div>}
+      {esperandoPago&&!vinculado&&<div className="info-box mt-8">Esperando pago al proveedor para poder avanzar. Ir a <button type="button" className="inline-navigation-link" onClick={()=>onNavigate?.("finanzas","proveedores")}>Proveedores</button>.</div>}
       <div className="tracking-detail-actions mt-8">
         <select className="input input-sm" value={t.estado} disabled={vinculado} onChange={e=>cambiarEstado(t,e.target.value)}>{opcionesEstado.map(s=><option key={s} value={s}>{s}</option>)}</select>
         <div className="tracking-inline-field"><small>ID almacén</small><div className="tracking-inline-control"><Package size={13}/><input disabled={vinculado} defaultValue={t.almacenId} placeholder="—" onBlur={e=>e.target.value!==(t.almacenId||"")&&actualizarCampo(t,"almacenId",e.target.value)} style={{width:90}}/></div></div>

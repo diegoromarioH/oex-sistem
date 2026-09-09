@@ -9,7 +9,7 @@ import Timeline from "../../components/Timeline";
 import FormularioSaldarEnvio from "../../components/FormularioSaldarEnvio";
 import PipelineProgress from "../../components/PipelineProgress";
 
-export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, mostrarPipeline = true }) {
+export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, mostrarPipeline = true, compacto = false }) {
   const [expandido, setExpandido] = useState(false);
 
   const guardarPeso = async (i, campo, valor) => {
@@ -86,7 +86,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
   const estadosRecibo = (idxActual >= idxBodega ? pipeline.slice(Math.max(idxBodega, 0)) : pipeline).filter((e) => e !== "Entregado");
 
   return (
-    <div className="row-card" style={{ flexDirection: "column", alignItems: "stretch" }}>
+    <div className={`row-card recibo-item ${compacto ? "recibo-item--compacto" : ""}`} style={{ flexDirection: "column", alignItems: "stretch" }}>
       <div className="page-title" style={{ margin: 0 }}>
         <div>
           <b>{envio.numero || "Sin cliente"}</b> <span className={`badge ${badgeEstado(envio.estado)}`}>{envio.estado}</span>{" "}
@@ -103,13 +103,15 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
 
       {mostrarPipeline && <PipelineProgress estado={envio.estado} destino={envio.destino} />}
 
-      <div className="segment mt-8">
+      <div className="segment mt-8 recibo-acciones-principales">
         {envio.estado !== "Entregado" && (
           <select className="input input-sm" value={envio.estado} onChange={(e) => cambiarEstado(e.target.value)}>
             {estadosRecibo.map((e) => <option key={e} value={e}>{e}</option>)}
           </select>
         )}
         <button className="btn" onClick={() => generarDetalleEnvio(envio, tarifas, empresa)}>PDF detalle</button>
+        {compacto && <button className="btn btn-ghost" onClick={() => setExpandido((v) => !v)}>{expandido ? "Cerrar detalles" : "Gestionar recibo"}</button>}
+        {(!compacto || expandido) && <>
         <a className="btn btn-whatsapp" href={`https://wa.me/${(envio.contacto || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${envio.cliente}, tu envío ${envio.numero} está en estado: ${envio.estado}.`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
         {esListoParaRetirar(envio.estado) && (
           <button className="btn btn-primary" onClick={avisarListoParaRetirar}>📦 Avisar listo para retirar</button>
@@ -117,8 +119,9 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
         <div style={{ flexBasis: "100%" }}>
           <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />
         </div>
-        <button className="btn btn-ghost" onClick={() => setExpandido((v) => !v)}>{expandido ? "Ocultar trackings" : `Ver trackings (${envio.trackings.length})`}</button>
+        {!compacto && <button className="btn btn-ghost" onClick={() => setExpandido((v) => !v)}>{expandido ? "Ocultar trackings" : `Ver trackings (${envio.trackings.length})`}</button>}
         <button className="btn btn-danger" onClick={eliminar}>Eliminar</button>
+        </>}
       </div>
 
       {expandido && (
@@ -142,7 +145,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
         </div>
       )}
 
-      <Timeline auditLog={auditLog} modulo="Paquetería" registroCodigo={envio.numero} />
+      {(!compacto || expandido) && <Timeline auditLog={auditLog} modulo="Paquetería" registroCodigo={envio.numero} />}
     </div>
   );
 }

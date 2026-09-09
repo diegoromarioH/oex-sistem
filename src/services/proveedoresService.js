@@ -113,12 +113,15 @@ export const generarFacturaProveedor = async ({ proveedor, trackings = [], monto
   return { facturaId:creada.id, montoEstimado, diferencia };
 };
 
-export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo, cuentaDinero, referencia, nota, fecha, auth }) => {
+export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo, cuentaDinero, referencia, nota, fecha, tasaCambio, auth }) => {
   const montoNum = numero(monto);
   if (montoNum <= 0) throw new Error("El monto debe ser mayor a cero.");
   if (montoNum > numero(factura.saldo) + 0.01) throw new Error("El monto no puede ser mayor al saldo pendiente.");
   if (!metodo) throw new Error("Selecciona el método de pago.");
   if (!cuentaDinero?.id) throw new Error("Selecciona de cuál cuenta sale el pago (créala en Finanzas → Cuentas si no tienes ninguna).");
+  const tasa = numero(tasaCambio);
+  if (cuentaDinero.moneda === "NIO" && tasa <= 0) throw new Error("Configura una tasa de cambio válida para pagar dólares desde una cuenta en córdobas.");
+  const montoCuenta = cuentaDinero.moneda === "NIO" ? montoNum * tasa : montoNum;
 
   const horaActual = new Date().toTimeString().slice(0, 8);
   const fechaISO = fecha ? new Date(`${fecha}T${horaActual}`).toISOString() : new Date().toISOString();
@@ -135,12 +138,12 @@ export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo
     await Promise.all(factura.trackings.map((t) => supabase.from("tracking_registros").update({ estado:siguienteEstadoTrasRetiroProveedor(t.destino) }).eq("id", t.id)));
   }
 
-  await ajustarSaldoCuentaDinero(cuentaDinero.id, -montoNum);
+  await ajustarSaldoCuentaDinero(cuentaDinero.id, -montoCuenta);
   if (cuentaDinero.cuentaContableId) {
     const { data:cuentaContable } = await supabase.from("cuentas_contables").select("codigo").eq("id", cuentaDinero.cuentaContableId).single();
     if (cuentaContable) await postearAsiento({ fecha:fechaISO, descripcion:`Pago a proveedor · Factura ${factura.numeroFactura || `#${factura.id}`}`, origenModulo:"pagos_proveedor", origenId:pagoCreado.id, auth, lineas:[{cuentaCodigo:"2010",debe:montoNum,haber:0},{cuentaCodigo:cuentaContable.codigo,cuentaDineroId:cuentaDinero.id,debe:0,haber:montoNum}] });
   }
-  await registrarAuditoria({ ...auth, accion:"Registró pago a proveedor", modulo:"Finanzas", registroCodigo:factura.numeroFactura || `#${factura.id}`, detalle:`$${montoNum.toFixed(2)} · ${metodo} · ${cuentaDinero.nombre}` });
+  await registrarAuditoria({ ...auth, accion:"Registró pago a proveedor", modulo:"Finanzas", registroCodigo:factura.numeroFactura || `#${factura.id}`, detalle:`$${montoNum.toFixed(2)} · salió ${cuentaDinero.moneda === "NIO" ? "C$" : "$"}${montoCuenta.toFixed(2)} de ${cuentaDinero.nombre} · ${metodo}` });
 };
 
 export const listarPagosDeProveedor = async (proveedorId) => {

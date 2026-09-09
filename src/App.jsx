@@ -16,12 +16,14 @@ import Configuracion from "./pages/Configuracion";
 import EventosWeb from "./pages/EventosWeb";
 import Toast from "./components/Toast";
 import SidebarNav from "./components/SidebarNav";
+import GlobalSearch from "./components/GlobalSearch";
+import GlobalCreateMenu from "./components/GlobalCreateMenu";
 import logo from "./assets/logo.svg";
 import "./styles/sidebar.css";
-import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity } from "lucide-react";
+import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity, BookOpen, Scale, ChevronRight } from "lucide-react";
 
 const MODULOS = [
-  { id: "dashboard", label: "Dashboard", color: "var(--mod-dashboard)", icon: LayoutDashboard },
+  { id: "dashboard", label: "Inicio", color: "var(--mod-dashboard)", icon: LayoutDashboard },
   { id: "paqueteria", label: "Paquetería", color: "var(--mod-paqueteria)", icon: Package, submenu: [
     { subvista: "dashboard", label: "Dashboard", descripcion: "KPIs, filtros y recibos activos", icon: LayoutDashboard },
     { subvista: "lista", label: "Recibos", descripcion: "Todos los recibos generados", icon: Receipt },
@@ -36,7 +38,10 @@ const MODULOS = [
     { subvista: "gastos", label: "Gastos", descripcion: "Gastos operativos por categoría", icon: TrendingDown },
     { subvista: "proveedores", label: "Proveedores", descripcion: "Facturas y pagos a proveedores", icon: Truck },
     { subvista: "cuentas", label: "Cuentas", descripcion: "Catálogo contable y cajas/bancos", icon: Landmark },
+    { subvista: "apertura", label: "Balance inicial", descripcion: "Saldos iniciales de cuentas", icon: Wallet },
+    { subvista: "libro", label: "Libro diario", descripcion: "Movimientos y asientos contables", icon: BookOpen },
     { subvista: "caja", label: "Corte de caja", descripcion: "Apertura y cierre diario de efectivo", icon: Calculator },
+    { subvista: "resultados", label: "Estado de resultados", descripcion: "Ingresos, costos y utilidad", icon: Scale },
     { subvista: "reportes", label: "Reportes", descripcion: "Resultados, libro diario y balance general", icon: FileBarChart }
   ]},
   { id: "clientes", label: "Clientes", color: "var(--mod-clientes)", icon: Users },
@@ -60,6 +65,14 @@ export default function App() {
   useEffect(() => { localStorage.setItem(STORAGE_NAVEGACION.finanzas, subvistaFinanzas); }, [subvistaFinanzas]);
   const irAPrealertas = () => { setVista("paqueteria"); setSubvistaPaqueteria("prealertas"); };
   const navegarA = (moduloId, subvista) => { setVista(moduloId); if (moduloId === "paqueteria") setSubvistaPaqueteria(subvista || "dashboard"); if (moduloId === "finanzas") setSubvistaFinanzas(subvista || "resumen"); setSidebarAbiertoMovil(false); };
+  useEffect(() => {
+    const navegarDesdeContenido = (evento) => {
+      const { modulo, subvista } = evento.detail || {};
+      if (modulo) navegarA(modulo, subvista);
+    };
+    window.addEventListener("oex:navegar", navegarDesdeContenido);
+    return () => window.removeEventListener("oex:navegar", navegarDesdeContenido);
+  }, []);
   const [tema, setTema] = useState(() => localStorage.getItem("oex_tema") || "system");
   const [temaSistema, setTemaSistema] = useState(detectarTemaSistema);
   useEffect(() => { const media=window.matchMedia?.("(prefers-color-scheme: dark)"); if(!media)return; const cambio=e=>setTemaSistema(e.matches?"dark":"light"); media.addEventListener?.("change",cambio); return()=>media.removeEventListener?.("change",cambio); },[]);
@@ -71,14 +84,15 @@ export default function App() {
   if (!session) return <Login onLogin={login} />;
   if (!autorizado) return <Login bloqueado errorInicial={errorAuth} onLogout={logout} />;
   const auth = { session, usuarioActual }; const moduloActivo = MODULOS.find(m => m.id === vista); const subvistaActiva = vista === "paqueteria" ? subvistaPaqueteria : vista === "finanzas" ? subvistaFinanzas : null;
+  const itemActivo = moduloActivo?.submenu?.find(item => item.subvista === subvistaActiva);
   const propsFinanzas = { pedidos:datos.pedidos, envios:datos.envios, gastos:datos.gastos, ingresos:datos.ingresos, clientes:datos.clientes, prealertas:datos.prealertas, proveedores:datos.proveedores, facturasProveedor:datos.facturasProveedor, cuentasContables:datos.cuentasContables, cuentasDinero:datos.cuentasDinero, balanceApertura:datos.balanceApertura, fechaApertura:datos.fechaApertura, empresa, rol, auth, mostrarToast, cargarDatos:datos.cargarDatos };
   return <div className="app-shell app-shell--sidebar" data-theme={temaResuelto} style={{ "--module-color": moduloActivo?.color }}>
     {sidebarAbiertoMovil && <div className="sidebar-backdrop" onClick={() => setSidebarAbiertoMovil(false)} />}
     <SidebarNav modulos={MODULOS} vistaActiva={vista} subvistaActiva={subvistaActiva} onNavigate={navegarA} colapsado={sidebarColapsado} onToggleColapso={toggleSidebarColapsado} abiertoMovil={sidebarAbiertoMovil} brand={<img src={logo} alt="OEX" />} brandLabel="OEX Sistema" />
-    <div className="main-column"><div className="topbar-mini"><button className="hamburger" onClick={() => setSidebarAbiertoMovil(true)} aria-label="Abrir menú"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 5h14M2 9h14M2 13h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg></button><div className="segment" style={{ margin: "0 0 0 auto" }}><span className="badge badge-neutral">{usuarioActual?.nombre || usuarioActual?.email} · {rol}</span><button className="btn btn-ghost" onClick={logout}>Salir</button></div></div><div className="module-strip" />
+    <div className="main-column"><div className="topbar-mini"><button className="hamburger" onClick={() => setSidebarAbiertoMovil(true)} aria-label="Abrir menú"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 5h14M2 9h14M2 13h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg></button><nav className="current-location" aria-label="Ubicación actual"><button type="button" onClick={() => navegarA(vista)}>{moduloActivo?.label}</button>{itemActivo && <><ChevronRight size={14} aria-hidden="true" /><span>{itemActivo.label}</span></>}</nav><GlobalSearch clientes={datos.clientes} prealertas={datos.prealertas} envios={datos.envios} onNavigate={navegarA} /><GlobalCreateMenu onNavigate={navegarA} /><div className="segment topbar-account"><span className="badge badge-neutral">{usuarioActual?.nombre || usuarioActual?.email} · {rol}</span><button className="btn btn-ghost" onClick={logout}>Salir</button></div></div><div className="mobile-location" aria-label="Ubicación actual"><button type="button" onClick={() => navegarA(vista)}>{moduloActivo?.label}</button>{itemActivo && <><ChevronRight size={13} aria-hidden="true" /><span>{itemActivo.label}</span></>}</div><div className="module-strip" />
       {vista === "dashboard" && <Dashboard pedidos={datos.pedidos} envios={datos.envios} gastos={datos.gastos} prealertas={datos.prealertas} proveedores={datos.proveedores} empresa={empresa} cuentasDinero={datos.cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} setVista={setVista} irAPrealertas={irAPrealertas} />}
-      {vista === "paqueteria" && <Paqueteria envios={datos.envios} prealertas={datos.prealertas} facturasProveedor={datos.facturasProveedor} auditLog={datos.auditLog} clientes={datos.clientes} proveedores={datos.proveedores} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={datos.cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} vistaInicial={subvistaPaqueteria} />}
-      {vista === "finanzas" && subvistaFinanzas !== "reportes" && <Finanzas {...propsFinanzas} vistaInicial={subvistaFinanzas} />}
+      {vista === "paqueteria" && <Paqueteria envios={datos.envios} prealertas={datos.prealertas} facturasProveedor={datos.facturasProveedor} auditLog={datos.auditLog} clientes={datos.clientes} proveedores={datos.proveedores} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={datos.cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} vistaInicial={subvistaPaqueteria} onVistaChange={setSubvistaPaqueteria} onNavigate={navegarA} />}
+      {vista === "finanzas" && subvistaFinanzas !== "reportes" && <Finanzas {...propsFinanzas} vistaInicial={subvistaFinanzas} onVistaChange={setSubvistaFinanzas} />}
       {vista === "finanzas" && subvistaFinanzas === "reportes" && <div className="page"><FinanzasReportes cuentasContables={datos.cuentasContables} mostrarToast={mostrarToast} /></div>}
       {vista === "clientes" && <Clientes clientes={datos.clientes} pedidos={datos.pedidos} envios={datos.envios} empresa={empresa} tarifas={tarifas} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
       {vista === "eventos" && <EventosWeb />}

@@ -46,13 +46,14 @@ const TarjetaKPI = ({ etiqueta, valor, activa, onClick, etiquetaAccion, icono: I
   </button>
 );
 
-export default function Finanzas({ envios, gastos, ingresos = [], clientes = [], prealertas = [], proveedores = [], facturasProveedor = [], cuentasContables = [], cuentasDinero = [], balanceApertura = [], fechaApertura, empresa, rol, auth, mostrarToast, cargarDatos, vistaInicial = "resumen" }) {
+export default function Finanzas({ envios, gastos, ingresos = [], clientes = [], prealertas = [], proveedores = [], facturasProveedor = [], cuentasContables = [], cuentasDinero = [], balanceApertura = [], fechaApertura, empresa, rol, auth, mostrarToast, cargarDatos, vistaInicial = "resumen", onVistaChange }) {
   const [vista, setVista] = useState(vistaInicial);
   // El mega-menú del TopNav (App.jsx) puede pedir que Finanzas abra
   // directo en una sub-página específica (ej. "Libro diario") aunque el
   // módulo ya esté montado — este efecto es lo que hace que el clic
   // en el mega-menú realmente navegue, no solo en el primer montaje.
   useEffect(() => { setVista(vistaInicial); }, [vistaInicial]);
+  useEffect(() => { onVistaChange?.(vista); }, [vista, onVistaChange]);
 
   // "" = todos los meses. El filtro afecta KPIs, detalle por tarjeta,
   // gastos por categoría, top clientes y las exportaciones.

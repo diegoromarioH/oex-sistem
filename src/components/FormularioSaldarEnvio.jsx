@@ -16,6 +16,7 @@ import { useState } from "react";
 import { numero } from "../utils/numero";
 import { formatoMoneda } from "../utils/moneda";
 import { saldarEnvio } from "../services/enviosService";
+import { solicitarNavegacion } from "../utils/navegacion";
 
 export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empresa, auth, mostrarToast, cargarDatos, etiquetaBoton = "Marcar retirado y saldar" }) {
   const [abierto, setAbierto] = useState(false);
@@ -24,6 +25,7 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empre
   const [recibidoPor, setRecibidoPor] = useState("");
   const [cuentaDineroId, setCuentaDineroId] = useState("");
   const [tasaCambio, setTasaCambio] = useState(String(empresa?.tipoCambio || ""));
+  const [monedaPago, setMonedaPago] = useState("USD");
   const [guardando, setGuardando] = useState(false);
 
   // Ya está entregado y sin saldo: no hay nada que saldar, no mostramos nada.
@@ -49,7 +51,7 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empre
     try {
       await saldarEnvio({
         envio,
-        pago: { metodo, recibidoPor: metodo === "Efectivo" ? recibidoPor : undefined },
+        pago: { metodo, moneda: monedaPago, recibidoPor: metodo === "Efectivo" ? recibidoPor : undefined },
         cuentaDinero: cuentaDineroSeleccionada,
         fecha,
         tasaCambio,
@@ -87,6 +89,13 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empre
               <option value="Efectivo">Efectivo</option>
             </select>
           </label>
+          <label>
+            <span className="field-label">Moneda recibida</span>
+            <select className="input" value={monedaPago} onChange={(e) => setMonedaPago(e.target.value)}>
+              <option value="USD">Dólares (USD)</option>
+              <option value="NIO">Córdobas (NIO)</option>
+            </select>
+          </label>
 
           {metodo === "Efectivo" && (
             <label>
@@ -107,15 +116,18 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empre
             </label>
           ) : (
             <p style={{ color: "var(--danger)" }}>
-              No tienes cuentas de dinero tipo "{metodo === "Transferencia" ? "banco" : "efectivo"}" — créala en Finanzas → Cuentas antes de continuar.
+              No tienes cuentas de dinero tipo "{metodo === "Transferencia" ? "banco" : "efectivo"}" — créala en Finanzas → <button type="button" className="inline-navigation-link" onClick={() => solicitarNavegacion("finanzas", "cuentas")}>Cuentas</button> antes de continuar.
             </p>
           )}
 
-          {cuentaDineroSeleccionada?.moneda === "NIO" && (
+          {(cuentaDineroSeleccionada?.moneda === "NIO" || monedaPago === "NIO") && (
             <label>
               <span className="field-label">Tipo de cambio (C$ por US$1)</span>
               <input className="input" type="number" min="0" step="0.01" value={tasaCambio} onChange={(e) => setTasaCambio(e.target.value)} />
-              <small>Entrarán {formatoMoneda(numero(envio.saldo) * numero(tasaCambio), "NIO")} a la cuenta.</small>
+              <small>
+                Cliente entrega {formatoMoneda(monedaPago === "NIO" ? numero(envio.saldo) * numero(tasaCambio) : numero(envio.saldo), monedaPago)}. {" "}
+                Entrarán {formatoMoneda(cuentaDineroSeleccionada?.moneda === "NIO" ? numero(envio.saldo) * numero(tasaCambio) : numero(envio.saldo), cuentaDineroSeleccionada?.moneda)} a la cuenta.
+              </small>
             </label>
           )}
 
