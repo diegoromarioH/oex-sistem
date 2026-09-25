@@ -6,13 +6,13 @@ import { generarDetalleEnvio } from "../../services/pdfService";
 import { perfilEstandarDestino, tarifaDesdePerfil } from "../../utils/calculosPaqueteria";
 import ClienteSelector from "../../components/ClienteSelector";
 import TarifaSelect from "../../components/TarifaSelect";
-import { badgeEstado, esEstadoDisponibleParaRecibo } from "../../utils/estadosEnvio";
+import { badgeEstado, esEstadoDisponibleParaRecibo } from "../../utils/estadosEnvio";\nimport { useFeriadosNicaragua } from "../../hooks/useFeriadosNicaragua";
 
 export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, proveedores = [], configOperativa, empresa, auth, mostrarToast, cargarDatos }) {
   const [clienteId, setClienteId] = useState(null);
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteTelefono, setClienteTelefono] = useState("");
-  const [generando, setGenerando] = useState(false);
+  const [generando, setGenerando] = useState(false);\n  const feriados = useFeriadosNicaragua();
 
   const clienteSeleccionado = clientes.find((c) => c.id === clienteId) || null;
 
@@ -78,7 +78,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, provee
   );
 }
 
-function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, proveedores, configOperativa, empresa, auth, mostrarToast, cargarDatos, generando, setGenerando }) {
+function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, proveedores, configOperativa, empresa, auth, mostrarToast, cargarDatos, generando, setGenerando, feriados }) {
   const [tarifaPerfil, setTarifaPerfil] = useState(perfilEstandarDestino(destino));
   const [tarifaPersonalizada, setTarifaPersonalizada] = useState("");
   const [descuento, setDescuento] = useState("");
@@ -124,7 +124,7 @@ function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, prove
         costoInternoTotal: envio.costo_interno_total,
         gananciaReal: envio.ganancia_real,
         fechaISO: envio.fecha,
-        trackings: (envio.trackings || []).map((t) => ({ ...t, codigo: t.codigo || t.tracking }))
+        fechaDisponibleRetiro: envio.fecha_disponible_retiro || null,\n        feriados,\n        tiemposEntrega: configOperativa?.tiemposEntrega || null,\n        trackings: (envio.trackings || []).map((t) => ({ ...t, codigo: t.codigo || t.tracking }))
       };
       generarDetalleEnvio(envioPDF, tarifas, empresa);
       mostrarToast(`Recibo ${numeroRecibo} generado con estado ${estadoActual}.`);
