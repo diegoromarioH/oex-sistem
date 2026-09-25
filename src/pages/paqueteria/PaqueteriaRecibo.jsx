@@ -8,7 +8,7 @@ import ClienteSelector from "../../components/ClienteSelector";
 import TarifaSelect from "../../components/TarifaSelect";
 import { badgeEstado, esEstadoDisponibleParaRecibo } from "../../utils/estadosEnvio";
 
-export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empresa, auth, mostrarToast, cargarDatos }) {
+export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, proveedores = [], configOperativa, empresa, auth, mostrarToast, cargarDatos }) {
   const [clienteId, setClienteId] = useState(null);
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteTelefono, setClienteTelefono] = useState("");
@@ -76,7 +76,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, empres
   );
 }
 
-function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, empresa, auth, mostrarToast, cargarDatos, generando, setGenerando }) {
+function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, proveedores, configOperativa, empresa, auth, mostrarToast, cargarDatos, generando, setGenerando }) {
   const [tarifaPerfil, setTarifaPerfil] = useState(perfilEstandarDestino(destino));
   const [tarifaPersonalizada, setTarifaPersonalizada] = useState("");
   const [descuento, setDescuento] = useState("");
@@ -107,7 +107,7 @@ function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, empre
     setGenerando(true);
     try {
       const { numeroRecibo, envio } = await generarRecibo({
-        cliente, trackings: trackingsIncluidos, tarifas, tarifaPerfil, tarifaPersonalizada, descuento, gastosExtras, nota, fecha, auth
+        cliente, trackings: trackingsIncluidos, tarifas, tarifaPerfil, tarifaPersonalizada, descuento, gastosExtras, nota, fecha, proveedores, configOperativa, auth
       });
       const envioPDF = {
         ...envio,
