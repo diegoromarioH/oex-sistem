@@ -410,12 +410,12 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
 
       <div className="card">
         <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}><Users size={18} style={{ color: "var(--module-color)" }} /> Cuentas por cobrar{mesFiltro ? ` — ${mesFiltro}` : ""}</h3>
-        <p>La ganancia real de Paquetería incluye envíos que el cliente todavía no ha terminado de pagar.</p>
+        <p>El margen estimado incluye ventas que el cliente todavía no ha terminado de pagar. El saldo pendiente es venta por cobrar, no ganancia.</p>
         <div className="grid-4 mt-16">
-          <div className="metric"><b>Ganancia cobrada</b><span className="metric-value">${gananciaCobrada.toFixed(2)}</span></div>
-          <div className="metric"><b>Ganancia pendiente de cobro</b><span className="metric-value">${gananciaPendienteCobro.toFixed(2)}</span></div>
-          <div className="metric"><b>Total por cobrar (saldo)</b><span className="metric-value">${totalPorCobrar.toFixed(2)}</span></div>
-          <div className="metric"><b>Clientes con saldo</b><span className="metric-value">{clientesPorCobrar.length}</span></div>
+          <div className="metric"><b>Margen de ventas cobradas</b><span className="metric-value">${gananciaCobrada.toFixed(2)}</span></div>
+          <div className="metric"><b>Margen estimado de ventas por cobrar</b><span className="metric-value">${gananciaPendienteCobro.toFixed(2)}</span></div>
+          <div className="metric"><b>Ventas pendientes de cobro</b><span className="metric-value">${totalPorCobrar.toFixed(2)}</span></div>
+          <div className="metric"><b>Clientes con saldo pendiente</b><span className="metric-value">{clientesPorCobrar.length}</span></div>
         </div>
         <div className="list mt-16">
           {clientesPorCobrar.map((c) => (
