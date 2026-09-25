@@ -102,7 +102,7 @@ export const actualizarTrackingEnvio = async ({ envio, trackingIndex, field, val
   });
 };
 
-export const actualizarEstadoEnvio = async ({ envio, nuevoEstado, prompts, cuentaDinero, auth }) => {
+const ESTADOS_DISPONIBLES_RETIRO = new Set(["Ometepe", "Punto UNI", "Jardines de Veracruz"]);\n\nexport const actualizarEstadoEnvio = async ({ envio, nuevoEstado, prompts, cuentaDinero, auth }) => {
   let abono = numero(envio.abono);
   let referencia = envio.referencia || "";
   let metodo = envio.metodoPago || "";
