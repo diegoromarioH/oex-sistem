@@ -6,7 +6,7 @@ import { numero } from "../utils/numero";
 import { formatoMoneda } from "../utils/moneda";
 import { ESTADOS_LISTO_PARA_RETIRAR } from "../utils/estadosEnvio";
 
-export default function Configuracion({ tarifas, setTarifas, empresa, setEmpresa, cuentasDinero = [], rol, tema, setTema, mostrarToast, cargarDatos }) {
+export default function Configuracion({ tarifas, setTarifas, configOperativa, setConfigOperativa, empresa, setEmpresa, cuentasDinero = [], rol, tema, setTema, mostrarToast, cargarDatos }) {
   const [vista, setVista] = useState("tarifas");
   const [borrando, setBorrando] = useState(false);
 
@@ -40,6 +40,22 @@ export default function Configuracion({ tarifas, setTarifas, empresa, setEmpresa
   const cancelarTarifas = () => {
     setDraftTarifas(tarifas);
     setEditandoTarifas(false);
+  };
+
+  const [editandoOperativa, setEditandoOperativa] = useState(false);
+  const [guardandoOperativa, setGuardandoOperativa] = useState(false);
+  const [draftOperativa, setDraftOperativa] = useState(configOperativa);
+  useEffect(() => { if (!editandoOperativa) setDraftOperativa(configOperativa); }, [configOperativa, editandoOperativa]);
+
+  const guardarOperativa = async () => {
+    setGuardandoOperativa(true);
+    try {
+      await setConfigOperativa(draftOperativa);
+      mostrarToast("Costos y tiempos guardados.");
+      setEditandoOperativa(false);
+    } catch (err) {
+      mostrarToast(err.message || "No se pudo guardar la configuración operativa.", "error");
+    } finally { setGuardandoOperativa(false); }
   };
 
   // ===== Empresa y documentos: mismo patrón =====
@@ -155,6 +171,23 @@ export default function Configuracion({ tarifas, setTarifas, empresa, setEmpresa
               </div>
             </div>
           ))}
+        </div>
+        <div className="page-title mt-16" style={{ marginBottom: 0 }}>
+          <div><h3>Costos internos y tiempos de entrega</h3><p>Fuente central para costos de proveedor y promesas operativas. Los documentos históricos no se recalculan.</p></div>
+          {rol === "admin" && (editandoOperativa
+            ? <div className="segment"><button className="btn btn-ghost" onClick={()=>{setDraftOperativa(configOperativa);setEditandoOperativa(false)}}>Cancelar</button><button className="btn btn-primary" disabled={guardandoOperativa} onClick={guardarOperativa}>{guardandoOperativa?"Guardando...":"Guardar"}</button></div>
+            : <button className="btn" onClick={()=>setEditandoOperativa(true)}>Editar costos y tiempos</button>)}
+        </div>
+        <div className="form-grid mt-16">
+          <label><span className="field-label">Costo proveedor Marítimo $/lb</span><input className="input" type="number" step="0.01" disabled={!editandoOperativa} value={draftOperativa.costosProveedor.maritimo} onChange={e=>setDraftOperativa({...draftOperativa,costosProveedor:{...draftOperativa.costosProveedor,maritimo:Number(e.target.value)}})} /></label>
+          <label><span className="field-label">Costo proveedor Aéreo $/lb</span><input className="input" type="number" step="0.01" disabled={!editandoOperativa} value={draftOperativa.costosProveedor.aereo} onChange={e=>setDraftOperativa({...draftOperativa,costosProveedor:{...draftOperativa.costosProveedor,aereo:Number(e.target.value)}})} /></label>
+        </div>
+        <div className="list mt-16">
+          {["Managua","Ometepe"].flatMap(destino=>["Aéreo","Marítimo"].map(tipo=>{
+            const rango=draftOperativa.tiemposEntrega[destino][tipo];
+            const cambiar=(pos,valor)=>{const nuevo=[...rango];nuevo[pos]=Number(valor);setDraftOperativa({...draftOperativa,tiemposEntrega:{...draftOperativa.tiemposEntrega,[destino]:{...draftOperativa.tiemposEntrega[destino],[tipo]:nuevo}}})};
+            return <div className="row-card" key={destino+tipo}><b style={{minWidth:160}}>{destino} · {tipo}</b><div className="form-grid" style={{flex:1}}><label><span className="field-label">Mín. días hábiles</span><input className="input" type="number" min="1" disabled={!editandoOperativa} value={rango[0]} onChange={e=>cambiar(0,e.target.value)} /></label><label><span className="field-label">Máx. días hábiles</span><input className="input" type="number" min="1" disabled={!editandoOperativa} value={rango[1]} onChange={e=>cambiar(1,e.target.value)} /></label></div></div>
+          }))}
         </div>
       </div>
       )}
