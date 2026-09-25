@@ -4,6 +4,7 @@ import { numero } from "../utils/numero";
 import { firmarPayload, registrarAuditoria } from "./coreService";
 import { ajustarSaldoCuentaDinero } from "./cuentasDineroService";
 import { postearAsiento, reversarAsientosDeOrigen } from "./ContabilidadService";
+import { convertirMoneda, montoEnUSD, redondearDinero } from "../utils/conversionMoneda";
 
 // Todas las categorías de este módulo (seguro de envío, empaque
 // especial, comisión, etc.) son por definición "ingresos que no vienen
@@ -19,12 +20,21 @@ export const guardarIngreso = async ({ form, auth }) => {
   }
   const horaActual = new Date().toTimeString().slice(0, 8); // HH:MM:SS
   const monto = numero(form.monto);
+  const moneda = form.moneda === "NIO" ? "NIO" : "USD";
+  const monedaCuenta = form.cuentaDinero?.moneda || moneda;
+  const tasaCambio = numero(form.tasaCambio);
+  if (moneda !== monedaCuenta && tasaCambio <= 0) throw new Error("Configura una tasa de cambio válida para mover dinero entre USD y NIO.");
+  const montoCuenta = form.cuentaDinero?.id ? convertirMoneda({ monto, monedaOrigen:moneda, monedaDestino:monedaCuenta, tasaCambio }) : null;
+  const montoUSD = montoEnUSD({ monto, moneda, tasaCambio });
   const fechaISO = new Date(`${form.fecha}T${horaActual}`).toISOString();
   const { data: creado, error } = await supabase.from("ingresos_operativos").insert([{
     fecha_iso: fechaISO,
     categoria: form.categoria || "General",
     descripcion: form.descripcion,
-    monto,
+    monto:redondearDinero(monto),
+    moneda,
+    tasa_cambio:tasaCambio > 0 ? tasaCambio : null,
+    monto_cuenta:montoCuenta,
     cliente_id: form.cliente?.id || null,
     cliente_nombre: form.cliente?.nombre || "",
     cuenta_dinero_id: form.cuentaDinero?.id || null,
@@ -33,7 +43,7 @@ export const guardarIngreso = async ({ form, auth }) => {
   if (error) throw error;
 
   if (form.cuentaDinero?.id) {
-    await ajustarSaldoCuentaDinero(form.cuentaDinero.id, monto);
+    await ajustarSaldoCuentaDinero(form.cuentaDinero.id, montoCuenta);
 
     if (form.cuentaDinero.cuentaContableId) {
       const { data: cuentaContable } = await supabase
@@ -46,8 +56,8 @@ export const guardarIngreso = async ({ form, auth }) => {
           origenId: creado.id,
           auth,
           lineas: [
-            { cuentaCodigo: cuentaContable.codigo, cuentaDineroId: form.cuentaDinero.id, debe: monto, haber: 0 },
-            { cuentaCodigo: CUENTA_INGRESO, debe: 0, haber: monto }
+            { cuentaCodigo: cuentaContable.codigo, cuentaDineroId: form.cuentaDinero.id, debe: montoUSD, haber: 0 },
+            { cuentaCodigo: CUENTA_INGRESO, debe: 0, haber: montoUSD }
           ]
         });
       }
@@ -65,7 +75,7 @@ export const eliminarIngreso = async ({ ingreso, auth }) => {
   if (error) throw error;
 
   if (ingreso.cuentaDineroId) {
-    await ajustarSaldoCuentaDinero(ingreso.cuentaDineroId, -numero(ingreso.monto));
+    await ajustarSaldoCuentaDinero(ingreso.cuentaDineroId, -numero(ingreso.montoCuenta || ingreso.monto));
   }
 
   await reversarAsientosDeOrigen({ origenModulo: "ingresos_operativos", origenId: ingreso.id, auth });
