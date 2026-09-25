@@ -98,7 +98,7 @@ export default function App() {
       {vista === "clientes" && <Clientes clientes={datos.clientes} pedidos={datos.pedidos} envios={datos.envios} empresa={empresa} tarifas={tarifas} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
       {vista === "eventos" && <EventosWeb />}
       {vista === "auditoria" && <Auditoria auditLog={datos.auditLog} />}
-      {vista === "configuracion" && <Configuracion tarifas={tarifas} setTarifas={setTarifas} configOperativa={configOperativa} setConfigOperativa={setConfigOperativa} empresa={empresa} setEmpresa={setEmpresa} cuentasDinero={datos.cuentasDinero} rol={rol} tema={tema} setTema={cambiarTema} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
+      {vista === "configuracion" && <Configuracion tarifas={tarifas} setTarifas={setTarifas} configOperativa={configOperativa} setConfigOperativa={setConfigOperativa} empresa={empresa} setEmpresa={setEmpresa} cuentasDinero={datos.cuentasDinero} proveedores={datos.proveedores} auth={auth} rol={rol} tema={tema} setTema={cambiarTema} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
       <Toast toast={toast} />
     </div>
   </div>;
