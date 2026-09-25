@@ -59,7 +59,12 @@ export const actualizarProveedor = async ({ proveedor, form, auth }) => {
 };
 
 const costoEstimadoTracking = (t) => {
-  const costo = t.costoInterno !== undefined && t.costoInterno !== "" ? numero(t.costoInterno) : costoInternoDefaultPorTipo(t.tipoEnvio);
+  // costo_interno puede venir NULL desde Supabase en trackings antiguos.
+  // NULL significa "sin costo específico", no $0/lb. En ese caso usamos
+  // el costo interno por defecto según el tipo real del tracking:
+  // Marítimo $1.50/lb · Aéreo $4.50/lb.
+  const tieneCostoEspecifico = t.costoInterno !== undefined && t.costoInterno !== null && t.costoInterno !== "";
+  const costo = tieneCostoEspecifico ? numero(t.costoInterno) : costoInternoDefaultPorTipo(t.tipoEnvio);
   return numero(t.peso) * costo;
 };
 
