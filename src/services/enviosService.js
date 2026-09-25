@@ -121,7 +121,7 @@ const ESTADOS_DISPONIBLES_RETIRO = new Set(["Ometepe", "Punto UNI", "Jardines de
   const trackingsActualizados = (envio.trackings || []).map((t) => ({ ...t, estado: nuevoEstado }));\n  const fechaDisponibleRetiro = envio.fechaDisponibleRetiro || (ESTADOS_DISPONIBLES_RETIRO.has(nuevoEstado) ? new Date().toISOString() : null);
   const { error } = await supabase.from("envios").update({
     estado: nuevoEstado,
-    trackings: trackingsActualizados,
+    ...(fechaDisponibleRetiro ? { fecha_disponible_retiro: fechaDisponibleRetiro } : {}),\n    trackings: trackingsActualizados,
     metodo_pago: metodo,
     referencia_pago: referencia,
     abono,
