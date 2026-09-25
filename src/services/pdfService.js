@@ -3,7 +3,8 @@ import jsPDF from "jspdf";
 import { numero } from "../utils/numero";
 import logoOEX from "../assets/LOGOOEX.png";
 import { notaShein, resumenShein, totalProductoShein } from "../utils/calculosShein";
-import { tarifaPorTipoEnvio, calcularTotalesTrackings, costoItemCotPaq, totalItemCotPaq, librasCotPaq, totalCotPaq, totalEnvioCotPaq } from "../utils/calculosPaqueteria";\nimport { diasHabilesEntre, promesaPorDestinoTipo } from "../utils/deadlinesEntrega";
+import { tarifaPorTipoEnvio, calcularTotalesTrackings, costoItemCotPaq, totalItemCotPaq, librasCotPaq, totalCotPaq, totalEnvioCotPaq } from "../utils/calculosPaqueteria";
+import { diasHabilesEntre, promesaPorDestinoTipo } from "../utils/deadlinesEntrega";
 
 const NARANJA=[244,86,45],NAVY=[15,36,69],GRAFITO=[34,37,43],GRIS_MEDIO=[112,119,130],GRIS_CLARO=[176,181,190],PAPEL=[232,235,239],AZUL_SUAVE=[230,238,248],BLANCO=[255,255,255];
 const formatoFecha=iso=>new Date(iso||Date.now()).toLocaleDateString("es-NI",{year:"numeric",month:"long",day:"numeric"});
@@ -30,6 +31,17 @@ export const generarDetalleEnvio=(envio,tarifas,empresa)=>{const doc=new jsPDF({
 
 // Reporte operativo de paquetes que ya están listos para retirar al proveedor en Bodega OEX.
 // Se agrupa por proveedor y dentro de cada proveedor por tipo/destino.
+export const generarEstadoCuentaCliente=({cliente,recibos=[],empresa})=>{
+ const pendientes=recibos.filter(r=>numero(r.saldo)>0.005);
+ if(!pendientes.length)throw new Error("No hay recibos pendientes seleccionados.");
+ const doc=new jsPDF();const nombre=cliente?.nombre||pendientes[0]?.cliente||"Cliente";pdfHeaderEnvio(doc,{titulo:"ESTADO DE CUENTA",fechaISO:new Date().toISOString()});
+ let y=46;doc.setFont("helvetica","bold");doc.setFontSize(13);doc.text(nombre,14,y);y+=6;doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(...GRIS_MEDIO);doc.text("Resumen de recibos pendientes seleccionados",14,y);y+=10;doc.setTextColor(...GRAFITO);
+ doc.setFillColor(...PAPEL);doc.rect(14,y-5,182,8,"F");doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.text("Recibo",17,y);doc.text("Fecha",48,y);doc.text("Destino",92,y);doc.text("Total",157,y,{align:"right"});doc.text("Saldo",191,y,{align:"right"});y+=8;
+ pendientes.forEach(r=>{y=pdfSaltoPagina(doc,y,35);doc.setFont("helvetica","normal");doc.setFontSize(9);doc.text(String(r.numero||r.numero_envios||"—"),17,y);doc.text(formatoFecha(r.fechaISO||r.fecha),48,y);doc.text(String(r.destino||r.lugar||"—"),92,y);doc.text("US$ "+numero(r.total).toFixed(2),157,y,{align:"right"});doc.setFont("helvetica","bold");doc.text("US$ "+numero(r.saldo).toFixed(2),191,y,{align:"right"});y+=8;});
+ const totalPendiente=pendientes.reduce((a,r)=>a+numero(r.saldo),0);y+=4;doc.setDrawColor(...GRIS_CLARO);doc.line(118,y,196,y);y+=9;doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text("TOTAL PENDIENTE",118,y);doc.setTextColor(...NARANJA);doc.setFontSize(16);doc.text("US$ "+totalPendiente.toFixed(2),196,y,{align:"right"});doc.setTextColor(...GRAFITO);const tc=numero(empresa?.tipoCambio);if(tc){y+=7;doc.setFontSize(11);doc.setTextColor(...NAVY);doc.text("C$ "+(totalPendiente*tc).toFixed(2),196,y,{align:"right"});doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...GRIS_MEDIO);doc.text("TC C$"+tc.toFixed(2)+" por US$1.00",196,y+5,{align:"right"});}
+ pdfFooter(doc,"Documento informativo. Los recibos originales conservan su numeración, saldo y registro contable.",empresa);const archivo=nombre.toLowerCase().replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"");doc.save("estado-cuenta-"+archivo+".pdf");
+};
+
 export const generarPDFBodegaProveedor=({trackings=[],proveedores=[],empresa})=>{
  const doc=new jsPDF();pdfHeader(doc,{titulo:"RETIRO BODEGA OEX",fechaISO:new Date().toISOString()});
  const proveedorNombre=id=>proveedores.find(p=>String(p.id)===String(id))?.nombre||"Proveedor sin asignar";
