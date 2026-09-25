@@ -2,7 +2,7 @@
 import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { firmarPayload, registrarAuditoria } from "./coreService";
-import { costoInternoDefaultPorTipo } from "../utils/calculosPaqueteria";
+import { costoTrackingConProveedor } from "../utils/calculosPaqueteria";
 import { siguienteEstadoTrasRetiroProveedor } from "../utils/estadosEnvio";
 import { ajustarSaldoCuentaDinero } from "./cuentasDineroService";
 import { postearAsiento } from "./ContabilidadService";
@@ -73,7 +73,7 @@ const costoEstimadoTracking = (t) => {
 
 export const calcularMontoEstimado = (trackings) => trackings.reduce((a, t) => a + costoEstimadoTracking(t), 0);
 
-export const generarFacturaProveedor = async ({ proveedor, trackings = [], montoReal, numeroFactura, nota, link, fecha, auth }) => {
+export const generarFacturaProveedor = async ({ proveedor, trackings = [], montoReal, numeroFactura, nota, link, fecha, configOperativa, auth }) => {
   const esAduana = esAduanaFlete(proveedor);
   if (esAduana && trackings.length === 0) throw new Error("Selecciona al menos un tracking para esta factura.");
   if (esAduana) {
@@ -82,7 +82,7 @@ export const generarFacturaProveedor = async ({ proveedor, trackings = [], monto
   }
   if (numero(montoReal) <= 0) throw new Error("Escribe el monto real que factura el proveedor.");
 
-  const montoEstimado = esAduana ? calcularMontoEstimado(trackings) : numero(montoReal);
+  const montoEstimado = esAduana ? calcularMontoEstimado(trackings, proveedor, configOperativa) : numero(montoReal);
   const trackingsSnapshot = trackings.map((t) => ({
     id:t.id,
     codigo:t.tracking,
