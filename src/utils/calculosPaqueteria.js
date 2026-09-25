@@ -19,6 +19,20 @@ export const COSTO_INTERNO_DEFAULT = { "Marítimo": 1.5, "Aéreo": 4.5 };
 export const costoInternoDefaultPorTipo = (tipoEnvio) =>
   COSTO_INTERNO_DEFAULT[tipoEnvio] ?? COSTO_INTERNO_DEFAULT["Marítimo"];
 
+export const costoProveedorPorTipo = (proveedor, tipoEnvio, configOperativa = null) => {
+  const especifico = tipoEnvio === "Aéreo" ? numero(proveedor?.tarifaAereo) : numero(proveedor?.tarifaMaritimo);
+  if (especifico > 0) return especifico;
+  const configurado = tipoEnvio === "Aéreo"
+    ? numero(configOperativa?.costosProveedor?.aereo)
+    : numero(configOperativa?.costosProveedor?.maritimo);
+  return configurado > 0 ? configurado : costoInternoDefaultPorTipo(tipoEnvio);
+};
+
+export const costoTrackingConProveedor = (tracking, proveedor, configOperativa = null) => {
+  const guardado = numero(tracking?.costoInterno);
+  return guardado > 0 ? guardado : costoProveedorPorTipo(proveedor, tracking?.tipoEnvio, configOperativa);
+};
+
 export const perfilEstandarDestino = (destino) =>
   destino === "Managua" ? "managua_estandar" : "ometepe_estandar";
 
