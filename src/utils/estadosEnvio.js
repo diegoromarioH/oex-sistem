@@ -23,12 +23,12 @@ export const esListoParaRetiroProveedor = (estado) => estado === ESTADO_LISTO_RE
 
 export const siguienteEstadoTrasRetiroProveedor = (destino) => destino === "Managua" ? "Tránsito Managua" : "Tránsito Ometepe";
 
-// Un recibo se genera cuando el paquete ya salió de Bodega OEX hacia su
-// destino final. También puede generarse en cualquiera de los estados
-// posteriores, conservando el estado operativo real en el recibo.
+// El recibo del cliente puede generarse desde Bodega OEX, aunque la factura
+// del proveedor aún no esté pagada. El recibo conserva el estado físico real
+// y el pago al proveedor sigue controlando cuándo puede salir de Bodega OEX.
 export const esEstadoDisponibleParaRecibo = (estado, destino) => {
   const pipeline = estadosPorDestino(destino);
-  const inicio = pipeline.indexOf(destino === "Managua" ? "Tránsito Managua" : "Tránsito Ometepe");
+  const inicio = pipeline.indexOf("Bodega OEX");
   const actual = pipeline.indexOf(estado);
   return inicio >= 0 && actual >= inicio;
 };
