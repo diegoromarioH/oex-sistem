@@ -264,7 +264,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
 
   return (
     <div className="page">
-      <PageTitle title="Finanzas" subtitle="Ventas, ganancia real, gastos e informes">
+      <PageTitle title="Finanzas" subtitle="Ventas, márgenes, costos, gastos e informes">
         <button className={`nav-btn ${vista === "resumen" ? "active" : ""}`} onClick={() => setVista("resumen")}>Resumen</button>
         <button className={`nav-btn ${vista === "ingresos" ? "active" : ""}`} onClick={() => setVista("ingresos")}>Ingresos</button>
         <button className={`nav-btn ${vista === "gastos" ? "active" : ""}`} onClick={() => setVista("gastos")}>Gastos</button>
@@ -404,7 +404,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
       </div>
       <div className="grid-4">
         <TarjetaKPI etiqueta="Ventas Paquetería" valor={ventasPaq} icono={TrendingUp} activa={panelAbierto === "paqueteria"} onClick={() => togglePanel("paqueteria")} />
-        <TarjetaKPI etiqueta="Ganancia real Paquetería" valor={gananciaPaq} icono={LineChart} activa={panelAbierto === "ganancia"} onClick={() => togglePanel("ganancia")} />
+        <TarjetaKPI etiqueta="Margen estimado Paquetería" valor={gananciaPaq} icono={LineChart} activa={panelAbierto === "ganancia"} onClick={() => togglePanel("ganancia")} />
         <TarjetaKPI etiqueta="Otros ingresos" valor={totalOtrosIngresos} icono={PiggyBank} color="var(--success)" activa={false} etiquetaAccion="Ir a Ingresos →" onClick={() => setVista("ingresos")} />
       </div>
 
@@ -488,7 +488,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
 
       {panelAbierto === "ganancia" && (
         <div className="card">
-          <h3>Detalle · Ganancia real Paquetería{mesFiltro ? ` — ${mesFiltro}` : ""}</h3>
+          <h3>Detalle · Margen estimado Paquetería{mesFiltro ? ` — ${mesFiltro}` : ""}</h3>
           <div className="list mt-16">
             {enviosFiltrados.map((e) => (
               <div key={e.id} className="row-card">
@@ -503,7 +503,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
 
       <div className="card">
         <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}><LineChart size={18} style={{ color: "var(--module-color)" }} /> Ventas, gastos y balance por mes</h3>
-        <p>Balance = ganancia real de Paquetería del mes − gastos del mes − costos de Aduana/Flete del mes. Haz clic en un mes para filtrar toda la página por ese período.</p>
+        <p>Balance operativo = margen estimado de Paquetería + otros ingresos − gastos − ajustes entre costo estimado y costo real del proveedor. Haz clic en un mes para filtrar toda la página por ese período.</p>
         <div className="list mt-16">
           {ventasPorMes.map((m) => (
             <button
