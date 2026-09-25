@@ -1,4 +1,13 @@
-// src/services/trackingsService.js\nimport { supabase } from "../supabase";\nimport { numero } from "../utils/numero";\nimport { resolverCliente } from "./clientesService";\nimport { generarCodigoRecibo, firmarPayload, registrarAuditoria } from "./coreService";\nimport { costoProveedorPorTipo, costoTrackingConProveedor, tarifaDesdePerfil, tipoEnvioResumen } from "../utils/calculosPaqueteria";\nimport { postearAsiento } from "./ContabilidadService";\nimport { esEstadoDisponibleParaRecibo } from "../utils/estadosEnvio";\n\nconst asegurarTrackingUnico = async (codigo, excluirId = null) => {
+// src/services/trackingsService.js
+import { supabase } from "../supabase";
+import { numero } from "../utils/numero";
+import { resolverCliente } from "./clientesService";
+import { generarCodigoRecibo, firmarPayload, registrarAuditoria } from "./coreService";
+import { costoProveedorPorTipo, costoTrackingConProveedor, tarifaDesdePerfil, tipoEnvioResumen } from "../utils/calculosPaqueteria";
+import { postearAsiento } from "./ContabilidadService";
+import { esEstadoDisponibleParaRecibo } from "../utils/estadosEnvio";
+
+const asegurarTrackingUnico = async (codigo, excluirId = null) => {
   const limpio = String(codigo || "").trim();
   if (!limpio) return;
   let consulta = supabase.from("tracking_registros").select("id").ilike("tracking", limpio).limit(1);
