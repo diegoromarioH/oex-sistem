@@ -21,7 +21,7 @@ import { confirmarAccionCritica } from "../../services/coreService";
 
 const proveedorVacio = { nombre: "", tipo: "Aduana / Flete", aplicaDestino: "General", contacto: "", telefono: "", correo: "", notas: "" };
 
-export default function FinanzasProveedores({ proveedores, prealertas, facturasProveedor, cuentasDinero = [], empresa, rol, auth, mostrarToast, cargarDatos }) {
+export default function FinanzasProveedores({ proveedores, prealertas, facturasProveedor, cuentasDinero = [], configOperativa, empresa, rol, auth, mostrarToast, cargarDatos }) {
   const [form, setForm] = useState(proveedorVacio);
   const [guardandoProveedor, setGuardandoProveedor] = useState(false);
   const [proveedorParaFactura, setProveedorParaFactura] = useState("");
@@ -424,7 +424,7 @@ function ProveedorDetalle({ proveedor, facturas, cuentasDinero = [], empresa, au
   );
 }
 
-function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, proveedorParaFactura, setProveedorParaFactura, auth, mostrarToast, cargarDatos }) {
+function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, proveedorParaFactura, setProveedorParaFactura, configOperativa, auth, mostrarToast, cargarDatos }) {
   const [seleccionados, setSeleccionados] = useState(() => new Set());
   const [montoReal, setMontoReal] = useState("");
   const [numeroFactura, setNumeroFactura] = useState("");
@@ -473,7 +473,7 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
 
   const trackingsIncluidos = poolBase.filter((t) => seleccionados.has(t.id));
   const trackingsConTarifaProveedor = trackingsIncluidos.map((t) => ({ ...t, proveedorTarifaMaritimo: proveedorSeleccionado?.tarifaMaritimo, proveedorTarifaAereo: proveedorSeleccionado?.tarifaAereo }));
-  const montoEstimado = esAduana ? calcularMontoEstimado(trackingsConTarifaProveedor) : numero(montoReal);
+  const montoEstimado = esAduana ? calcularMontoEstimado(trackingsConTarifaProveedor, proveedorSeleccionado, configOperativa) : numero(montoReal);
   const diferencia = numero(montoReal) - montoEstimado;
 
   const limpiar = () => {
@@ -500,7 +500,7 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
       await generarFacturaProveedor({
         proveedor: proveedorSeleccionado,
         trackings: trackingsConTarifaProveedor,
-        montoReal, numeroFactura, nota, link, fecha, auth
+        montoReal, numeroFactura, nota, link, fecha, configOperativa, auth
       });
       mostrarToast(
         esAduana
