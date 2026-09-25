@@ -102,7 +102,9 @@ export const actualizarTrackingEnvio = async ({ envio, trackingIndex, field, val
   });
 };
 
-const ESTADOS_DISPONIBLES_RETIRO = new Set(["Ometepe", "Punto UNI", "Jardines de Veracruz"]);\n\nexport const actualizarEstadoEnvio = async ({ envio, nuevoEstado, prompts, cuentaDinero, auth }) => {
+const ESTADOS_DISPONIBLES_RETIRO = new Set(["Ometepe", "Punto UNI", "Jardines de Veracruz"]);
+
+export const actualizarEstadoEnvio = async ({ envio, nuevoEstado, prompts, cuentaDinero, auth }) => {
   let abono = numero(envio.abono);
   let referencia = envio.referencia || "";
   let metodo = envio.metodoPago || "";
@@ -118,10 +120,12 @@ const ESTADOS_DISPONIBLES_RETIRO = new Set(["Ometepe", "Punto UNI", "Jardines de
     abono = numero(envio.total);
   }
 
-  const trackingsActualizados = (envio.trackings || []).map((t) => ({ ...t, estado: nuevoEstado }));\n  const fechaDisponibleRetiro = envio.fechaDisponibleRetiro || (ESTADOS_DISPONIBLES_RETIRO.has(nuevoEstado) ? new Date().toISOString() : null);
+  const trackingsActualizados = (envio.trackings || []).map((t) => ({ ...t, estado: nuevoEstado }));
+  const fechaDisponibleRetiro = envio.fechaDisponibleRetiro || (ESTADOS_DISPONIBLES_RETIRO.has(nuevoEstado) ? new Date().toISOString() : null);
   const { error } = await supabase.from("envios").update({
     estado: nuevoEstado,
-    ...(fechaDisponibleRetiro ? { fecha_disponible_retiro: fechaDisponibleRetiro } : {}),\n    trackings: trackingsActualizados,
+    ...(fechaDisponibleRetiro ? { fecha_disponible_retiro: fechaDisponibleRetiro } : {}),
+    trackings: trackingsActualizados,
     metodo_pago: metodo,
     referencia_pago: referencia,
     abono,
