@@ -4,7 +4,7 @@ import { confirmarTracking, eliminarTracking, actualizarPrealerta } from "../../
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 import { buscarClientesParecidos, limpiarTelefono } from "../../utils/clientes";
 
-export default function Prealertas({ prealertas, clientes, proveedores = [], rol, auth, mostrarToast, cargarDatos }) {
+export default function Prealertas({ prealertas, clientes, proveedores = [], configOperativa, rol, auth, mostrarToast, cargarDatos }) {
   const [confirmando, setConfirmando] = useState(null);
   const [editando, setEditando] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -67,7 +67,7 @@ export default function Prealertas({ prealertas, clientes, proveedores = [], rol
     if (!String(datos.almacenId || "").trim()) return mostrarToast("Escribe el ID de almacén.", "warning");
 
     try {
-      await confirmarTracking({ tracking:t, clientesEnMemoria:clientes, proveedorAduana:proveedor, almacenId:datos.almacenId, auth });
+      await confirmarTracking({ tracking:t, clientesEnMemoria:clientes, proveedorAduana:proveedor, almacenId:datos.almacenId, configOperativa, auth });
       mostrarToast(`Tracking confirmado con ${proveedor.nombre}.`);
       setConfirmando(null);
       await cargarDatos();
