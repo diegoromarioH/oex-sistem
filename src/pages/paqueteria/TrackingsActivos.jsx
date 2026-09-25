@@ -110,7 +110,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       : (nuevoTipo === "Aéreo" ? "4.50" : "1.50");
     if (!window.confirm(`Cambiar ${t.tracking || t.almacenId || "este tracking"} de ${t.tipoEnvio} a ${nuevoTipo}?\n\nEl costo interno se actualizará a ${tarifaTexto}/lb.`)) return;
     try {
-      await corregirTipoTrackingActivo({ tracking:t, nuevoTipo, proveedorAduana:proveedor, auth });
+      await corregirTipoTrackingActivo({ tracking:t, nuevoTipo, proveedorAduana:proveedor, configOperativa, auth });
       mostrarToast(`Tracking corregido a ${nuevoTipo} · costo interno ${tarifaTexto}/lb.`);
       await cargarDatos();
     } catch (err) {
