@@ -28,7 +28,7 @@ const vincularCliente = (tracking, clientes = []) => {
   return { cliente: null, motivo: null };
 };
 
-export default function TrackingsActivos({ prealertas, envios = [], clientes = [], proveedores = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos, onNavigate }) {
+export default function TrackingsActivos({ configOperativa, prealertas, envios = [], clientes = [], proveedores = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos, onNavigate }) {
   const feriados = useFeriadosNicaragua();
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
@@ -57,7 +57,7 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
         vinculacion: vincularCliente(t, clientes),
         proveedorAduana: proveedores.find((p) => String(p.id) === String(t.proveedorAduanaId)) || null,
         recibo: t.envioId ? envios.find((e) => String(e.id) === String(t.envioId)) || null : null,
-        deadline: calcularDeadlineTracking(t, feriados)
+        deadline: calcularDeadlineTracking(t, feriados, new Date(), configOperativa?.tiemposEntrega)
       }))
       .filter((t) => filtroEstado === "Todos" || t.estado === filtroEstado)
       .filter((t) => filtroTipo === "Todos" || t.tipoEnvio === filtroTipo)
@@ -308,7 +308,7 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
           {esperandoPago&&!vinculado&&<span className="badge badge-warning">Falta pago proveedor</span>}
         </div>
         <p className="tracking-item-meta">{nombreMostrar} · {codigoMostrar}{telefonoMostrar?` · ${telefonoMostrar}`:""} · {t.destino}{numero(t.peso)>0&&` · ${numero(t.peso).toFixed(1)} lb`}</p>
-        {deadline&&<small style={{display:"block",marginTop:3}}><Clock3 size={12} style={{verticalAlign:"-2px",marginRight:4}}/>Entrega prometida: <b>{formatoRangoDeadline(deadline)}</b> · {textoPromesa(t.destino,t.tipoEnvio)}</small>}
+        {deadline&&<small style={{display:"block",marginTop:3}}><Clock3 size={12} style={{verticalAlign:"-2px",marginRight:4}}/>Entrega prometida: <b>{formatoRangoDeadline(deadline)}</b> · {textoPromesa(t.destino,t.tipoEnvio,configOperativa?.tiemposEntrega)}</small>}
         {t.proveedorAduana&&<small style={{display:"block"}}>Costo interno: ${numero(t.costoInterno).toFixed(2)}/lb · ID almacén: {t.almacenId||"pendiente"}</small>}
         {t.recibo&&<small style={{display:"block"}}>Incluido en recibo <b>{t.recibo.numero}</b> · el estado se administra como grupo.</small>}
       </div>
