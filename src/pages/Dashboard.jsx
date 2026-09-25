@@ -13,20 +13,20 @@ import "../styles/Dashboard.css";
 const FRASES=["Cada entrega cuenta.","Lo que se mide, se puede mejorar.","Cada paquete entregado es un cliente que confió en OEX.","Hoy es un buen día para mover OEX hacia adelante.","Un cliente bien atendido siempre recuerda el servicio.","Orden, seguimiento y servicio hacen crecer cada envío.","Cada libra mueve una historia y una oportunidad.","Hagamos que cada entrega llegue mejor que la anterior."];
 const fechaDe=x=>{const v=x?.fechaISO||x?.fecha||x?.createdAt||x?.created_at;if(!v)return null;const d=new Date(v);return Number.isNaN(d.getTime())?null:d;};
 
-export default function Dashboard({pedidos,envios,gastos,prealertas=[],proveedores=[],empresa,cuentasDinero=[],auth,mostrarToast,cargarDatos,setVista,irAPrealertas}){
+export default function Dashboard({pedidos,envios,gastos,prealertas=[],proveedores=[],configOperativa,empresa,cuentasDinero=[],auth,mostrarToast,cargarDatos,setVista,irAPrealertas}){
  const feriados=useFeriadosNicaragua();
  const ahora=new Date(),mes=ahora.getMonth(),anio=ahora.getFullYear();const esMesActual=x=>{const d=fechaDe(x);return d&&d.getMonth()===mes&&d.getFullYear()===anio;};
  const nombre=(auth?.usuarioActual?.nombre||auth?.session?.user?.user_metadata?.nombre||auth?.session?.user?.email||"equipo OEX").split(" ")[0];const h=ahora.getHours(),saludo=h>=5&&h<12?"Buenos días":h>=12&&h<18?"Buenas tardes":"Buenas noches";const frase=FRASES[Math.floor((ahora-new Date(anio,0,1))/86400000)%FRASES.length];
  const enviosMes=envios.filter(esMesActual),gastosMes=gastos.filter(esMesActual);const factMes=enviosMes.reduce((a,e)=>a+numero(e.total),0),factHist=envios.reduce((a,e)=>a+numero(e.total),0);const ganMes=enviosMes.reduce((a,e)=>a+numero(e.gananciaReal),0),ganHist=envios.reduce((a,e)=>a+numero(e.gananciaReal),0);const gasMes=gastosMes.reduce((a,g)=>a+numero(g.monto),0),gasHist=gastos.reduce((a,g)=>a+numero(g.monto),0);const porCobrar=envios.reduce((a,e)=>a+numero(e.saldo),0);
  const recibosActivos=envios.filter(e=>e.estado!=="Entregado"),prePend=prealertas.filter(esPendienteDeConfirmar),activos=prealertas.filter(t=>!esPendienteDeConfirmar(t));const bodega=useMemo(()=>prealertas.filter(t=>esListoParaRetiroProveedor(t.estado)),[prealertas]);const librasMes=enviosMes.reduce((a,e)=>a+numero(e.totalLibras),0),librasHist=envios.reduce((a,e)=>a+numero(e.totalLibras),0);const clientesMes=new Set(enviosMes.map(e=>e.clienteId||e.clienteCodigo||e.cliente).filter(Boolean)).size;
  const ranking=useMemo(()=>{const m=new Map();envios.forEach(e=>{const k=e.clienteId||e.clienteCodigo||e.cliente;if(!k)return;const x=m.get(k)||{nombre:e.cliente||e.clienteCodigo||"Cliente",libras:0,monto:0};x.libras+=numero(e.totalLibras);x.monto+=numero(e.total);m.set(k,x);});const v=[...m.values()];return{libras:[...v].sort((a,b)=>b.libras-a.libras)[0]||null,monto:[...v].sort((a,b)=>b.monto-a.monto)[0]||null};},[envios]);const saldoCount=envios.filter(e=>numero(e.saldo)>0).length;
- const deadlines=useMemo(()=>activos.map(t=>({tracking:t,deadline:calcularDeadlineTracking(t,feriados,ahora)})).filter(x=>x.deadline),[activos,feriados]);
+ const deadlines=useMemo(()=>activos.map(t=>({tracking:t,deadline:calcularDeadlineTracking(t,feriados,ahora,configOperativa?.tiemposEntrega)})).filter(x=>x.deadline),[activos,feriados,configOperativa]);
  const vencidos=deadlines.filter(x=>x.deadline.estadoDeadline==="vencido");
  const proximos=deadlines.filter(x=>x.deadline.estadoDeadline==="proximo");
  const descargarBodega=()=>{ if(!bodega.length)return; generarPDFBodegaProveedor({trackings:bodega,proveedores,empresa}); };
  const alertas=[
-  vencidos.length>0&&{texto:`🔴 ${vencidos.length} envío${vencidos.length===1?"":"s"} fuera del plazo prometido`,accion:()=>setVista("paqueteria")},
-  proximos.length>0&&{texto:`⏰ ${proximos.length} envío${proximos.length===1?"":"s"} a 2 días hábiles o menos del deadline`,accion:()=>setVista("paqueteria")},
+  vencidos.length>0&&{texto:`🔴 ${vencidos.length} envío${vencidos.length===1?"":"s"} con fecha estimada de entrega vencida`,accion:()=>setVista("paqueteria")},
+  proximos.length>0&&{texto:`⏰ ${proximos.length} envío${proximos.length===1?"":"s"} próximo(s) a su fecha estimada de entrega`,accion:()=>setVista("paqueteria")},
   prePend.length>0&&{texto:`${prePend.length} prealerta${prePend.length===1?"":"s"} pendiente${prePend.length===1?"":"s"} de revisión`,accion:irAPrealertas},
   bodega.length>0&&{texto:`${bodega.length} paquete${bodega.length===1?"":"s"} listo${bodega.length===1?"":"s"} para retirar en Bodega OEX`,accion:descargarBodega,title:"Descargar detalle PDF por proveedor"},
   saldoCount>0&&{texto:`${saldoCount} recibo${saldoCount===1?"":"s"} con saldo pendiente · $${porCobrar.toFixed(2)}`,accion:()=>setVista("paqueteria")}
