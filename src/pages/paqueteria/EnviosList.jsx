@@ -4,6 +4,7 @@ import { exportarEnviosExcel } from "../../services/excelService";
 import { PIPELINE_MANAGUA, PIPELINE_OMETEPE } from "../../utils/estadosEnvio";
 import EnvioItem from "./EnvioItem";
 import { numero } from "../../utils/numero";
+import { generarEstadoCuentaCliente } from "../../services/pdfService";
 
 // En Recibos solo interesan los estados operativos desde Bodega OEX.
 // La creación del recibo sigue permitida desde Tránsito Managua/Ometepe.
@@ -16,6 +17,7 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
   const [filtroPago, setFiltroPago] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroDestino, setFiltroDestino] = useState("");
+  const [seleccionados, setSeleccionados] = useState(new Set());
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -32,6 +34,17 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
     );
   }, [envios, busqueda, filtroEstado, filtroPago, filtroTipo, filtroDestino]);
 
+  const pendientesVisibles = filtrados.filter((e) => numero(e.saldo) > 0.005);
+  const recibosSeleccionados = envios.filter((e) => seleccionados.has(e.id) && numero(e.saldo) > 0.005);
+  const clientesSeleccionados = [...new Set(recibosSeleccionados.map((e) => e.clienteId || e.clienteCodigo || e.cliente))];
+  const toggleSeleccion = (id) => setSeleccionados((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const seleccionarPendientesVisibles = () => setSeleccionados(new Set(pendientesVisibles.map((e) => e.id)));
+  const generarEstadoCuenta = () => {
+    if (!recibosSeleccionados.length) return mostrarToast("Selecciona al menos un recibo pendiente.", "warning");
+    if (clientesSeleccionados.length !== 1) return mostrarToast("El estado de cuenta debe contener recibos de un solo cliente.", "warning");
+    generarEstadoCuentaCliente({ cliente: { nombre: recibosSeleccionados[0].cliente }, recibos: recibosSeleccionados, empresa });
+  };
+
   const hayFiltros = busqueda || filtroEstado || filtroPago || filtroTipo || filtroDestino;
   const limpiarFiltros = () => {
     setBusqueda("");
@@ -45,7 +58,7 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
     <div className="card recibos-card">
       <div className="page-title recibos-title">
         <div><h3>Todos los recibos</h3><small>{filtrados.length} de {envios.length} recibos</small></div>
-        <button className="btn recibos-exportar" onClick={() => exportarEnviosExcel(filtrados)}>Exportar Excel</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className="btn btn-ghost" onClick={seleccionarPendientesVisibles}>Seleccionar pendientes</button><button className="btn" disabled={!recibosSeleccionados.length} onClick={generarEstadoCuenta}>Estado de cuenta ({recibosSeleccionados.length})</button><button className="btn recibos-exportar" onClick={() => exportarEnviosExcel(filtrados)}>Exportar Excel</button></div>
       </div>
 
       <div className="recibos-toolbar">
@@ -79,7 +92,7 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
 
       <div className="list recibos-list">
         {filtrados.map((e) => (
-          <EnvioItem key={e.id} envio={e} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} mostrarPipeline={false} compacto />
+          <div key={e.id} style={{ display: "grid", gridTemplateColumns: numero(e.saldo) > 0.005 ? "28px minmax(0,1fr)" : "1fr", gap: 8, alignItems: "start" }}>{numero(e.saldo) > 0.005 && <input type="checkbox" aria-label={`Seleccionar ${e.numero}`} checked={seleccionados.has(e.id)} onChange={() => toggleSeleccion(e.id)} style={{ marginTop: 18 }} />}<EnvioItem envio={e} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} mostrarPipeline={false} compacto /></div>
         ))}
         {filtrados.length === 0 && <p>No hay envíos que coincidan.</p>}
       </div>
