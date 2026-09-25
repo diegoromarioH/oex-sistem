@@ -6,6 +6,7 @@ import { costoInternoDefaultPorTipo } from "../utils/calculosPaqueteria";
 import { siguienteEstadoTrasRetiroProveedor } from "../utils/estadosEnvio";
 import { ajustarSaldoCuentaDinero } from "./cuentasDineroService";
 import { postearAsiento } from "./ContabilidadService";
+import { convertirMoneda, redondearDinero } from "../utils/conversionMoneda";
 
 export const TIPOS_PROVEEDOR = ["Aduana / Flete", "Transporte local"];
 const esAduanaFlete = (proveedor) => proveedor.tipo === "Aduana / Flete";
@@ -128,11 +129,11 @@ export const registrarPagoProveedor = async ({ factura, proveedor, monto, metodo
   if (!cuentaDinero?.id) throw new Error("Selecciona de cuál cuenta sale el pago (créala en Finanzas → Cuentas si no tienes ninguna).");
   const tasa = numero(tasaCambio);
   if (cuentaDinero.moneda === "NIO" && tasa <= 0) throw new Error("Configura una tasa de cambio válida para pagar dólares desde una cuenta en córdobas.");
-  const montoCuenta = cuentaDinero.moneda === "NIO" ? montoNum * tasa : montoNum;
+  const montoCuenta = convertirMoneda({ monto:montoNum, monedaOrigen:"USD", monedaDestino:cuentaDinero.moneda, tasaCambio:tasa });
 
   const horaActual = new Date().toTimeString().slice(0, 8);
   const fechaISO = fecha ? new Date(`${fecha}T${horaActual}`).toISOString() : new Date().toISOString();
-  const { data:pagoCreado, error:errorPago } = await supabase.from("pagos_proveedor").insert([{ factura_id:factura.id, monto:montoNum, metodo, cuenta:cuentaDinero.nombre, cuenta_dinero_id:cuentaDinero.id, referencia:referencia || "", nota:nota || "", fecha:fechaISO, ...firmarPayload(auth) }]).select().single();
+  const { data:pagoCreado, error:errorPago } = await supabase.from("pagos_proveedor").insert([{ factura_id:factura.id, monto:redondearDinero(montoNum), moneda:"USD", tasa_cambio:cuentaDinero.moneda === "NIO" ? tasa : null, monto_cuenta:montoCuenta, metodo, cuenta:cuentaDinero.nombre, cuenta_dinero_id:cuentaDinero.id, referencia:referencia || "", nota:nota || "", fecha:fechaISO, ...firmarPayload(auth) }]).select().single();
   if (errorPago) throw errorPago;
 
   const nuevoAbonado = numero(factura.abonado) + montoNum;
