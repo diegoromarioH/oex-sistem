@@ -44,11 +44,11 @@ export default function Configuracion({ tarifas, setTarifas, configOperativa, se
   };
 
   const proveedoresAduana = proveedores.filter((p) => p.tipo === "Aduana / Flete");
+  const [editandoOperativa, setEditandoOperativa] = useState(false);
   const [draftCostosProveedor, setDraftCostosProveedor] = useState({});
   useEffect(() => {
     if (!editandoOperativa) setDraftCostosProveedor(Object.fromEntries(proveedoresAduana.map(p => [p.id, { maritimo: p.tarifaMaritimo ?? "", aereo: p.tarifaAereo ?? "" }])));
   }, [proveedores, editandoOperativa]);
-  const [editandoOperativa, setEditandoOperativa] = useState(false);
   const [guardandoOperativa, setGuardandoOperativa] = useState(false);
   const [draftOperativa, setDraftOperativa] = useState(configOperativa);
   useEffect(() => { if (!editandoOperativa) setDraftOperativa(configOperativa); }, [configOperativa, editandoOperativa]);
