@@ -1,4 +1,4 @@
-const PROMESAS = {
+export const PROMESAS_DEFAULT = {
   Managua: { "Aéreo": [3, 5], "Marítimo": [16, 19] },
   Ometepe: { "Aéreo": [4, 6], "Marítimo": [17, 20] }
 };
@@ -12,11 +12,11 @@ const fechaLocal = (valor) => {
 
 const claveFecha = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 
-export const promesaPorDestinoTipo = (destino, tipoEnvio) =>
-  PROMESAS[destino]?.[tipoEnvio] || null;
+export const promesaPorDestinoTipo = (destino, tipoEnvio, tiemposEntrega = PROMESAS_DEFAULT) =>
+  tiemposEntrega?.[destino]?.[tipoEnvio] || PROMESAS_DEFAULT[destino]?.[tipoEnvio] || null;
 
-export const textoPromesa = (destino, tipoEnvio) => {
-  const p = promesaPorDestinoTipo(destino, tipoEnvio);
+export const textoPromesa = (destino, tipoEnvio, tiemposEntrega = PROMESAS_DEFAULT) => {
+  const p = promesaPorDestinoTipo(destino, tipoEnvio, tiemposEntrega);
   return p ? `${p[0]}–${p[1]} días hábiles desde recepción en Miami` : "";
 };
 
@@ -58,8 +58,8 @@ const umbralAlertaPorTipo = (tipoEnvio = "") => {
   return tipo.includes("marit") ? 3 : tipo.includes("aereo") ? 1 : 2;
 };
 
-export const calcularDeadlineTracking = (tracking, feriados = [], hoy = new Date()) => {
-  const promesa = promesaPorDestinoTipo(tracking?.destino, tracking?.tipoEnvio);
+export const calcularDeadlineTracking = (tracking, feriados = [], hoy = new Date(), tiemposEntrega = PROMESAS_DEFAULT) => {
+  const promesa = promesaPorDestinoTipo(tracking?.destino, tracking?.tipoEnvio, tiemposEntrega);
   const inicio = fechaLocal(tracking?.fechaMiami);
   if (!promesa || !inicio) return null;
   const fechaMin = sumarDiasHabiles(inicio, promesa[0], feriados);
