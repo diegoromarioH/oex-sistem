@@ -4,7 +4,7 @@ import { registrarTracking } from "../../services/trackingsService";
 import { textoPromesa } from "../../utils/deadlinesEntrega";
 import ClienteSelector from "../../components/ClienteSelector";
 
-export default function RegistrarTracking({ clientes, proveedores = [], auth, mostrarToast, cargarDatos }) {
+export default function RegistrarTracking({ configOperativa, clientes, proveedores = [], auth, mostrarToast, cargarDatos }) {
   const [cliente, setCliente] = useState("");
   const [contacto, setContacto] = useState("+505 ");
   const [clienteId, setClienteId] = useState(null);
@@ -20,7 +20,7 @@ export default function RegistrarTracking({ clientes, proveedores = [], auth, mo
   const proveedoresAduana = useMemo(() => proveedores.filter((p) => p.tipo === "Aduana / Flete"), [proveedores]);
   const proveedorSeleccionado = proveedoresAduana.find((p) => String(p.id) === String(proveedorId));
   const costoProveedor = proveedorSeleccionado ? (tipoEnvio === "Aéreo" ? proveedorSeleccionado.tarifaAereo : proveedorSeleccionado.tarifaMaritimo) : "";
-  const promesa = textoPromesa(destino, tipoEnvio);
+  const promesa = textoPromesa(destino, tipoEnvio, configOperativa?.tiemposEntrega);
 
   const guardar = async () => {
     if (!cliente.trim() || !contacto.trim()) return mostrarToast("Escribe cliente y WhatsApp.", "warning");
