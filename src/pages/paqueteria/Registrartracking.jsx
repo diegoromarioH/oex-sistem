@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { registrarTracking } from "../../services/trackingsService";
 import { textoPromesa } from "../../utils/deadlinesEntrega";
-import ClienteSelector from "../../components/ClienteSelector";
+import ClienteSelector from "../../components/ClienteSelector";\nimport { costoProveedorPorTipo } from "../../utils/calculosPaqueteria";
 
 export default function RegistrarTracking({ configOperativa, clientes, proveedores = [], auth, mostrarToast, cargarDatos }) {
   const [cliente, setCliente] = useState("");
@@ -19,7 +19,7 @@ export default function RegistrarTracking({ configOperativa, clientes, proveedor
 
   const proveedoresAduana = useMemo(() => proveedores.filter((p) => p.tipo === "Aduana / Flete"), [proveedores]);
   const proveedorSeleccionado = proveedoresAduana.find((p) => String(p.id) === String(proveedorId));
-  const costoProveedor = proveedorSeleccionado ? (tipoEnvio === "Aéreo" ? proveedorSeleccionado.tarifaAereo : proveedorSeleccionado.tarifaMaritimo) : "";
+  const costoProveedor = proveedorSeleccionado ? costoProveedorPorTipo(proveedorSeleccionado, tipoEnvio, configOperativa) : "";
   const promesa = textoPromesa(destino, tipoEnvio, configOperativa?.tiemposEntrega);
 
   const guardar = async () => {
@@ -29,7 +29,7 @@ export default function RegistrarTracking({ configOperativa, clientes, proveedor
     if (estadoInicial === "Miami" && !almacenId.trim()) return mostrarToast("Si ya fue recibido en Miami, escribe el ID de almacén.", "warning");
     setGuardando(true);
     try {
-      await registrarTracking({ form: { cliente, contacto, destino, tipoEnvio, codigo, almacenId, nota, estadoInicial }, clientesEnMemoria: clientes, proveedorAduana: proveedorSeleccionado, auth });
+      await registrarTracking({ form: { cliente, contacto, destino, tipoEnvio, codigo, almacenId, nota, estadoInicial }, clientesEnMemoria: clientes, proveedorAduana: proveedorSeleccionado, configOperativa, auth });
       mostrarToast(estadoInicial === "Miami" ? "Tracking registrado como Recibido en Miami." : "Tracking registrado como Prealertado en Envíos activos.");
       setCliente(""); setContacto("+505 "); setClienteId(null); setCodigo(""); setAlmacenId(""); setNota(""); setEstadoInicial("Prealertado");
       await cargarDatos();
