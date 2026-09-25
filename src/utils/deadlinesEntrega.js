@@ -1,4 +1,7 @@
-export const PROMESAS_DEFAULT = {\n  Managua: { "Aéreo": [5, 7], "Marítimo": [16, 19] },\n  Ometepe: { "Aéreo": [5, 7], "Marítimo": [18, 20] }\n};
+export const PROMESAS_DEFAULT = {
+  Managua: { "Aéreo": [5, 7], "Marítimo": [16, 19] },
+  Ometepe: { "Aéreo": [5, 7], "Marítimo": [18, 20] }
+};
 
 const fechaLocal = (valor) => {
   if (!valor) return null;
