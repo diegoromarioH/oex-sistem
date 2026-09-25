@@ -63,8 +63,10 @@ const costoEstimadoTracking = (t) => {
   // NULL significa "sin costo específico", no $0/lb. En ese caso usamos
   // el costo interno por defecto según el tipo real del tracking:
   // Marítimo $1.50/lb · Aéreo $4.50/lb.
-  const tieneCostoEspecifico = t.costoInterno !== undefined && t.costoInterno !== null && t.costoInterno !== "";
-  const costo = tieneCostoEspecifico ? numero(t.costoInterno) : costoInternoDefaultPorTipo(t.tipoEnvio);
+  const costoGuardado = numero(t.costoInterno);
+  const tieneCostoEspecifico = t.costoInterno !== undefined && t.costoInterno !== null && t.costoInterno !== "" && costoGuardado > 0;
+  const costoProveedor = t.tipoEnvio === "Aéreo" ? numero(t.proveedorTarifaAereo) : numero(t.proveedorTarifaMaritimo);
+  const costo = tieneCostoEspecifico ? costoGuardado : costoProveedor > 0 ? costoProveedor : costoInternoDefaultPorTipo(t.tipoEnvio);
   return numero(t.peso) * costo;
 };
 
