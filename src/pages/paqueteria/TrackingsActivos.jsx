@@ -104,8 +104,9 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
       return;
     }
     const tarifaNueva = nuevoTipo === "Aéreo" ? proveedor.tarifaAereo : proveedor.tarifaMaritimo;
-    const tarifaTexto = tarifaNueva !== undefined && tarifaNueva !== null && tarifaNueva !== ""
-      ? Number(tarifaNueva).toFixed(2)
+    const tarifaNumerica = Number(tarifaNueva);
+    const tarifaTexto = tarifaNueva !== undefined && tarifaNueva !== null && tarifaNueva !== "" && Number.isFinite(tarifaNumerica) && tarifaNumerica > 0
+      ? tarifaNumerica.toFixed(2)
       : (nuevoTipo === "Aéreo" ? "4.50" : "1.50");
     if (!window.confirm(`Cambiar ${t.tracking || t.almacenId || "este tracking"} de ${t.tipoEnvio} a ${nuevoTipo}?\n\nEl costo interno se actualizará a ${tarifaTexto}/lb.`)) return;
     try {
