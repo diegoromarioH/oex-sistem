@@ -5,8 +5,9 @@ import { reiniciarDatosOperativos, reiniciarDatosFinancieros, confirmarAccionCri
 import { numero } from "../utils/numero";
 import { formatoMoneda } from "../utils/moneda";
 import { ESTADOS_LISTO_PARA_RETIRAR } from "../utils/estadosEnvio";
+import { actualizarProveedor } from "../services/proveedoresService";
 
-export default function Configuracion({ tarifas, setTarifas, configOperativa, setConfigOperativa, empresa, setEmpresa, cuentasDinero = [], rol, tema, setTema, mostrarToast, cargarDatos }) {
+export default function Configuracion({ tarifas, setTarifas, configOperativa, setConfigOperativa, empresa, setEmpresa, cuentasDinero = [], proveedores = [], auth, rol, tema, setTema, mostrarToast, cargarDatos }) {
   const [vista, setVista] = useState("tarifas");
   const [borrando, setBorrando] = useState(false);
 
@@ -42,6 +43,11 @@ export default function Configuracion({ tarifas, setTarifas, configOperativa, se
     setEditandoTarifas(false);
   };
 
+  const proveedoresAduana = proveedores.filter((p) => p.tipo === "Aduana / Flete");
+  const [draftCostosProveedor, setDraftCostosProveedor] = useState({});
+  useEffect(() => {
+    if (!editandoOperativa) setDraftCostosProveedor(Object.fromEntries(proveedoresAduana.map(p => [p.id, { maritimo: p.tarifaMaritimo ?? "", aereo: p.tarifaAereo ?? "" }])));
+  }, [proveedores, editandoOperativa]);
   const [editandoOperativa, setEditandoOperativa] = useState(false);
   const [guardandoOperativa, setGuardandoOperativa] = useState(false);
   const [draftOperativa, setDraftOperativa] = useState(configOperativa);
@@ -51,7 +57,21 @@ export default function Configuracion({ tarifas, setTarifas, configOperativa, se
     setGuardandoOperativa(true);
     try {
       await setConfigOperativa(draftOperativa);
-      mostrarToast("Costos y tiempos guardados.");
+      for (const proveedor of proveedoresAduana) {
+        const costos = draftCostosProveedor[proveedor.id] || {};
+        await actualizarProveedor({
+          proveedor,
+          form: {
+            nombre: proveedor.nombre, tipo: proveedor.tipo, aplicaDestino: proveedor.aplicaDestino,
+            contacto: proveedor.contacto, telefono: proveedor.telefono, correo: proveedor.correo,
+            direccion: proveedor.direccion, notas: proveedor.notas,
+            tarifaMaritimo: costos.maritimo, tarifaAereo: costos.aereo
+          },
+          auth
+        });
+      }
+      await cargarDatos?.();
+      mostrarToast("Costos por proveedor y tiempos guardados.");
       setEditandoOperativa(false);
     } catch (err) {
       mostrarToast(err.message || "No se pudo guardar la configuración operativa.", "error");
@@ -178,9 +198,12 @@ export default function Configuracion({ tarifas, setTarifas, configOperativa, se
             ? <div className="segment"><button className="btn btn-ghost" onClick={()=>{setDraftOperativa(configOperativa);setEditandoOperativa(false)}}>Cancelar</button><button className="btn btn-primary" disabled={guardandoOperativa} onClick={guardarOperativa}>{guardandoOperativa?"Guardando...":"Guardar"}</button></div>
             : <button className="btn" onClick={()=>setEditandoOperativa(true)}>Editar costos y tiempos</button>)}
         </div>
-        <div className="form-grid mt-16">
-          <label><span className="field-label">Costo proveedor Marítimo $/lb</span><input className="input" type="number" step="0.01" disabled={!editandoOperativa} value={draftOperativa.costosProveedor.maritimo} onChange={e=>setDraftOperativa({...draftOperativa,costosProveedor:{...draftOperativa.costosProveedor,maritimo:Number(e.target.value)}})} /></label>
-          <label><span className="field-label">Costo proveedor Aéreo $/lb</span><input className="input" type="number" step="0.01" disabled={!editandoOperativa} value={draftOperativa.costosProveedor.aereo} onChange={e=>setDraftOperativa({...draftOperativa,costosProveedor:{...draftOperativa.costosProveedor,aereo:Number(e.target.value)}})} /></label>
+        <div className="list mt-16">
+          {proveedoresAduana.map(proveedor => {
+            const costos = draftCostosProveedor[proveedor.id] || { maritimo:"", aereo:"" };
+            const cambiarCosto = (campo, valor) => setDraftCostosProveedor(actual => ({...actual,[proveedor.id]:{...costos,[campo]:valor}}));
+            return <div className="row-card" key={proveedor.id}><div style={{minWidth:180}}><b>{proveedor.nombre}</b><small style={{display:"block"}}>Aduana / Flete</small></div><div className="form-grid" style={{flex:1}}><label><span className="field-label">Marítimo $/lb</span><input className="input" type="number" min="0.01" step="0.01" disabled={!editandoOperativa} value={costos.maritimo} onChange={e=>cambiarCosto("maritimo",e.target.value)} /></label><label><span className="field-label">Aéreo $/lb</span><input className="input" type="number" min="0.01" step="0.01" disabled={!editandoOperativa} value={costos.aereo} onChange={e=>cambiarCosto("aereo",e.target.value)} /></label></div></div>;
+          })}
         </div>
         <div className="list mt-16">
           {["Managua","Ometepe"].flatMap(destino=>["Aéreo","Marítimo"].map(tipo=>{
