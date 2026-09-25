@@ -30,9 +30,9 @@ export default function Paqueteria({ envios, prealertas, facturasProveedor, audi
       </PageTitle>
 
       {vista === "dashboard" && <PaqueteriaDashboard envios={envios} prealertas={prealertas} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
-      {vista === "nuevo" && <PaqueteriaRecibo prealertas={prealertas} clientes={clientes} tarifas={tarifas} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+      {vista === "nuevo" && <PaqueteriaRecibo prealertas={prealertas} clientes={clientes} tarifas={tarifas} proveedores={proveedores} configOperativa={configOperativa} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "registrar" && <RegistrarTracking configOperativa={configOperativa} clientes={clientes} proveedores={proveedores} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
-      {vista === "prealertas" && <Prealertas prealertas={prealertas} clientes={clientes} proveedores={proveedores} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+      {vista === "prealertas" && <Prealertas prealertas={prealertas} clientes={clientes} proveedores={proveedores} configOperativa={configOperativa} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "activos" && <TrackingsActivos configOperativa={configOperativa} prealertas={prealertas} envios={envios} clientes={clientes} proveedores={proveedores} facturasProveedor={facturasProveedor} auditLog={auditLog} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} onNavigate={onNavigate} />}
       {vista === "lista" && <EnviosList envios={envios} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
     </div>
