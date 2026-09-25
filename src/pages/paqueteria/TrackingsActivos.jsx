@@ -261,7 +261,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       <button className="btn tracking-lote-btn" onClick={()=>setLoteAbierto(v=>!v)}><Layers size={14}/>{loteAbierto?"Ocultar carga por lote":"Cargar lote de Bodega OEX"}</button>
     </div>
 
-    <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. El deadline inicia al marcar Recibido en Miami.</small>
+    <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. La fecha estimada y las alertas internas se calculan desde que se marca Recibido en Miami.</small>
 
     {loteAbierto&&<div className="card" style={{background:"var(--surface-2, #f7f8fa)",marginTop:14,marginBottom:16}}>
       <h4 style={{margin:"0 0 4px"}}>Pegar lista del proveedor</h4>
@@ -291,7 +291,7 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
   const opcionesEstado=t.estado==="Prealertado"?["Prealertado",...estadosPorDestino(t.destino).filter(s=>s!=="Entregado")]:estadosPorDestino(t.destino).filter(s=>s!=="Entregado");
   const deadline=t.deadline;
   const badgeDeadline=deadline?.estadoDeadline==="vencido"?"badge-danger":deadline?.estadoDeadline==="proximo"?"badge-warning":"badge-success";
-  const textoEstado=deadline?.estadoDeadline==="vencido"?"Deadline vencido":deadline?.estadoDeadline==="proximo"?`${deadline.restantes} día${deadline.restantes===1?"":"s"} hábil${deadline.restantes===1?"":"es"}`:"En tiempo";
+  const textoEstado=deadline?.estadoDeadline==="vencido"?"Fecha estimada vencida":deadline?.estadoDeadline==="proximo"?`${deadline.restantes} día${deadline.restantes===1?"":"s"} hábil${deadline.restantes===1?"":"es"}`:"En tiempo";
   const vinculado=Boolean(t.envioId);
 
   return <div className="row-card tracking-item" style={{flexDirection:"column",alignItems:"stretch"}}>
