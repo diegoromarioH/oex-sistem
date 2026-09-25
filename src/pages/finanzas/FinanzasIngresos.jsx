@@ -17,11 +17,13 @@ const nombreMes = (fechaISO) => {
   return txt.charAt(0).toUpperCase() + txt.slice(1);
 };
 
-export default function FinanzasIngresos({ ingresos, clientes = [], cuentasDinero = [], rol, auth, mostrarToast, cargarDatos }) {
+export default function FinanzasIngresos({ ingresos, clientes = [], cuentasDinero = [], empresa, rol, auth, mostrarToast, cargarDatos }) {
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [categoria, setCategoria] = useState("General");
   const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
+  const [moneda, setMoneda] = useState("USD");
+  const [tasaCambio, setTasaCambio] = useState(String(empresa?.tipoCambio || ""));
   // "" = sin cliente, ingreso general (no ligado a nadie puntual).
   const [clienteIngresoId, setClienteIngresoId] = useState("");
   // Vínculo opcional a la cuenta de dinero (caja/banco) donde entra el
@@ -62,7 +64,7 @@ export default function FinanzasIngresos({ ingresos, clientes = [], cuentasDiner
     try {
       const cliente = clientes.find((c) => String(c.id) === String(clienteIngresoId)) || null;
       const cuentaDinero = cuentasDinero.find((c) => String(c.id) === String(cuentaDineroId)) || null;
-      await guardarIngreso({ form: { fecha, categoria, descripcion, monto, cliente, cuentaDinero }, auth });
+      await guardarIngreso({ form: { fecha, categoria, descripcion, monto, moneda, tasaCambio, cliente, cuentaDinero }, auth });
       mostrarToast("Ingreso registrado.");
       setDescripcion(""); setMonto(""); setClienteIngresoId(""); setCuentaDineroId("");
       cargarDatos();
@@ -125,7 +127,7 @@ export default function FinanzasIngresos({ ingresos, clientes = [], cuentasDiner
             </label>
           </div>
           <label className="mt-8"><span className="field-label">Descripción</span><input className="input" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} /></label>
-          <label className="mt-8"><span className="field-label">Monto ($)</span><input className="input" type="number" value={monto} onChange={(e) => setMonto(e.target.value)} /></label>
+          <div className="form-grid mt-8"><label><span className="field-label">Moneda del ingreso</span><select className="input" value={moneda} onChange={(e)=>setMoneda(e.target.value)}><option value="USD">Dólares (USD)</option><option value="NIO">Córdobas (NIO)</option></select></label><label><span className="field-label">Monto ({moneda === "NIO" ? "C$" : "$"})</span><input className="input" type="number" value={monto} onChange={(e) => setMonto(e.target.value)} /></label></div>
           {clientes.length > 0 && (
             <div className="mt-8">
               <Select
@@ -152,6 +154,7 @@ export default function FinanzasIngresos({ ingresos, clientes = [], cuentasDiner
               />
             </div>
           )}
+          {cuentaDineroId && cuentasDinero.find(c=>String(c.id)===String(cuentaDineroId))?.moneda !== moneda && <label className="mt-8"><span className="field-label">Tipo de cambio (C$ por US$1)</span><input className="input" type="number" min="0" step="0.01" value={tasaCambio} onChange={(e)=>setTasaCambio(e.target.value)} /></label>}
           <button className="btn btn-primary mt-16" disabled={guardando} onClick={guardar}>{guardando ? "Guardando..." : "Registrar ingreso"}</button>
         </div>
 
