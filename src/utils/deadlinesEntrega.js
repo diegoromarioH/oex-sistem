@@ -72,10 +72,10 @@ export const calcularDeadlineTracking = (tracking, feriados = [], hoy = new Date
   return { fechaMin, fechaMax, diasMin: promesa[0], diasMax: promesa[1], restantes, umbralAlerta, estadoDeadline };
 };
 
-export const formatoRangoDeadline = (deadline) => {
-  if (!deadline?.fechaMin || !deadline?.fechaMax) return "";
-  const opts = { day: "2-digit", month: "short" };
-  const a = deadline.fechaMin.toLocaleDateString("es-NI", opts);
-  const b = deadline.fechaMax.toLocaleDateString("es-NI", opts);
-  return `${a} – ${b}`;
+export const formatoFechaEstimada = (deadline) => {
+  if (!deadline?.fechaMax) return "";
+  return deadline.fechaMax.toLocaleDateString("es-NI", { day: "2-digit", month: "short", year: "numeric" });
 };
+
+// Compatibilidad con componentes antiguos: ahora devuelve solo la fecha máxima estimada.
+export const formatoRangoDeadline = formatoFechaEstimada;
