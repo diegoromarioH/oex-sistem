@@ -75,6 +75,34 @@ export const registrarTracking = async ({ form, clientesEnMemoria, proveedorAdua
 };
 
 const COLUMNAS_EDITABLES={peso:"peso",estado:"estado",almacenId:"almacen_id",costoInterno:"costo_interno",nota:"nota",tipoEnvio:"tipo_envio"};
+export const corregirTipoTrackingActivo = async ({ tracking, nuevoTipo, proveedorAduana, facturaProveedor = null, auth }) => {
+  if (!["Marítimo", "Aéreo"].includes(nuevoTipo)) throw new Error("Tipo de envío inválido.");
+  if (!tracking?.id) throw new Error("Tracking inválido.");
+  if (!proveedorAduana?.id) throw new Error("El tracking no tiene un proveedor de Aduana / Flete válido.");
+  if (facturaProveedor) {
+    throw new Error(`Este tracking ya está incluido en la factura de proveedor ${facturaProveedor.numeroFactura || "#" + facturaProveedor.id}. Corrige primero esa factura para no alterar costos históricos.`);
+  }
+
+  const costoInterno = costoProveedorPorTipo(proveedorAduana, nuevoTipo);
+  const { error } = await supabase.from("tracking_registros").update({
+    tipo_envio: nuevoTipo,
+    costo_interno: costoInterno,
+    updated_by: auth.session?.user?.id || null,
+    updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
+  }).eq("id", tracking.id);
+  if (error) throw error;
+
+  await registrarAuditoria({
+    ...auth,
+    accion: "Corrigió tipo de tracking",
+    modulo: "Trackings",
+    registroCodigo: tracking.tracking || tracking.almacenId || "",
+    detalle: `${tracking.tipoEnvio || "Sin tipo"} → ${nuevoTipo} · ${proveedorAduana.nombre} · ${costoInterno.toFixed(2)}/lb`
+  });
+
+  return { costoInterno };
+};
+
 export const actualizarTracking=async({tracking,field,value,auth})=>{
   const columna=COLUMNAS_EDITABLES[field];
   if(!columna) throw new Error(`Campo no editable: ${field}`);
