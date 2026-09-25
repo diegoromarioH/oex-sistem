@@ -59,7 +59,11 @@ export const actualizarProveedor = async ({ proveedor, form, auth }) => {
   await registrarAuditoria({ ...auth, accion:"Editó proveedor", modulo:"Finanzas", registroCodigo:form.nombre, detalle:form.tipo || "" });
 };
 
-const costoEstimadoTracking = (t, proveedor, configOperativa) =>\n  numero(t.peso) * costoTrackingConProveedor(t, proveedor, configOperativa);\n\nexport const calcularMontoEstimado = (trackings, proveedor, configOperativa) =>\n  trackings.reduce((a, t) => a + costoEstimadoTracking(t, proveedor, configOperativa), 0);
+const costoEstimadoTracking = (t, proveedor, configOperativa) =>
+  numero(t.peso) * costoTrackingConProveedor(t, proveedor, configOperativa);
+
+export const calcularMontoEstimado = (trackings, proveedor, configOperativa) =>
+  trackings.reduce((a, t) => a + costoEstimadoTracking(t, proveedor, configOperativa), 0);
 
 export const generarFacturaProveedor = async ({ proveedor, trackings = [], montoReal, numeroFactura, nota, link, fecha, configOperativa, auth }) => {
   const esAduana = esAduanaFlete(proveedor);
