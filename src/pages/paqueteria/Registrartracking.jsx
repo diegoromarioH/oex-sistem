@@ -2,7 +2,8 @@
 import { useMemo, useState } from "react";
 import { registrarTracking } from "../../services/trackingsService";
 import { textoPromesa } from "../../utils/deadlinesEntrega";
-import ClienteSelector from "../../components/ClienteSelector";\nimport { costoProveedorPorTipo } from "../../utils/calculosPaqueteria";
+import ClienteSelector from "../../components/ClienteSelector";
+import { costoProveedorPorTipo } from "../../utils/calculosPaqueteria";
 
 export default function RegistrarTracking({ configOperativa, clientes, proveedores = [], auth, mostrarToast, cargarDatos }) {
   const [cliente, setCliente] = useState("");
