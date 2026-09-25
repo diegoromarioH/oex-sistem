@@ -1,7 +1,7 @@
 // src/pages/paqueteria/TrackingsActivos.jsx
 import { useMemo, useState } from "react";
 import { Layers, CheckCircle2, XCircle, HelpCircle, Package, Weight, Clock3, ReceiptText, Search } from "lucide-react";
-import { actualizarTracking, eliminarTracking } from "../../services/trackingsService";
+import { actualizarTracking, eliminarTracking, corregirTipoTrackingActivo } from "../../services/trackingsService";
 import { estadosPorDestino, badgeEstado, esListoParaRetirar, esPendienteDeConfirmar, esListoParaRetiroProveedor } from "../../utils/estadosEnvio";
 import { limpiarTelefono } from "../../utils/clientes";
 import { numero } from "../../utils/numero";
@@ -84,6 +84,36 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
       await cargarDatos();
     } catch (err) {
       mostrarToast(err.message || "No se pudo actualizar.", "error");
+    }
+  };
+
+  const corregirTipo = async (t, nuevoTipo) => {
+    if (nuevoTipo === t.tipoEnvio) return;
+    const facturaRelacionada = facturasProveedor.find((f) => (f.trackings || []).some((tk) => String(tk.id) === String(t.id)));
+    if (facturaRelacionada) {
+      mostrarToast(`No se puede cambiar el tipo: este tracking ya está incluido en la factura de proveedor ${facturaRelacionada.numeroFactura || "#" + facturaRelacionada.id}.`, "warning");
+      return;
+    }
+    if (t.envioId) {
+      mostrarToast(`Este tracking ya pertenece al recibo ${t.recibo?.numero || t.envioId}. Corrige el tipo desde el recibo para recalcular venta, costo y saldo de forma consistente.`, "warning");
+      return;
+    }
+    const proveedor = t.proveedorAduana || proveedoresAduana.find((p) => String(p.id) === String(t.proveedorAduanaId));
+    if (!proveedor) {
+      mostrarToast("Este tracking no tiene un proveedor de Aduana / Flete válido.", "error");
+      return;
+    }
+    const tarifaNueva = nuevoTipo === "Aéreo" ? proveedor.tarifaAereo : proveedor.tarifaMaritimo;
+    const tarifaTexto = tarifaNueva !== undefined && tarifaNueva !== null && tarifaNueva !== ""
+      ? Number(tarifaNueva).toFixed(2)
+      : (nuevoTipo === "Aéreo" ? "4.50" : "1.50");
+    if (!window.confirm(`Cambiar ${t.tracking || t.almacenId || "este tracking"} de ${t.tipoEnvio} a ${nuevoTipo}?\n\nEl costo interno se actualizará a ${tarifaTexto}/lb.`)) return;
+    try {
+      await corregirTipoTrackingActivo({ tracking:t, nuevoTipo, proveedorAduana:proveedor, auth });
+      mostrarToast(`Tracking corregido a ${nuevoTipo} · costo interno ${tarifaTexto}/lb.`);
+      await cargarDatos();
+    } catch (err) {
+      mostrarToast(err.message || "No se pudo corregir el tipo de envío.", "error");
     }
   };
 
@@ -245,12 +275,12 @@ export default function TrackingsActivos({ prealertas, envios = [], clientes = [
       </div>}
     </div>}
 
-    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
+    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
     {pendientePeso&&<ModalRegistrarPeso tracking={pendientePeso.tracking} nuevoEstado={pendientePeso.nuevoEstado} guardando={guardandoPeso} onConfirmar={confirmarPesoYContinuar} onCancelar={()=>setPendientePeso(null)}/>} 
   </div>;
 }
 
-function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, actualizarCampo, manejarBlurPeso, eliminar, onNavigate }) {
+function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, actualizarCampo, corregirTipo, manejarBlurPeso, eliminar, onNavigate }) {
   const [expandido,setExpandido]=useState(false);
   const c=t.vinculacion?.cliente;
   const nombreMostrar=c?.nombre||t.cliente;
@@ -294,6 +324,7 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
       {esperandoPago&&!vinculado&&<div className="info-box mt-8">Esperando pago al proveedor para poder avanzar. Ir a <button type="button" className="inline-navigation-link" onClick={()=>onNavigate?.("finanzas","proveedores")}>Proveedores</button>.</div>}
       <div className="tracking-detail-actions mt-8">
         <select className="input input-sm" value={t.estado} disabled={vinculado} onChange={e=>cambiarEstado(t,e.target.value)}>{opcionesEstado.map(s=><option key={s} value={s}>{s}</option>)}</select>
+        <div className="tracking-inline-field"><small>Tipo de envío</small><select className="input input-sm" value={t.tipoEnvio} onChange={e=>corregirTipo(t,e.target.value)}><option>Marítimo</option><option>Aéreo</option></select></div>
         <div className="tracking-inline-field"><small>ID almacén</small><div className="tracking-inline-control"><Package size={13}/><input disabled={vinculado} defaultValue={t.almacenId} placeholder="—" onBlur={e=>e.target.value!==(t.almacenId||"")&&actualizarCampo(t,"almacenId",e.target.value)} style={{width:90}}/></div></div>
         <div className="tracking-inline-field"><small>Peso</small><div className="tracking-inline-control"><Weight size={13}/><input disabled={vinculado} type="number" defaultValue={t.peso} placeholder="0.0" onBlur={e=>manejarBlurPeso(t,e)} style={{width:56}}/><span>lb</span></div></div>
       </div>
