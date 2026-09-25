@@ -7,6 +7,7 @@ import { exportarClientesExcel } from "../services/excelService";
 import { confirmarAccionCritica } from "../services/coreService";
 import ModalRecibo from "../components/ModalRecibo";
 import PageTitle from "../components/PageTitle";
+import { generarEstadoCuentaCliente } from "../services/pdfService";
 
 const formVacio = { nombre: "", telefono: "+505 ", correo: "", direccion: "", tipo: "General", observaciones: "" };
 
@@ -381,7 +382,9 @@ function ClienteDetalle({ cliente, envios, totalGastado, empresa, tarifas, edita
     );
   }, [envios, busquedaEnvio, filtroEstado]);
 
-  const saldoTotal = envios.reduce((a, e) => a + numero(e.saldo), 0);
+  const pendientes = envios.filter((e) => numero(e.saldo) > 0.005);
+  const saldoTotal = pendientes.reduce((a, e) => a + numero(e.saldo), 0);
+  const descargarEstadoCuenta = () => generarEstadoCuentaCliente({ cliente, recibos: pendientes, empresa });
   const librasTotales = envios.reduce((a, e) => a + numero(e.totalLibras), 0);
   const clienteDesde = cliente.fecha ? cliente.fecha.split(",")[0] : "—";
 
@@ -399,6 +402,7 @@ function ClienteDetalle({ cliente, envios, totalGastado, empresa, tarifas, edita
       >
         {!editando && (
           <>
+            {pendientes.length > 0 && <button className="btn btn-primary" onClick={descargarEstadoCuenta}><FileText size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />Estado de cuenta ({pendientes.length})</button>}
             <button className="btn" onClick={onEditar}>
               <Pencil size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />Editar
             </button>
