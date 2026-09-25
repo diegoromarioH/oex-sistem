@@ -472,7 +472,8 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
   });
 
   const trackingsIncluidos = poolBase.filter((t) => seleccionados.has(t.id));
-  const montoEstimado = esAduana ? calcularMontoEstimado(trackingsIncluidos) : numero(montoReal);
+  const trackingsConTarifaProveedor = trackingsIncluidos.map((t) => ({ ...t, proveedorTarifaMaritimo: proveedorSeleccionado?.tarifaMaritimo, proveedorTarifaAereo: proveedorSeleccionado?.tarifaAereo }));
+  const montoEstimado = esAduana ? calcularMontoEstimado(trackingsConTarifaProveedor) : numero(montoReal);
   const diferencia = numero(montoReal) - montoEstimado;
 
   const limpiar = () => {
@@ -498,7 +499,7 @@ function GenerarFactura({ proveedores, trackingsListosAduana, trackingsActivos, 
     try {
       await generarFacturaProveedor({
         proveedor: proveedorSeleccionado,
-        trackings: trackingsIncluidos,
+        trackings: trackingsConTarifaProveedor,
         montoReal, numeroFactura, nota, link, fecha, auth
       });
       mostrarToast(
