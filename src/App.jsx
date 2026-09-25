@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useDatosOEX } from "./hooks/useDatosOEX";
 import { useTarifas } from "./hooks/useTarifas";
+import { useConfiguracionOperativa } from "./hooks/useConfiguracionOperativa";
 import { useEmpresa } from "./hooks/useEmpresa";
 import { useToast } from "./hooks/useToast";
 import Login from "./pages/Login";
@@ -56,7 +57,7 @@ const detectarTemaSistema = () => typeof window !== "undefined" && window.matchM
 
 export default function App() {
   const { session, usuarioActual, rol, autorizado, errorAuth, cargandoAuth, login, logout } = useAuth();
-  const datos = useDatosOEX(autorizado ? session : null); const { tarifas, setTarifas } = useTarifas(autorizado); const { empresa, setEmpresa } = useEmpresa(autorizado); const { toast, mostrarToast } = useToast();
+  const datos = useDatosOEX(autorizado ? session : null); const { tarifas, setTarifas } = useTarifas(autorizado); const { empresa, setEmpresa } = useEmpresa(autorizado); const { configOperativa, setConfigOperativa } = useConfiguracionOperativa(autorizado); const { toast, mostrarToast } = useToast();
   const [vista, setVista] = useState(vistaGuardadaValida);
   const [subvistaPaqueteria, setSubvistaPaqueteria] = useState(() => subvistaGuardadaValida("paqueteria", "dashboard"));
   const [subvistaFinanzas, setSubvistaFinanzas] = useState(() => subvistaGuardadaValida("finanzas", "resumen"));
@@ -97,7 +98,7 @@ export default function App() {
       {vista === "clientes" && <Clientes clientes={datos.clientes} pedidos={datos.pedidos} envios={datos.envios} empresa={empresa} tarifas={tarifas} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
       {vista === "eventos" && <EventosWeb />}
       {vista === "auditoria" && <Auditoria auditLog={datos.auditLog} />}
-      {vista === "configuracion" && <Configuracion tarifas={tarifas} setTarifas={setTarifas} empresa={empresa} setEmpresa={setEmpresa} cuentasDinero={datos.cuentasDinero} rol={rol} tema={tema} setTema={cambiarTema} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
+      {vista === "configuracion" && <Configuracion tarifas={tarifas} setTarifas={setTarifas} configOperativa={configOperativa} setConfigOperativa={setConfigOperativa} empresa={empresa} setEmpresa={setEmpresa} cuentasDinero={datos.cuentasDinero} rol={rol} tema={tema} setTema={cambiarTema} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
       <Toast toast={toast} />
     </div>
   </div>;
