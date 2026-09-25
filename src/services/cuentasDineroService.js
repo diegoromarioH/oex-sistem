@@ -14,6 +14,7 @@ import { numero } from "../utils/numero";
 import { firmarPayload, registrarAuditoria } from "./coreService";
 import { postearAsiento } from "./ContabilidadService";
 import { formatoMoneda } from "../utils/moneda";
+import { convertirMoneda, montoEnUSD, redondearDinero } from "../utils/conversionMoneda";
 
 export const listarCuentasDinero = async () => {
   const { data, error } = await supabase.from("cuentas_dinero").select("*").order("nombre");
@@ -56,7 +57,7 @@ export const ajustarSaldoCuentaDinero = async (cuentaDineroId, delta) => {
   const { data: cuenta, error: errorLectura } = await supabase
     .from("cuentas_dinero").select("saldo_actual").eq("id", cuentaDineroId).single();
   if (errorLectura) throw errorLectura;
-  const nuevoSaldo = numero(cuenta.saldo_actual) + numero(delta);
+  const nuevoSaldo = redondearDinero(numero(cuenta.saldo_actual) + numero(delta));
   const { error } = await supabase.from("cuentas_dinero").update({ saldo_actual: nuevoSaldo }).eq("id", cuentaDineroId);
   if (error) throw error;
 };
@@ -69,18 +70,9 @@ export const transferirEntreCuentas = async ({ cuentaOrigen, cuentaDestino, mont
     throw new Error(`"${cuentaOrigen.nombre}" no tiene saldo suficiente para esta transferencia.`);
   }
 
-  let montoDestino = montoOrigen;
-  let montoUSD = montoOrigen;
-
-  if (cuentaOrigen.moneda !== cuentaDestino.moneda) {
-    if (!tasaCambio || tasaCambio <= 0) {
-      throw new Error("Configura la tasa de cambio en Configuración → Empresa y documentos antes de transferir entre monedas distintas.");
-    }
-    montoUSD = cuentaOrigen.moneda === "NIO" ? montoOrigen / tasaCambio : montoOrigen;
-    montoDestino = cuentaDestino.moneda === "NIO" ? montoUSD * tasaCambio : montoUSD;
-  } else if (cuentaOrigen.moneda === "NIO" && tasaCambio > 0) {
-    montoUSD = montoOrigen / tasaCambio;
-  }
+  if (cuentaOrigen.moneda !== cuentaDestino.moneda && numero(tasaCambio) <= 0) throw new Error("Configura la tasa de cambio en Configuración → Empresa y documentos antes de transferir entre monedas distintas.");
+  const montoDestino = convertirMoneda({ monto:montoOrigen, monedaOrigen:cuentaOrigen.moneda, monedaDestino:cuentaDestino.moneda, tasaCambio });
+  const montoUSD = montoEnUSD({ monto:montoOrigen, moneda:cuentaOrigen.moneda, tasaCambio });
 
   await ajustarSaldoCuentaDinero(cuentaOrigen.id, -montoOrigen);
   await ajustarSaldoCuentaDinero(cuentaDestino.id, montoDestino);
