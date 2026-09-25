@@ -6,7 +6,7 @@ import { estadosPorDestino, badgeEstado, esListoParaRetirar, esPendienteDeConfir
 import { limpiarTelefono } from "../../utils/clientes";
 import { numero } from "../../utils/numero";
 import { parseListaPesos, emparejarConTrackings } from "../../utils/parseListaPesos";
-import { calcularDeadlineTracking, formatoRangoDeadline, textoPromesa } from "../../utils/deadlinesEntrega";
+import { calcularDeadlineTracking, formatoFechaEstimada } from "../../utils/deadlinesEntrega";
 import { useFeriadosNicaragua } from "../../hooks/useFeriadosNicaragua";
 import PipelineProgress from "../../components/PipelineProgress";
 import ModalRegistrarPeso from "../../components/ModalRegistrarPeso";
@@ -308,7 +308,7 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
           {esperandoPago&&!vinculado&&<span className="badge badge-warning">Falta pago proveedor</span>}
         </div>
         <p className="tracking-item-meta">{nombreMostrar} · {codigoMostrar}{telefonoMostrar?` · ${telefonoMostrar}`:""} · {t.destino}{numero(t.peso)>0&&` · ${numero(t.peso).toFixed(1)} lb`}</p>
-        {deadline&&<small style={{display:"block",marginTop:3}}><Clock3 size={12} style={{verticalAlign:"-2px",marginRight:4}}/>Entrega prometida: <b>{formatoRangoDeadline(deadline)}</b> · {textoPromesa(t.destino,t.tipoEnvio,configOperativa?.tiemposEntrega)}</small>}
+        {deadline&&<small style={{display:"block",marginTop:3}}><Clock3 size={12} style={{verticalAlign:"-2px",marginRight:4}}/>Fecha estimada de entrega: <b>{formatoFechaEstimada(deadline)}</b></small>}
         {t.proveedorAduana&&<small style={{display:"block"}}>Costo interno: ${numero(t.costoInterno).toFixed(2)}/lb · ID almacén: {t.almacenId||"pendiente"}</small>}
         {t.recibo&&<small style={{display:"block"}}>Incluido en recibo <b>{t.recibo.numero}</b> · el estado se administra como grupo.</small>}
       </div>
@@ -319,7 +319,7 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
 
     {expandido&&<div className="mt-8" style={{borderTop:"1px solid var(--border)",paddingTop:10}}>
       <div className="page-title" style={{margin:"0 0 4px"}}><small>{t.fecha}</small>{!vinculado&&<button className="btn btn-danger" onClick={()=>eliminar(t)}>Eliminar</button>}</div>
-      {deadline&&<div className="info-box mt-8" style={{background:deadline.estadoDeadline==="vencido"?"var(--danger-soft)":deadline.estadoDeadline==="proximo"?"var(--warning-soft)":"var(--success-soft)",color:deadline.estadoDeadline==="vencido"?"var(--danger)":deadline.estadoDeadline==="proximo"?"var(--warning)":"var(--success)"}}><b>Promesa OEX:</b> {formatoRangoDeadline(deadline)} · {textoEstado}. Inicio: recibido en Miami el {new Date(t.fechaMiami).toLocaleDateString("es-NI")}.</div>}
+      {deadline&&<div className="info-box mt-8" style={{background:deadline.estadoDeadline==="vencido"?"var(--danger-soft)":deadline.estadoDeadline==="proximo"?"var(--warning-soft)":"var(--success-soft)",color:deadline.estadoDeadline==="vencido"?"var(--danger)":deadline.estadoDeadline==="proximo"?"var(--warning)":"var(--success)"}}><b>Fecha estimada de entrega:</b> {formatoFechaEstimada(deadline)} · {textoEstado}. Cálculo desde recepción en Miami el {new Date(t.fechaMiami).toLocaleDateString("es-NI")}.</div>}
       <PipelineProgress estado={t.estado} destino={t.destino} tipoEnvio={t.tipoEnvio} auditLog={auditLog} registroCodigo={t.tracking||t.almacenId}/>
       {vinculado&&<div className="info-box mt-8"><ReceiptText size={15} style={{verticalAlign:"-3px",marginRight:5}}/>Este paquete pertenece al recibo <b>{t.recibo?.numero || t.envioId}</b>. Para mantener todos los paquetes sincronizados, cambia el estado desde <button type="button" className="inline-navigation-link" onClick={()=>onNavigate?.("paqueteria","lista")}>Recibos</button>.</div>}
       {esperandoPago&&!vinculado&&<div className="info-box mt-8">Esperando pago al proveedor para poder avanzar. Ir a <button type="button" className="inline-navigation-link" onClick={()=>onNavigate?.("finanzas","proveedores")}>Proveedores</button>.</div>}
