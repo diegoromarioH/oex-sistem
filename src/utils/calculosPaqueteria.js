@@ -46,8 +46,14 @@ export const tarifaDesdePerfil = (tarifas, perfil, tipoEnvio, personalizada = ""
 export const tarifasDestino = (tarifas, destino) =>
   Object.entries(tarifas).filter(([key, t]) => key === "personalizada" || t.destino === destino);
 
-export const tarifaPorTipoEnvio = (tarifas, envio, tipo) =>
-  tarifaDesdePerfil(tarifas, envio.tarifaPerfil || perfilEstandarDestino(envio.destino), tipo, envio.tarifaPersonalizada);
+export const tarifaPorTipoEnvio = (tarifas, envio, tipo) => {
+  // Un recibo ya emitido conserva su tarifa histórica. Esto permite que una
+  // corrección administrativa del recibo se refleje al regenerar el PDF sin
+  // recalcularla con la tarifa estándar vigente del cliente/destino.
+  const tarifaGuardada = numero(envio.tarifa ?? envio.tarifaAplicada ?? envio.tarifa_aplicada);
+  if (tarifaGuardada > 0) return tarifaGuardada;
+  return tarifaDesdePerfil(tarifas, envio.tarifaPerfil || perfilEstandarDestino(envio.destino), tipo, envio.tarifaPersonalizada);
+};
 
 // ===== Costo interno por tracking (arregla el bug de tipos mixtos) =====
 //
