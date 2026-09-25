@@ -39,7 +39,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, provee
   return (
     <div className="card">
       <h3>Generar recibo</h3>
-      <p>El recibo puede generarse desde <b>Tránsito Managua</b> o <b>Tránsito Ometepe</b>, y en cualquier estado posterior. Debe tener peso registrado y saldrá con su estado actual.</p>
+      <p>El recibo puede generarse desde <b>Bodega OEX</b>, aunque el pago al proveedor aún esté pendiente. Debe tener peso registrado y conservará el estado actual del paquete.</p>
 
       <ClienteSelector
         clientes={clientes} clienteId={clienteId} nombre={clienteNombre} telefono={clienteTelefono}
@@ -50,7 +50,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, provee
       {!clienteSeleccionado && <p className="mt-16">Selecciona un cliente existente de la lista para continuar.</p>}
 
       {clienteSeleccionado && trackingsListos.length === 0 && (
-        <p className="mt-16">{clienteSeleccionado.nombre} no tiene trackings disponibles desde Tránsito Managua/Ometepe con peso registrado.</p>
+        <p className="mt-16">{clienteSeleccionado.nombre} no tiene trackings disponibles desde Bodega OEX con peso registrado.</p>
       )}
 
       {clienteSeleccionado && Object.entries(gruposPorDestino).map(([clave, trackings]) => {
@@ -63,6 +63,8 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, provee
           estadoActual={estadoActual}
           trackings={trackings}
           tarifas={tarifas}
+          proveedores={proveedores}
+          configOperativa={configOperativa}
           empresa={empresa}
           auth={auth}
           mostrarToast={mostrarToast}
