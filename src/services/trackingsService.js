@@ -10,7 +10,12 @@ import { esEstadoDisponibleParaRecibo } from "../utils/estadosEnvio";
 const costoProveedorPorTipo = (proveedor, tipoEnvio) => {
   if (!proveedor) return costoInternoDefaultPorTipo(tipoEnvio);
   const costo = tipoEnvio === "Aéreo" ? proveedor.tarifaAereo : proveedor.tarifaMaritimo;
-  return costo !== undefined && costo !== null && costo !== "" ? numero(costo) : costoInternoDefaultPorTipo(tipoEnvio);
+  // Las tarifas 0 que quedaron guardadas en proveedores antiguos no representan
+  // un costo válido. Para Aduana / Flete usamos el costo interno estándar.
+  const costoNumerico = numero(costo);
+  return costo !== undefined && costo !== null && costo !== "" && costoNumerico > 0
+    ? costoNumerico
+    : costoInternoDefaultPorTipo(tipoEnvio);
 };
 
 const asegurarTrackingUnico = async (codigo, excluirId = null) => {
