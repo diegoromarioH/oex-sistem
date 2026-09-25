@@ -120,7 +120,7 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
   if(!trackings||trackings.length===0) throw new Error("Selecciona al menos un tracking disponible.");
   const destinos=new Set(trackings.map(t=>t.destino));
   if(destinos.size>1) throw new Error("Todos los trackings de un mismo recibo deben ser del mismo destino.");
-  if(trackings.some(t=>!esEstadoDisponibleParaRecibo(t.estado,t.destino))) throw new Error("El recibo solo puede generarse desde Tránsito Managua/Ometepe o un estado posterior.");
+  if(trackings.some(t=>!esEstadoDisponibleParaRecibo(t.estado,t.destino))) throw new Error("El recibo solo puede generarse desde Bodega OEX o un estado posterior.");
   const estados=new Set(trackings.map(t=>t.estado));
   if(estados.size>1) throw new Error("Todos los trackings de un recibo deben tener el mismo estado actual.");
   if(trackings.some(t=>numero(t.peso)<=0)) throw new Error("Todos los trackings deben tener peso registrado antes de generar el recibo.");
