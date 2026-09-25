@@ -133,13 +133,6 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
   const totalLibras=trackings.reduce((a,t)=>a+numero(t.peso),0);
   const bruto=trackings.reduce((a,t)=>a+numero(t.peso)*tarifaDesdePerfil(tarifas,tarifaPerfil,t.tipoEnvio,tarifaPersonalizada),0);
   const total=Math.max(bruto-numero(descuento),0);
-  const costoInternoTotal=trackings.reduce((a,t)=>{
-    const costo=t.costoInterno!==undefined&&t.costoInterno!==""?numero(t.costoInterno):costoInternoDefaultPorTipo(t.tipoEnvio);
-    return a+numero(t.peso)*costo;
-  },0);
-  const gananciaReal=total-costoInternoTotal-numero(gastosExtras);
-  const numeroRecibo=await generarCodigoRecibo();
-  const fechaRecibo=fecha||new Date().toISOString();
   const snapshotTrackings=trackings.map(t=>({
     id:t.id,
     tracking:t.tracking||"",
@@ -156,6 +149,10 @@ export const generarRecibo = async ({ cliente, trackings, tarifas, tarifaPerfil,
     estado:t.estado||estadoActual,
     fechaMiami:t.fechaMiami||""
   }));
+  const costoInternoTotal=snapshotTrackings.reduce((a,t)=>a+numero(t.peso)*numero(t.costoInterno),0);
+  const gananciaReal=total-costoInternoTotal-numero(gastosExtras);
+  const numeroRecibo=await generarCodigoRecibo();
+  const fechaRecibo=fecha||new Date().toISOString();
   const payload={
     numero_envios:numeroRecibo,
     cliente:cliente.nombre,
