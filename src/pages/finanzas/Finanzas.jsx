@@ -177,7 +177,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
   );
   const proveedorPagado = (e) => Array.isArray(e.trackings) && e.trackings.length > 0 && e.trackings.every((t) => [t?.id, t?.tracking, t?.codigo].filter(Boolean).map((v) => String(v).trim().toLowerCase()).some((k) => clavesProveedorPagado.has(k)));
   const gananciaCobrada = enviosFiltrados.filter((e) => numero(e.saldo) <= 0).reduce((a, e) => a + numero(e.gananciaReal), 0);
-  const gananciaDisponible = enviosFiltrados.filter((e) => numero(e.saldo) <= 0 && proveedorPagado(e)).reduce((a, e) => a + numero(e.gananciaReal), 0);
+  const margenCobradoCerrado = enviosFiltrados.filter((e) => numero(e.saldo) <= 0 && proveedorPagado(e)).reduce((a, e) => a + numero(e.gananciaReal), 0);\n  const utilidadNetaCobrada = margenCobradoCerrado + totalOtrosIngresos - totalGastos;\n  const utilidadNetaEstimada = gananciaPaq + totalOtrosIngresos - totalGastos;
   const costoFinanciadoClientes = enviosFiltrados.filter((e) => numero(e.saldo) > 0 && proveedorPagado(e)).reduce((a, e) => a + numero(e.costoInternoTotal), 0);
   const costoPendienteFacturar = enviosFiltrados.filter((e) => numero(e.saldo) > 0 && !proveedorPagado(e)).reduce((a, e) => a + numero(e.costoInternoTotal), 0);
   const gananciaPendienteCobro = enviosFiltrados
@@ -387,8 +387,8 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
 
       <div className="info-box" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <span>
-          <b>Resultado contable y margen operativo</b>
-          <br /><small>La utilidad contable reconoce costos cuando el proveedor los factura. El margen operativo estimado también considera costos congelados de recibos que todavía están pendientes de facturar. Por eso ambos valores pueden ser distintos sin que exista un descuadre contable.</small>
+          <b>Resultado contable y utilidad neta estimada</b>
+          <br /><small>La utilidad contable reconoce costos cuando el proveedor los factura. La utilidad neta estimada parte del margen económico de los recibos y resta los gastos operativos, incluyendo costos congelados pendientes de facturar. Por eso ambos valores pueden ser distintos sin que exista un descuadre contable.</small>
         </span>
         <button className="btn btn-ghost" onClick={() => setVista("resultados")} style={{ whiteSpace: "nowrap" }}>
           Ver Estado de Resultados <ArrowRight size={14} style={{ verticalAlign: "-2px", marginLeft: 4 }} />
@@ -410,8 +410,8 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
         <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}><Users size={18} style={{ color: "var(--module-color)" }} /> Cuentas por cobrar{mesFiltro ? ` — ${mesFiltro}` : ""}</h3>
         <p>El margen estimado incluye ventas que el cliente todavía no ha terminado de pagar. El saldo pendiente es venta por cobrar, no ganancia.</p>
         <div className="grid-4 mt-16">
-          <div className="metric"><b>Ganancia disponible</b><span className="metric-value">${gananciaDisponible.toFixed(2)}</span><small>Cliente pagó + proveedor pagado</small></div>
-          <div className="metric"><b>Margen estimado de ventas por cobrar</b><span className="metric-value">${gananciaPendienteCobro.toFixed(2)}</span></div>
+          <div className="metric"><b>Utilidad neta cobrada</b><span className="metric-value">${utilidadNetaCobrada.toFixed(2)}</span><small>Margen cobrado menos gastos operativos</small></div>
+          <div className="metric"><b>Utilidad estimada por cobrar</b><span className="metric-value">${gananciaPendienteCobro.toFixed(2)}</span></div>
           <div className="metric"><b>Ventas pendientes de cobro</b><span className="metric-value">${totalPorCobrar.toFixed(2)}</span></div>
           <div className="metric"><b>Clientes con saldo pendiente</b><span className="metric-value">{clientesPorCobrar.length}</span></div>
         </div>
