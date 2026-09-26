@@ -21,7 +21,7 @@ import GlobalSearch from "./components/GlobalSearch";
 import GlobalCreateMenu from "./components/GlobalCreateMenu";
 import logo from "./assets/logo.svg";
 import "./styles/sidebar.css";
-import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity, BookOpen, Scale, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity, BookOpen, Scale, ChevronRight, RefreshCw } from "lucide-react";
 
 const MODULOS = [
   { id: "dashboard", label: "Inicio", color: "var(--mod-dashboard)", icon: LayoutDashboard },
@@ -31,7 +31,8 @@ const MODULOS = [
     { subvista: "nuevo", label: "Generar recibo", descripcion: "Crear recibo de trackings listos", icon: FilePlus },
     { subvista: "registrar", label: "Registrar tracking", descripcion: "Alta manual ligada a un cliente", icon: PackagePlus },
     { subvista: "prealertas", label: "Prealertas", descripcion: "Trackings sin confirmar de la landing", icon: Bell },
-    { subvista: "activos", label: "Envíos activos", descripcion: "Trackings avanzando por el pipeline", icon: Truck }
+    { subvista: "activos", label: "Envíos activos", descripcion: "Trackings avanzando por el pipeline", icon: Truck },
+    { subvista: "dario", label: "Darío Import", descripcion: "Comparar estados y pesos del proveedor", icon: RefreshCw }
   ]},
   { id: "finanzas", label: "Finanzas", color: "var(--mod-finanzas)", icon: Wallet, submenu: [
     { subvista: "resumen", label: "Resumen", descripcion: "KPIs, balance y costos del mes", icon: BarChart3 },
