@@ -19,6 +19,13 @@ export const mapearEstadoDario = (estadoDario, destinoOEX) => {
   return null;
 };
 
+export const sincronizarDario = async () => {
+  const { data, error } = await supabase.functions.invoke("dario-sync", { body: {} });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+};
+
 export const listarDarioSync = async () => {
   const { data, error } = await supabase.from("dario_tracking_sync").select("*").order("ultimo_visto_en", { ascending: false });
   if (error) throw error;
