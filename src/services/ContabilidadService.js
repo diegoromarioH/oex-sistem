@@ -132,3 +132,26 @@ export const listarLibroDiario = async () => {
   if (error) throw error;
   return data;
 };
+
+// Reconstruye saldos históricos de cajas/bancos desde el libro contable.
+// Los movimientos de cuentas de dinero están expresados en moneda funcional USD;
+// por eso solo devuelve saldo histórico exacto para cuentas USD. Las cuentas NIO
+// conservan saldo actual hasta que exista un sublibro histórico en moneda original.
+export const saldosCuentasDineroAlCorte = async ({ cuentasDinero = [], fechaHasta }) => {
+  if (!fechaHasta) return [];
+  const ids = cuentasDinero.filter(c => c.activa !== false).map(c => c.id);
+  if (!ids.length) return [];
+  const fin = `${fechaHasta}T23:59:59.999`;
+  const { data: asientos, error } = await supabase.from("asientos_contables").select("fecha, movimientos_contables(cuenta_dinero_id, debe, haber)").lte("fecha", fin).order("fecha", { ascending: true });
+  if (error) throw error;
+  const netos = new Map(ids.map(id => [String(id), 0]));
+  (asientos || []).forEach(a => (a.movimientos_contables || []).forEach(m => {
+    if (!m.cuenta_dinero_id || !netos.has(String(m.cuenta_dinero_id))) return;
+    netos.set(String(m.cuenta_dinero_id), netos.get(String(m.cuenta_dinero_id)) + numero(m.debe) - numero(m.haber));
+  }));
+  return cuentasDinero.filter(c => c.activa !== false).map(c => ({
+    cuentaId: c.id, nombre: c.nombre, tipo: c.tipo, moneda: c.moneda,
+    saldo: c.moneda === "USD" ? numero(netos.get(String(c.id))) : null,
+    exacto: c.moneda === "USD", saldoActual: numero(c.saldoActual ?? c.saldo_actual)
+  }));
+};
