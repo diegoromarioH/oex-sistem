@@ -387,15 +387,15 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
 
       {!cargandoLedger && resultadoLedger && Math.abs(resultadoLedger.utilidad - utilidadNeta) > 0.5 && (
         <div className="info-box" style={{ borderColor: "var(--warning, #b7791f)" }}>
-          ⚠️ El libro diario (${resultadoLedger.utilidad.toFixed(2)}) y el cálculo rápido operativo (${utilidadNeta.toFixed(2)}) no coinciden — diferencia de ${Math.abs(resultadoLedger.utilidad - utilidadNeta).toFixed(2)}.
-          <br /><small>Lo más probable: algún gasto, ingreso o pago se registró sin elegir una cuenta de dinero (o la cuenta elegida no está vinculada a una cuenta contable), así que no posteó al libro diario. Revisa Finanzas → Libro diario para encontrar qué falta.</small>
+          <b>⚠️ Diferencia de conciliación detectada · ${Math.abs(resultadoLedger.utilidad - utilidadNeta).toFixed(2)}</b>
+          <br /><small>El libro diario muestra ${resultadoLedger.utilidad.toFixed(2)} y el resumen operativo ${utilidadNeta.toFixed(2)}. Hay movimientos históricos que todavía no están posteados o conciliados en el libro diario. No tomes ninguno de los dos como utilidad definitiva hasta completar la conciliación.</small>
         </div>
       )}
 
       <div className="info-box" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <span>
-          Las 4 tarjetas de arriba salen directo del libro diario — es el <b>mismo cálculo exacto</b> que el Estado de Resultados, no uno aparte.
-          <br /><small>El resto de esta pantalla (Paquetería, Costos por proveedor, etc.) sigue siendo el detalle operativo rápido, calculado directo de los registros — útil para auditar, pero el número que manda es el de arriba.</small>
+          <b>Dos vistas, dos propósitos.</b>
+          <br /><small>Resumen contable = lo posteado en el libro diario. Resumen operativo = ventas, márgenes, cobros, costos y gastos registrados en la operación. Cuando la conciliación esté completa, ambos deben ser coherentes.</small>
         </span>
         <button className="btn btn-ghost" onClick={() => setVista("resultados")} style={{ whiteSpace: "nowrap" }}>
           Ver Estado de Resultados <ArrowRight size={14} style={{ verticalAlign: "-2px", marginLeft: 4 }} />
@@ -417,7 +417,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
         <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}><Users size={18} style={{ color: "var(--module-color)" }} /> Cuentas por cobrar{mesFiltro ? ` — ${mesFiltro}` : ""}</h3>
         <p>El margen estimado incluye ventas que el cliente todavía no ha terminado de pagar. El saldo pendiente es venta por cobrar, no ganancia.</p>
         <div className="grid-4 mt-16">
-          <div className="metric"><b>Margen de ventas cobradas</b><span className="metric-value">${gananciaCobrada.toFixed(2)}</span></div>
+          <div className="metric"><b>Ganancia disponible</b><span className="metric-value">${gananciaDisponible.toFixed(2)}</span><small>Cliente pagó + proveedor pagado</small></div>
           <div className="metric"><b>Margen estimado de ventas por cobrar</b><span className="metric-value">${gananciaPendienteCobro.toFixed(2)}</span></div>
           <div className="metric"><b>Ventas pendientes de cobro</b><span className="metric-value">${totalPorCobrar.toFixed(2)}</span></div>
           <div className="metric"><b>Clientes con saldo pendiente</b><span className="metric-value">{clientesPorCobrar.length}</span></div>
