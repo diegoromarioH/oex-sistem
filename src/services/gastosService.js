@@ -114,3 +114,69 @@ export const eliminarGasto = async ({ gasto, auth }) => {
     detalle: `${gasto.descripcion} · $${numero(gasto.monto).toFixed(2)}`
   });
 };
+
+
+// --- Costeo analítico por tracking ---
+// Estos vínculos NO crean gastos, NO mueven caja y NO generan asientos.
+// Solo distribuyen un gasto ya registrado para medir el costo real por tracking.
+export const listarAsignacionesGastosTracking = async () => {
+  const { data, error } = await supabase
+    .from("gastos_tracking")
+    .select("id,gasto_id,tracking_id,monto_asignado_usd,metodo_distribucion,peso_snapshot,tracking_codigo_snapshot,created_at,created_by,created_by_name");
+  if (error) throw error;
+  return data || [];
+};
+
+export const guardarAsignacionesGastoTracking = async ({ gasto, asignaciones = [], metodo = "manual", auth }) => {
+  if (!gasto?.id) throw new Error("Gasto inválido.");
+  const montoGastoUSD = gasto.moneda === "NIO" && numero(gasto.tasaCambio) > 0
+    ? numero(gasto.monto) / numero(gasto.tasaCambio)
+    : numero(gasto.monto);
+  const limpias = asignaciones
+    .map((a) => ({
+      tracking_id: a.trackingId || a.tracking_id,
+      monto_asignado_usd: numero(a.montoAsignadoUSD ?? a.monto_asignado_usd),
+      peso_snapshot: numero(a.peso),
+      tracking_codigo_snapshot: String(a.codigo || a.trackingCodigo || "").trim()
+    }))
+    .filter((a) => a.tracking_id && a.monto_asignado_usd > 0);
+  const ids = new Set(limpias.map((a) => String(a.tracking_id)));
+  if (ids.size !== limpias.length) throw new Error("Un tracking no puede repetirse dentro del mismo gasto.");
+  const total = limpias.reduce((s, a) => s + a.monto_asignado_usd, 0);
+  if (total > montoGastoUSD + 0.005) throw new Error("La distribución no puede superar el monto total del gasto.");
+  const metodoSeguro = ["manual", "peso", "igual"].includes(metodo) ? metodo : "manual";
+
+  const { error: borrarError } = await supabase.from("gastos_tracking").delete().eq("gasto_id", gasto.id);
+  if (borrarError) throw borrarError;
+  if (limpias.length) {
+    const filas = limpias.map((a) => ({
+      gasto_id: gasto.id,
+      tracking_id: a.tracking_id,
+      monto_asignado_usd: a.monto_asignado_usd,
+      metodo_distribucion: metodoSeguro,
+      peso_snapshot: a.peso_snapshot,
+      tracking_codigo_snapshot: a.tracking_codigo_snapshot,
+      created_by: auth?.userId || auth?.id || null,
+      created_by_name: auth?.userName || auth?.nombre || auth?.email || null
+    }));
+    const { error } = await supabase.from("gastos_tracking").insert(filas);
+    if (error) throw error;
+  }
+  await registrarAuditoria({
+    ...auth,
+    accion: "Distribuyó gasto entre trackings",
+    modulo: "Finanzas",
+    registroCodigo: gasto.categoria || "Gasto",
+    detalle: `${gasto.descripcion || "Gasto"} · $${total.toFixed(2)} asignados a ${limpias.length} tracking(s) · método ${metodoSeguro}`
+  });
+};
+
+export const costosDirectosPorTracking = (asignaciones = []) => {
+  const mapa = new Map();
+  asignaciones.forEach((a) => {
+    const id = String(a.tracking_id || a.trackingId || "");
+    if (!id) return;
+    mapa.set(id, (mapa.get(id) || 0) + numero(a.monto_asignado_usd ?? a.montoAsignadoUSD));
+  });
+  return mapa;
+};
