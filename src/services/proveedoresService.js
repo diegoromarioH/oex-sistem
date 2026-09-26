@@ -5,7 +5,7 @@ import { firmarPayload, registrarAuditoria } from "./coreService";
 import { costoTrackingConProveedor } from "../utils/calculosPaqueteria";
 import { siguienteEstadoTrasRetiroProveedor } from "../utils/estadosEnvio";
 import { ajustarSaldoCuentaDinero } from "./cuentasDineroService";
-import { postearAsiento } from "./ContabilidadService";
+import { postearAsiento, reversarAsientosDeOrigen } from "./ContabilidadService";
 import { convertirMoneda, redondearDinero } from "../utils/conversionMoneda";
 
 export const TIPOS_PROVEEDOR = ["Aduana / Flete", "Transporte local"];
@@ -33,6 +33,9 @@ export const crearProveedor = async ({ form, auth }) => {
 };
 
 export const eliminarProveedor = async ({ proveedor, auth }) => {
+  const { count, error: errorFacturas } = await supabase.from("facturas_proveedor").select("id", { count:"exact", head:true }).eq("proveedor_id", proveedor.id);
+  if (errorFacturas) throw errorFacturas;
+  if (count > 0) throw new Error("No se puede eliminar un proveedor con facturas registradas. Consérvalo para mantener el historial contable.");
   const { error } = await supabase.from("proveedores").delete().eq("id", proveedor.id);
   if (error) throw error;
   await registrarAuditoria({ ...auth, accion:"Eliminó proveedor", modulo:"Finanzas", registroCodigo:proveedor.nombre || "" });
@@ -85,7 +88,7 @@ export const generarFacturaProveedor = async ({ proveedor, trackings = [], monto
     peso:numero(t.peso),
     proveedorAduanaId:t.proveedorAduanaId || null,
     costoInterno:numero(t.costoInterno),
-    costoEstimado:esAduana ? costoEstimadoTracking(t) : null
+    costoEstimado:esAduana ? costoEstimadoTracking(t, proveedor, configOperativa) : null
   }));
 
   const horaActual = new Date().toTimeString().slice(0, 8);
@@ -154,4 +157,36 @@ export const listarPagosDeProveedor = async (proveedorId) => {
   const { data, error } = await supabase.from("pagos_proveedor").select("*").in("factura_id", facturaIds).order("fecha", { ascending:false });
   if (error) throw error;
   return data;
+};
+
+
+// Anulación segura: no borra historial financiero. Revierte libro, restaura saldo de
+// la cuenta usada y recalcula la factura. Evita que una eliminación deje asientos
+// o saldos huérfanos.
+export const anularPagoProveedor = async ({ pago, factura, auth }) => {
+  if (!pago?.id || !factura?.id) throw new Error("Pago o factura inválidos.");
+  const { data: actual, error: ep } = await supabase.from("pagos_proveedor").select("*").eq("id", pago.id).single();
+  if (ep) throw ep;
+  if (actual.anulado === true) throw new Error("Este pago ya está anulado.");
+  const montoUSD = numero(actual.monto), montoCuenta = numero(actual.monto_cuenta || actual.monto);
+  await reversarAsientosDeOrigen({ origenModulo:"pagos_proveedor", origenId:String(actual.id), auth });
+  if (actual.cuenta_dinero_id) await ajustarSaldoCuentaDinero(actual.cuenta_dinero_id, montoCuenta);
+  const nuevoAbonado = Math.max(0, numero(factura.abonado) - montoUSD);
+  const nuevoSaldo = Math.max(0, numero(factura.montoReal) - nuevoAbonado);
+  const { error: ef } = await supabase.from("facturas_proveedor").update({ abonado:nuevoAbonado, saldo:nuevoSaldo, estado:nuevoAbonado>0?"Parcial":"Pendiente" }).eq("id", factura.id);
+  if (ef) throw ef;
+  const { error: ea } = await supabase.from("pagos_proveedor").update({ anulado:true, nota:[actual.nota,"ANULADO"].filter(Boolean).join(" · ") }).eq("id", actual.id);
+  if (ea) throw ea;
+  await registrarAuditoria({ ...auth, accion:"Anuló pago a proveedor", modulo:"Finanzas", registroCodigo:factura.numeroFactura || `#${factura.id}`, detalle:`Pago #${actual.id} · $${montoUSD.toFixed(2)} revertido` });
+};
+
+export const anularFacturaProveedor = async ({ factura, auth }) => {
+  if (!factura?.id) throw new Error("Factura inválida.");
+  const { count, error: ep } = await supabase.from("pagos_proveedor").select("id", { count:"exact", head:true }).eq("factura_id", factura.id).neq("anulado", true);
+  if (ep) throw ep;
+  if (count > 0 || numero(factura.abonado) > 0.01) throw new Error("La factura tiene pagos activos. Anula primero sus pagos.");
+  await reversarAsientosDeOrigen({ origenModulo:"facturas_proveedor", origenId:String(factura.id), auth });
+  const { error } = await supabase.from("facturas_proveedor").update({ estado:"Anulada", saldo:0 }).eq("id", factura.id);
+  if (error) throw error;
+  await registrarAuditoria({ ...auth, accion:"Anuló factura de proveedor", modulo:"Finanzas", registroCodigo:factura.numeroFactura || `#${factura.id}`, detalle:"Factura anulada con reversión contable; historial conservado." });
 };
