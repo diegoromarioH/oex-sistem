@@ -1,6 +1,6 @@
 // src/pages/paqueteria/DarioImport.jsx
 import { useEffect, useMemo, useState } from "react";
-import { listarDarioSync, mapearEstadoDario, aplicarEstadoDario, aplicarPesoDario } from "../../services/darioImportService";
+import { listarDarioSync, sincronizarDario, mapearEstadoDario, aplicarEstadoDario, aplicarPesoDario } from "../../services/darioImportService";
 import { numero } from "../../utils/numero";
 
 const fmt = (n) => `${numero(n).toFixed(2)} lb`;
@@ -9,6 +9,7 @@ export default function DarioImport({ prealertas = [], envios = [], tarifas, aut
   const [sync, setSync] = useState([]);
   const [buscar, setBuscar] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [sincronizando, setSincronizando] = useState(false);
 
   const cargar = async () => {
     setCargando(true);
@@ -17,6 +18,16 @@ export default function DarioImport({ prealertas = [], envios = [], tarifas, aut
     finally { setCargando(false); }
   };
   useEffect(() => { cargar(); }, []);
+
+  const sincronizar = async () => {
+    setSincronizando(true);
+    try {
+      const resultado = await sincronizarDario();
+      mostrarToast("Darío actualizado: " + (resultado.matched || 0) + " coincidencias de " + (resultado.totalDario || 0) + " paquetes.", "success");
+      await cargar();
+    } catch (e) { mostrarToast(e.message || "No fue posible sincronizar con Darío.", "error"); }
+    finally { setSincronizando(false); }
+  };
 
   const filas = useMemo(() => {
     const q = buscar.trim().toLowerCase();
@@ -47,7 +58,7 @@ export default function DarioImport({ prealertas = [], envios = [], tarifas, aut
 
   return <section>
     <div className="panel">
-      <div className="panel-header"><div><h3>Darío Import</h3><p className="muted">Comparador logístico de estados y pesos. No modifica pagos de proveedor.</p></div><button className="btn btn-ghost" onClick={cargar}>Actualizar</button></div>
+      <div className="panel-header"><div><h3>Darío Import</h3><p className="muted">Comparador logístico de estados y pesos. No modifica pagos de proveedor.</p></div><button className="btn btn-ghost" onClick={sincronizar} disabled={sincronizando}>{sincronizando ? "Sincronizando…" : "Actualizar desde Darío"}</button></div>
       <div className="form-row"><input className="input" value={buscar} onChange={(e)=>setBuscar(e.target.value)} placeholder="Buscar tracking o cliente…" /></div>
     </div>
     <div className="panel">
