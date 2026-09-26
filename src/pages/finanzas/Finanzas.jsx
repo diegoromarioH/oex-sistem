@@ -430,7 +430,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
         <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}><Wallet size={18} style={{ color: "var(--module-color)" }} /> Liquidez y disponibilidad</h3>
         <p>Separamos la rentabilidad de las operaciones del dinero que realmente está en caja/bancos. No tienen que ser el mismo número.</p>
         <div className="grid-4 mt-16">
-          <div className="metric"><b>Ganancia disponible</b><span className="metric-value">${gananciaDisponible.toFixed(2)}</span><small>Cliente pagó + proveedor pagado</small></div>
+          <div className="metric"><b>Utilidad neta cobrada</b><span className="metric-value">${utilidadNetaCobrada.toFixed(2)}</span><small>Margen cobrado menos gastos operativos</small></div>
           <div className="metric"><b>Gastos operativos</b><span className="metric-value">${totalGastos.toFixed(2)}</span><small>Dinero que ya salió por operación</small></div>
           <div className="metric"><b>Capital financiado a clientes</b><span className="metric-value">${costoFinanciadoClientes.toFixed(2)}</span><small>Proveedor pagado, cliente aún debe</small></div>
           <div className="metric"><b>Costo pendiente de facturar</b><span className="metric-value">${costoPendienteFacturar.toFixed(2)}</span><small>Costo congelado; todavía no es CxP</small></div>
