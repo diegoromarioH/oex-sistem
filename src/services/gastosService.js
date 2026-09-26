@@ -93,6 +93,7 @@ export const guardarGasto = async ({ form, auth }) => {
     ...auth, accion: "Registró gasto", modulo: "Finanzas", registroCodigo: form.categoria || "General",
     detalle: `${form.descripcion} · ${moneda === "NIO" ? "C$" : "$"}${monto.toFixed(2)}${form.cuentaDinero?.nombre ? ` · salió ${monedaCuenta === "NIO" ? "C$" : "$"}${montoCuenta.toFixed(2)} de ${form.cuentaDinero.nombre}` : ""}`
   });
+  return creado;
 };
 
 export const eliminarGasto = async ({ gasto, auth }) => {
