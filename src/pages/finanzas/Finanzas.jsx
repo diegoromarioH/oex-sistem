@@ -177,7 +177,9 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
   );
   const proveedorPagado = (e) => Array.isArray(e.trackings) && e.trackings.length > 0 && e.trackings.every((t) => [t?.id, t?.tracking, t?.codigo].filter(Boolean).map((v) => String(v).trim().toLowerCase()).some((k) => clavesProveedorPagado.has(k)));
   const gananciaCobrada = enviosFiltrados.filter((e) => numero(e.saldo) <= 0).reduce((a, e) => a + numero(e.gananciaReal), 0);
-  const margenCobradoCerrado = enviosFiltrados.filter((e) => numero(e.saldo) <= 0 && proveedorPagado(e)).reduce((a, e) => a + numero(e.gananciaReal), 0);\n  const utilidadNetaCobrada = margenCobradoCerrado + totalOtrosIngresos - totalGastos;\n  const utilidadNetaEstimada = gananciaPaq + totalOtrosIngresos - totalGastos;
+  const margenCobradoCerrado = enviosFiltrados.filter((e) => numero(e.saldo) <= 0 && proveedorPagado(e)).reduce((a, e) => a + numero(e.gananciaReal), 0);
+  const utilidadNetaCobrada = margenCobradoCerrado + totalOtrosIngresos - totalGastos;
+  const utilidadNetaEstimada = gananciaPaq + totalOtrosIngresos - totalGastos;
   const costoFinanciadoClientes = enviosFiltrados.filter((e) => numero(e.saldo) > 0 && proveedorPagado(e)).reduce((a, e) => a + numero(e.costoInternoTotal), 0);
   const costoPendienteFacturar = enviosFiltrados.filter((e) => numero(e.saldo) > 0 && !proveedorPagado(e)).reduce((a, e) => a + numero(e.costoInternoTotal), 0);
   const gananciaPendienteCobro = enviosFiltrados
