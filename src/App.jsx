@@ -39,11 +39,7 @@ const MODULOS = [
     { subvista: "gastos", label: "Gastos", descripcion: "Gastos operativos por categoría", icon: TrendingDown },
     { subvista: "proveedores", label: "Proveedores", descripcion: "Facturas y pagos a proveedores", icon: Truck },
     { subvista: "cuentas", label: "Cuentas", descripcion: "Catálogo contable y cajas/bancos", icon: Landmark },
-    { subvista: "apertura", label: "Balance inicial", descripcion: "Saldos iniciales de cuentas", icon: Wallet },
-    { subvista: "libro", label: "Libro diario", descripcion: "Movimientos y asientos contables", icon: BookOpen },
-    { subvista: "caja", label: "Corte de caja", descripcion: "Apertura y cierre diario de efectivo", icon: Calculator },
-    { subvista: "resultados", label: "Estado de resultados", descripcion: "Ingresos, costos y utilidad", icon: Scale },
-    { subvista: "reportes", label: "Reportes", descripcion: "Resultados, libro diario y balance general", icon: FileBarChart }
+    { subvista: "reportes", label: "Reportes", descripcion: "Reportes, estados, libro diario y glosario", icon: FileBarChart }
   ]},
   { id: "clientes", label: "Clientes", color: "var(--mod-clientes)", icon: Users },
   { id: "eventos", label: "Eventos web", color: "var(--mod-dashboard)", icon: Activity },
