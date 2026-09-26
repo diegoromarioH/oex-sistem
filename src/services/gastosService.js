@@ -116,6 +116,28 @@ export const eliminarGasto = async ({ gasto, auth }) => {
 };
 
 
+// Solo son elegibles para costeo directo los trackings incluidos en una factura de proveedor completamente pagada.
+// Una factura anulada nunca habilita trackings. Se compara por id y también por código para tolerar snapshots históricos.
+export const listarTrackingsPagadosProveedor = async () => {
+  const { data: facturas, error } = await supabase
+    .from("facturas_proveedor")
+    .select("id,estado,saldo,trackings")
+    .eq("estado", "Pagada")
+    .lte("saldo", 0.01);
+  if (error) throw error;
+  const ids = new Set(), codigos = new Set();
+  (facturas || []).forEach((f) => (f.trackings || []).forEach((t) => {
+    if (t?.id) ids.add(String(t.id));
+    const codigo = String(t?.codigo || t?.tracking || "").trim();
+    if (codigo) codigos.add(codigo);
+  }));
+  const { data: trackings, error: et } = await supabase
+    .from("trackings")
+    .select("id,codigo,peso,tipo_envio,destino,estado,cliente_id,envio_id");
+  if (et) throw et;
+  return (trackings || []).filter((t) => ids.has(String(t.id)) || codigos.has(String(t.codigo || "").trim()));
+};
+
 // --- Costeo analítico por tracking ---
 // Estos vínculos NO crean gastos, NO mueven caja y NO generan asientos.
 // Solo distribuyen un gasto ya registrado para medir el costo real por tracking.
