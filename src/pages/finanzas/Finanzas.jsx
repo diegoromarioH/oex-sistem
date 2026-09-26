@@ -385,17 +385,10 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
         <TarjetaKPI etiqueta="Utilidad neta" valor={resultadoLedger?.utilidad ?? utilidadNeta} icono={LineChart} color={(resultadoLedger?.utilidad ?? utilidadNeta) >= 0 ? "var(--success)" : "var(--danger)"} activa={false} etiquetaAccion="Ver Estado de Resultados →" onClick={() => setVista("resultados")} />
       </div>
 
-      {!cargandoLedger && resultadoLedger && Math.abs(resultadoLedger.utilidad - utilidadNeta) > 0.5 && (
-        <div className="info-box" style={{ borderColor: "var(--warning, #b7791f)" }}>
-          <b>⚠️ Diferencia de conciliación detectada · ${Math.abs(resultadoLedger.utilidad - utilidadNeta).toFixed(2)}</b>
-          <br /><small>El libro diario muestra ${resultadoLedger.utilidad.toFixed(2)} y el resumen operativo ${utilidadNeta.toFixed(2)}. Hay movimientos históricos que todavía no están posteados o conciliados en el libro diario. No tomes ninguno de los dos como utilidad definitiva hasta completar la conciliación.</small>
-        </div>
-      )}
-
       <div className="info-box" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <span>
-          <b>Dos vistas, dos propósitos.</b>
-          <br /><small>Resumen contable = lo posteado en el libro diario. Resumen operativo = ventas, márgenes, cobros, costos y gastos registrados en la operación. Cuando la conciliación esté completa, ambos deben ser coherentes.</small>
+          <b>Resultado contable y margen operativo</b>
+          <br /><small>La utilidad contable reconoce costos cuando el proveedor los factura. El margen operativo estimado también considera costos congelados de recibos que todavía están pendientes de facturar. Por eso ambos valores pueden ser distintos sin que exista un descuadre contable.</small>
         </span>
         <button className="btn btn-ghost" onClick={() => setVista("resultados")} style={{ whiteSpace: "nowrap" }}>
           Ver Estado de Resultados <ArrowRight size={14} style={{ verticalAlign: "-2px", marginLeft: 4 }} />
