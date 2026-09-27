@@ -46,7 +46,8 @@ export const actualizarPrealerta = async ({ tracking, cambios, auth }) => {
   if(!contacto) throw new Error("Escribe el WhatsApp del cliente.");
   if(!codigo&&!almacenId) throw new Error("Escribe el número de tracking o el ID de almacén.");
   if(codigo) await asegurarTrackingUnico(codigo, tracking.id);
-  const clienteId=cambios.clienteId||null;\n  const {error}=await supabase.from("tracking_registros").update({cliente,contacto,cliente_id:clienteId,cliente_codigo:String(cambios.clienteCodigo||"").trim()||null,destino:cambios.destino,tipo_envio:cambios.tipoEnvio,tracking:codigo,almacen_id:almacenId,nota:String(cambios.nota||"").slice(0,160),updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"}).eq("id",tracking.id);
+  const clienteId=cambios.clienteId||null;
+  const {error}=await supabase.from("tracking_registros").update({cliente,contacto,cliente_id:clienteId,cliente_codigo:String(cambios.clienteCodigo||"").trim()||null,destino:cambios.destino,tipo_envio:cambios.tipoEnvio,tracking:codigo,almacen_id:almacenId,nota:String(cambios.nota||"").slice(0,160),updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"}).eq("id",tracking.id);
   if(error) throw error;
   await registrarAuditoria({...auth,accion:"Editó prealerta",modulo:"Trackings",registroCodigo:codigo||almacenId,detalle:cliente});
 };
