@@ -75,6 +75,8 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
       const {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino").ilike("tracking",tracking).maybeSingle();
       if(e0)throw e0;
       const fechaMiami=item?.fecha_miami||item?.fechaMiami||null;
+      const referenciaGlobal=item?.referencia_global||item?.nombre_global||null;
+      const instruccionesGlobal=item?.instrucciones_global||null;
       if(reg){
         const anterior=reg.estado||"Prealertado",patch={almacen_id:almacenId,actualizado_en:ahora};
         if(fechaMiami&&!reg.fecha_miami)patch.fecha_miami=fechaMiami;
@@ -84,7 +86,9 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
         else sinCambios++;
         const {error:e1}=await supabase.from("tracking_registros").update(patch).eq("id",reg.id); if(e1)throw e1;
         const info={origen:"navegador",referencia_global:item?.referencia_global||item?.nombre_global||null,instrucciones_global:item?.instrucciones_global||null,status_global:statusGlobal||null,estado_oex_detectado:estadoMapeado,estado_oex_anterior:anterior,estado_oex_final:patch.estado||anterior};
-        const {error:e2}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||null,estado:"coincidencia",tracking_registro_id:reg.id,ultima_deteccion:ahora,detalle:info},{onConflict:"almacen_id"}); if(e2)throw e2;
+        const {data:existRec}=await supabase.from("global_connection_recepciones").select("detalle").eq("almacen_id",almacenId).maybeSingle();
+        const infoFinal={...(existRec?.detalle||{}),...info,referencia_global:referenciaGlobal,instrucciones_global:instruccionesGlobal};
+        const {error:e2}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||referenciaGlobal||null,estado:"coincidencia",tracking_registro_id:reg.id,ultima_deteccion:ahora,detalle:infoFinal},{onConflict:"almacen_id"}); if(e2)throw e2;
         coincidencias++; detalle.push({tracking,almacenId,statusGlobal,anterior,final:patch.estado||anterior,accion});
       }else{
         const {data:hist,error:eh}=await supabase.from("envios").select("id,numero_envios,cliente,cliente_id,estado,trackings").contains("trackings",[{codigo:tracking}]).limit(1); if(eh)throw eh;
