@@ -101,13 +101,10 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
         const {error:e2}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||referenciaGlobal||null,estado:"coincidencia",tracking_registro_id:reg.id,ultima_deteccion:ahora,detalle:infoFinal},{onConflict:"almacen_id"}); if(e2)throw e2;
         coincidencias++; detalle.push({tracking,almacenId,statusGlobal,anterior,final:patch.estado||anterior,accion});
       }else{
-        const {data:hist,error:eh}=await supabase.from("envios").select("id,numero_envios,cliente,cliente_id,estado,trackings").contains("trackings",[{codigo:tracking}]).limit(1); if(eh)throw eh;
-        let historico=(hist||[])[0]||null;
-        if(!historico){
-          const {data:candidatos,error:ec}=await supabase.from("envios").select("id,numero_envios,cliente,cliente_id,estado,trackings").not("trackings","is",null); if(ec)throw ec;
-          historico=(candidatos||[]).find(e=>(e.trackings||[]).some(t=>String(t?.codigo||"").trim().toUpperCase()===tracking.toUpperCase()))||null;
-        }
-        const {data:exist,error:e3}=await supabase.from("global_connection_recepciones").select("id,estado,detalle,nombre_global,fecha_miami").eq("almacen_id",almacenId).maybeSingle(); if(e3)throw e3;
+        let historico=null;
+        const {data:hist,error:eh}=await supabase.from("envios").select("id,numero_envios,cliente,cliente_id,estado,trackings").not("trackings","is",null); if(eh)throw eh;
+        historico=(hist||[]).find(e=>(e.trackings||[]).some(t=>String(t?.codigo||"").trim().toUpperCase()===tracking.toUpperCase()))||null;
+                const {data:exist,error:e3}=await supabase.from("global_connection_recepciones").select("id,estado,detalle,nombre_global,fecha_miami").eq("almacen_id",almacenId).maybeSingle(); if(e3)throw e3;
         if(historico){
           const {error:e4}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||null,estado:"coincidencia",cliente_id:historico.cliente_id||null,cliente_nombre:historico.cliente||null,ultima_deteccion:ahora,detalle:{origen:"navegador",referencia_global:item?.referencia_global||item?.nombre_global||null,instrucciones_global:item?.instrucciones_global||null,status_global:statusGlobal||null,estado_oex_detectado:estadoMapeado,historico_envio_id:historico.id,recibo:historico.numero_envios,estado_historico:historico.estado}},{onConflict:"almacen_id"}); if(e4)throw e4;
           coincidencias++; if(historico.estado==="Entregado")finalizados++; else sinCambios++;
