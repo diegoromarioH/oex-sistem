@@ -1,5 +1,6 @@
 import { supabase } from "../supabase";
 import { registrarAuditoria } from "./coreService";
+import { puedeAvanzarEstado } from "../utils/estadosEnvio";
 
 export async function sincronizarGlobalConnection({ onProgress } = {}){
   let offset = 0, syncToken = null, lote = 0;
@@ -60,21 +61,6 @@ export async function asignarRecepcionGlobal({recepcion,cliente,destino,tipoEnvi
   return tracking;
 }
 
-const ORDEN_OEX=["Prealertado","Miami","Tránsito NI","Nicaragua","Bodega OEX","Tránsito Managua","Tránsito Ometepe","Punto UNI","Jardines de Veracruz","Ometepe","Entregado"];
-const normalizarGlobalStatus=(v)=>String(v||"").trim().toLowerCase();
-const estadoGlobalAOex=(v)=>{
-  const s=normalizarGlobalStatus(v);
-  if(s==="on hand")return "Miami";
-  if(s==="in transit")return "Tránsito NI";
-  if(s==="in country")return "Nicaragua";
-  return null;
-};
-const puedeAvanzar=(actual,nuevo)=>{
-  const a=ORDEN_OEX.indexOf(actual),n=ORDEN_OEX.indexOf(nuevo);
-  if(n<0)return false;
-  if(a<0)return actual==="Prealertado"||!actual;
-  return n>a;
-};
 
 export async function importarLecturaGlobalConnection(items=[],auth={}){
   if(!Array.isArray(items)||!items.length) throw new Error("No hay paquetes para importar.");
@@ -86,7 +72,7 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
       if(!tracking||!almacenId){errores++;continue}
       const statusGlobal=String(item?.status_global||item?.status||"").trim();
       const estadoMapeado=estadoGlobalAOex(statusGlobal);
-      const {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id").ilike("tracking",tracking).maybeSingle();
+      const {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino").ilike("tracking",tracking).maybeSingle();
       if(e0)throw e0;
       const fechaMiami=item?.fecha_miami||item?.fechaMiami||null;
       if(reg){
@@ -94,7 +80,7 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
         if(fechaMiami&&!reg.fecha_miami)patch.fecha_miami=fechaMiami;
         let accion="sin_cambios";
         if(anterior==="Entregado"){accion="ya_finalizado";finalizados++}
-        else if(estadoMapeado&&puedeAvanzar(anterior,estadoMapeado)&&!reg.envio_id){patch.estado=estadoMapeado;accion=`${anterior}_a_${estadoMapeado}`;actualizados++}
+        else if(estadoMapeado&&puedeAvanzarEstado(anterior,estadoMapeado,reg.destino)&&!reg.envio_id){patch.estado=estadoMapeado;accion=`${anterior}_a_${estadoMapeado}`;actualizados++}
         else sinCambios++;
         const {error:e1}=await supabase.from("tracking_registros").update(patch).eq("id",reg.id); if(e1)throw e1;
         const info={origen:"navegador",referencia_global:item?.referencia_global||item?.nombre_global||null,instrucciones_global:item?.instrucciones_global||null,status_global:statusGlobal||null,estado_oex_detectado:estadoMapeado,estado_oex_anterior:anterior,estado_oex_final:patch.estado||anterior};
