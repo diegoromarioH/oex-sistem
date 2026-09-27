@@ -83,9 +83,9 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
       const estadoMapeado=estadoGlobalAOex(statusGlobal);
       const normalizarTracking=v=>String(v||"").trim().toUpperCase();
       const mismoTracking=(a,b)=>{const x=normalizarTracking(a),y=normalizarTracking(b);if(!x||!y)return false;if(x===y)return true;const corto=x.length<=y.length?x:y,largo=x.length>y.length?x:y;return corto.length>=18&&largo.endsWith(corto)};
-      let {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino").ilike("tracking",tracking).maybeSingle();
+      let {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino,cliente,cliente_id").ilike("tracking",tracking).maybeSingle();
       if(e0)throw e0;
-      if(!reg){const {data:candidatosReg,error:er}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino");if(er)throw er;const compatibles=(candidatosReg||[]).filter(x=>mismoTracking(x.tracking,tracking));if(compatibles.length===1)reg=compatibles[0];}
+      if(!reg){const {data:candidatosReg,error:er}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino,cliente,cliente_id");if(er)throw er;const compatibles=(candidatosReg||[]).filter(x=>mismoTracking(x.tracking,tracking));if(compatibles.length===1)reg=compatibles[0];}
       const fechaRaw=item?.fecha_miami||item?.fechaMiami||null;
       const fechaMiami=fechaRaw?(()=>{const m=String(fechaRaw).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!m)return fechaRaw;const [,mes,dia,anio]=m;return `${anio}-${mes.padStart(2,"0")}-${dia.padStart(2,"0")}T12:00:00Z`})():null;
       const referenciaGlobal=item?.referencia_global||item?.nombre_global||null;
@@ -102,7 +102,7 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
         const {data:existRec}=await supabase.from("global_connection_recepciones").select("detalle").eq("almacen_id",almacenId).maybeSingle();
         const infoFinal={...(existRec?.detalle||{}),...info,referencia_global:referenciaGlobal,instrucciones_global:instruccionesGlobal};
         const {error:e2}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||referenciaGlobal||null,estado:"coincidencia",tracking_registro_id:reg.id,ultima_deteccion:ahora,detalle:infoFinal},{onConflict:"almacen_id"}); if(e2)throw e2;
-        coincidencias++; detalle.push({tracking,almacenId,statusGlobal,anterior,final:patch.estado||anterior,accion});
+        coincidencias++; detalle.push({tracking,almacenId,statusGlobal,cliente:reg.cliente||null,anterior,final:patch.estado||anterior,accion});
       }else{
         let historico=null;
         const {data:hist,error:eh}=await supabase.from("envios").select("id,numero_envios,cliente,cliente_id,estado,trackings").not("trackings","is",null); if(eh)throw eh;
@@ -111,7 +111,7 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
         if(historico){
           const {error:e4}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||null,estado:"coincidencia",cliente_id:historico.cliente_id||null,cliente_nombre:historico.cliente||null,ultima_deteccion:ahora,detalle:{origen:"navegador",referencia_global:item?.referencia_global||item?.nombre_global||null,instrucciones_global:item?.instrucciones_global||null,status_global:statusGlobal||null,estado_oex_detectado:estadoMapeado,historico_envio_id:historico.id,recibo:historico.numero_envios,estado_historico:historico.estado}},{onConflict:"almacen_id"}); if(e4)throw e4;
           coincidencias++; if(historico.estado==="Entregado")finalizados++; else sinCambios++;
-          detalle.push({tracking,almacenId,statusGlobal,anterior:historico.estado,final:historico.estado,accion:historico.estado==="Entregado"?"ya_finalizado":"historico_existente"});
+          detalle.push({tracking,almacenId,statusGlobal,cliente:historico.cliente||null,anterior:historico.estado,final:historico.estado,accion:historico.estado==="Entregado"?"ya_finalizado":"historico_existente"});
         }else{
           const estadoRecepcion=exist?.estado==="asignado"?"asignado":"sin_asignar";
           const detalleRecepcion={...(exist?.detalle||{}),origen:"navegador",referencia_global:referenciaGlobal||exist?.detalle?.referencia_global||exist?.nombre_global||null,instrucciones_global:instruccionesGlobal||exist?.detalle?.instrucciones_global||null,status_global:statusGlobal||exist?.detalle?.status_global||null,estado_oex_detectado:estadoMapeado||exist?.detalle?.estado_oex_detectado||null}; const {error:e4}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami||exist?.fecha_miami||null,nombre_global:referenciaGlobal||exist?.nombre_global||null,estado:estadoRecepcion,ultima_deteccion:ahora,detalle:detalleRecepcion},{onConflict:"almacen_id"}); if(e4)throw e4;
