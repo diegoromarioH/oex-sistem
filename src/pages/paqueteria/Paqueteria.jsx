@@ -28,7 +28,7 @@ export default function Paqueteria({ envios, prealertas, facturasProveedor, audi
         <button className={`nav-btn ${vista === "nuevo" ? "active" : ""}`} onClick={() => setVista("nuevo")}>+ Generar recibo</button>
         <button className={`nav-btn ${vista === "registrar" ? "active" : ""}`} onClick={() => setVista("registrar")}>+ Registrar tracking</button>
         <button className={`nav-btn ${vista === "prealertas" ? "active" : ""}`} onClick={() => setVista("prealertas")}>Prealertas ({pendientesConfirmar})</button>
-        <button className={`nav-btn ${vista === "activos" ? "active" : ""}`} onClick={() => setVista("activos")}>Envíos activos ({trackingsActivos})</button>
+        <button className={`nav-btn nav-btn-envios-activos ${vista === "activos" ? "active" : ""}`} onClick={() => setVista("activos")}>Envíos activos ({trackingsActivos})</button>
         <button className={`nav-btn ${vista === "dario" ? "active" : ""}`} onClick={() => setVista("dario")}>Darío Import</button>
         <button className={`nav-btn ${vista === "global" ? "active" : ""}`} onClick={() => setVista("global")}>Global Connect</button>
       </PageTitle>
