@@ -45,7 +45,7 @@ export async function asignarRecepcionGlobal({recepcion,cliente,destino,tipoEnvi
   const payload={
     cliente:cliente.nombre,contacto:cliente.telefono||"",tracking:recepcion.tracking.trim(),estado:estadoInicial,
     almacen_id:recepcion.almacen_id,fecha_miami:recepcion.fecha_miami||ahora,destino,tipo_envio:tipoEnvio,
-    origen_registro:"global_connection",peso:0,
+    proveedor_aduana_id:1,origen_registro:"global_connection",peso:0,
     cliente_id:cliente.id,cliente_codigo:cliente.codigo||null,cliente_tipo:cliente.tipo||"General",fecha:ahora,
     created_by:auth.session?.user?.id||null,created_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"
   };
