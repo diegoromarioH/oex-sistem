@@ -2,6 +2,15 @@ import { supabase } from "../supabase";
 import { registrarAuditoria } from "./coreService";
 import { puedeAvanzarEstado } from "../utils/estadosEnvio";
 
+const estadoGlobalAOex = (status) => {
+  const s = String(status || "").trim().toLowerCase();
+  if (!s) return null;
+  if (s === "on hand") return "Miami";
+  if (s === "in transit") return "Tránsito NI";
+  if (s === "in country") return "Nicaragua";
+  return null;
+};
+
 export async function sincronizarGlobalConnection({ onProgress } = {}){
   let offset = 0, syncToken = null, lote = 0;
   const total = { ok:true, totalDetectados:0, prealertasConfirmadas:0, yaRegistrados:0, sinAsignarNuevos:0, actualizadosSinRegresion:0, errores:0, detalle:[] };
