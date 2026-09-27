@@ -77,7 +77,7 @@ const puedeAvanzar=(actual,nuevo)=>{
 
 export async function importarLecturaGlobalConnection(items=[],auth={}){
   if(!Array.isArray(items)||!items.length) throw new Error("No hay paquetes para importar.");
-  const ahora=new Date().toISOString(); let coincidencias=0,nuevos=0,errores=0,actualizados=0;
+  const ahora=new Date().toISOString(); let coincidencias=0,nuevos=0,errores=0,actualizados=0,sinCambios=0,finalizados=0;
   const detalle=[];
   for(const item of items.slice(0,100)){
     try{
@@ -91,8 +91,10 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
       if(reg){
         const anterior=reg.estado||"Prealertado",patch={almacen_id:almacenId,actualizado_en:ahora};
         if(fechaMiami&&!reg.fecha_miami)patch.fecha_miami=fechaMiami;
-        let accion="datos_actualizados";
-        if(estadoMapeado&&puedeAvanzar(anterior,estadoMapeado)&&!reg.envio_id){patch.estado=estadoMapeado;accion=`${anterior}_a_${estadoMapeado}`;actualizados++}
+        let accion="sin_cambios";
+        if(anterior==="Entregado"){accion="ya_finalizado";finalizados++}
+        else if(estadoMapeado&&puedeAvanzar(anterior,estadoMapeado)&&!reg.envio_id){patch.estado=estadoMapeado;accion=`${anterior}_a_${estadoMapeado}`;actualizados++}
+        else sinCambios++;
         const {error:e1}=await supabase.from("tracking_registros").update(patch).eq("id",reg.id); if(e1)throw e1;
         const info={origen:"navegador",status_global:statusGlobal||null,estado_oex_detectado:estadoMapeado,estado_oex_anterior:anterior,estado_oex_final:patch.estado||anterior};
         const {error:e2}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||null,estado:"coincidencia",tracking_registro_id:reg.id,ultima_deteccion:ahora,detalle:info},{onConflict:"almacen_id"}); if(e2)throw e2;
@@ -106,5 +108,5 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
     }catch(e){errores++;detalle.push({tracking:String(item?.tracking||""),accion:"error",error:e?.message||"Error"})}
   }
   await registrarAuditoria({...auth,accion:"Importó lectura de Global Connection",modulo:"Paquetería",detalle:`${items.length} leídos · ${coincidencias} coincidencias · ${actualizados} estados avanzados · ${nuevos} nuevos · ${errores} errores`});
-  return {total:items.length,coincidencias,nuevos,actualizados,errores,detalle};
+  return {total:items.length,coincidencias,nuevos,actualizados,sinCambios,finalizados,errores,detalle};
 }
