@@ -28,18 +28,17 @@ export default function Dashboard({pedidos,envios,gastos,prealertas=[],proveedor
  const vencidos=deadlines.filter(x=>x.deadline.estadoDeadline==="vencido");
  const proximos=deadlines.filter(x=>x.deadline.estadoDeadline==="proximo");
  const descargarBodega=()=>{ if(!bodega.length)return; generarPDFBodegaProveedor({trackings:bodega,proveedores,empresa}); };
+ const irAActivos=()=>window.dispatchEvent(new CustomEvent("oex:navegar",{detail:{modulo:"paqueteria",subvista:"activos"}}));
  const irAGlobal=()=>window.dispatchEvent(new CustomEvent("oex:navegar",{detail:{modulo:"paqueteria",subvista:"global"}}));
  const alertas=[
-  vencidos.length>0&&{texto:`🔴 ${vencidos.length} envío${vencidos.length===1?"":"s"} con fecha estimada de entrega vencida`,accion:()=>setVista("paqueteria")},
-  proximos.length>0&&{texto:`⏰ ${proximos.length} envío${proximos.length===1?"":"s"} próximo(s) a su fecha estimada de entrega`,accion:()=>setVista("paqueteria")},
-  globalPendientes>0&&{texto:`${globalPendientes} paquete${globalPendientes===1?"":"s"} recibido${globalPendientes===1?"":"s"} en Miami necesita${globalPendientes===1?"":"n"} asignación`,accion:irAGlobal},
-  prePend.length>0&&{texto:`${prePend.length} prealerta${prePend.length===1?"":"s"} pendiente${prePend.length===1?"":"s"} de revisión`,accion:irAPrealertas},
-  bodega.length>0&&{texto:`${bodega.length} paquete${bodega.length===1?"":"s"} listo${bodega.length===1?"":"s"} para retirar en Bodega OEX`,accion:descargarBodega,title:"Descargar detalle PDF por proveedor"},
-  saldoCount>0&&{texto:`${saldoCount} recibo${saldoCount===1?"":"s"} con saldo pendiente · $${porCobrar.toFixed(2)}`,accion:()=>setVista("paqueteria")}
+  prePend.length>0&&{texto:`${prePend.length} prealerta${prePend.length===1?"":"s"} por revisar`,accion:irAPrealertas},
+  globalPendientes>0&&{texto:`${globalPendientes} paquete${globalPendientes===1?"":"s"} sin asignar en Miami`,accion:irAGlobal},
+  vencidos.length>0&&{texto:`${vencidos.length} envío${vencidos.length===1?"":"s"} vencido${vencidos.length===1?"":"s"}`,accion:irAActivos},
+  proximos.length>0&&{texto:`${proximos.length} envío${proximos.length===1?"":"s"} próximo${proximos.length===1?"":"s"} al deadline`,accion:irAActivos}
  ].filter(Boolean);
  const ultimos=[...pedidos.slice(0,3).map(p=>({...p,tipo:"SHEIN"})),...envios.slice(0,3).map(e=>({...e,tipo:"Paquetería"}))].sort((a,b)=>(fechaDe(b)?.getTime()||0)-(fechaDe(a)?.getTime()||0)).slice(0,5);
  return <div className="page dashboard-page"><section className="dashboard-greeting"><div><h1>{saludo}, {nombre} 👋</h1><p>{frase}</p></div><span>Resumen de hoy</span></section>
- {alertas.length>0&&<section className="dashboard-alert-zone" aria-label="Alertas pendientes"><div className="dashboard-alert-heading"><span className="dashboard-alert-light" aria-hidden="true"/><b>Requiere atención</b></div><div className="dashboard-alerts dashboard-alerts-top">{alertas.map((a,i)=><button key={i} type="button" onClick={a.accion} title={a.title}><span className="dashboard-alert-dot" aria-hidden="true"/><AlertCircle size={15}/><span>{a.texto}</span></button>)}</div></section>}
+ {(alertas.length>0||bodega.length>0)&&<section className="dashboard-attention-row">{alertas.length>0&&<div className="dashboard-alert-zone" aria-label="Alertas pendientes"><div className="dashboard-alert-heading"><span className="dashboard-alert-light" aria-hidden="true"/><b>Requiere atención</b></div><div className="dashboard-alerts dashboard-alerts-top">{alertas.map((a,i)=><button key={i} type="button" onClick={a.accion}><span className="dashboard-alert-dot" aria-hidden="true"/><AlertCircle size={15}/><span>{a.texto}</span></button>)}</div></div>}{bodega.length>0&&<button type="button" className="dashboard-bodega-action" onClick={irAActivos}><Warehouse size={18}/><span><b>{bodega.length} en Bodega OEX</b><small>Ver paquetes listos</small></span><span aria-hidden="true">→</span></button>}</section>}
  <section className="dashboard-section dashboard-finance"><div className="dashboard-section-title"><div><h2>Salud financiera</h2><small>Una vista clara de rentabilidad, liquidez y pendientes</small></div><button className="dashboard-finance-link" type="button" onClick={()=>setVista("finanzas")}>Ver Finanzas →</button></div>
  <div className="dashboard-finance-primary">
   <div className="dashboard-fin-card is-sales"><span><DollarSign size={16}/> Ventas</span><strong>$${factHist.toFixed(2)}</strong><small>Facturación acumulada</small></div>
