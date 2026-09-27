@@ -5,6 +5,17 @@ export const PIPELINE_MANAGUA = [...PIPELINE_COMUN, "Tránsito Managua", "Punto 
 export const PIPELINE_OMETEPE = [...PIPELINE_COMUN, "Tránsito Ometepe", "Ometepe", "Entregado"];
 
 export const estadosPorDestino = (destino) => (destino === "Managua" ? PIPELINE_MANAGUA : PIPELINE_OMETEPE);
+export const puedeAvanzarEstado = (actual, nuevo, destino) => {
+  if (!nuevo || actual === "Entregado") return false;
+  if (!actual || actual === "Prealertado") return nuevo !== "Prealertado";
+  const pipeline = estadosPorDestino(destino);
+  const a = pipeline.indexOf(actual);
+  const n = pipeline.indexOf(nuevo);
+  if (n < 0) return false;
+  if (a < 0) return false;
+  return n > a;
+};
+
 
 // Las prealertas de la landing siguen requiriendo confirmación antes de entrar
 // al pipeline. Un tracking creado manualmente puede nacer como "Prealertado"
