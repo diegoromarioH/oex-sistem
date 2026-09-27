@@ -207,23 +207,27 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
         {[['Todos','Todos'],['Aéreo','Aéreos'],['Marítimo','Marítimos']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroTipo===valor?'active':''}`} onClick={()=>setFiltroTipo(valor)}>{label}</button>)}
       </div>
 
-      <div className="tracking-filter-group plazo" aria-label="Filtrar por plazo de entrega">
-        {[['Todos','Plazo: todos'],['en_tiempo','✓ En tiempo'],['proximo','⏰ Por vencer'],['vencido','⚠ Vencidos']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroPlazo===valor?'active':''}`} onClick={()=>setFiltroPlazo(valor)}>{label}</button>)}
-      </div>
+      <select className="input tracking-toolbar-select" value={filtroPlazo} onChange={e=>setFiltroPlazo(e.target.value)}>
+        <option value="Todos">Todos los plazos</option>
+        <option value="en_tiempo">✓ En tiempo</option>
+        <option value="proximo">⏰ Por vencer</option>
+        <option value="vencido">⚠ Vencidos</option>
+      </select>
 
       <div className="tracking-filter-group destino" aria-label="Filtrar por destino">
         {[['Todos','Todos'],['Managua','Managua'],['Ometepe','Ometepe']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroDestino===valor?'active':''}`} onClick={()=>setFiltroDestino(valor)}>{label}</button>)}
       </div>
 
-      <select className="input tracking-toolbar-select" value={filtroProveedor} onChange={e=>setFiltroProveedor(e.target.value)}>
-        <option value="Todos">Todos los proveedores</option>
-        {proveedoresAduana.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
-      </select>
-
-      <select className="input tracking-toolbar-select" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
-        <option value="Todos">Todos los estados</option>
-        {estadosDisponibles.map(estado=><option key={estado} value={estado}>{estado}</option>)}
-      </select>
+      {filtroTipo==="Todos"&&filtroDestino==="Todos"&&filtroPlazo==="Todos"&&<>
+        <select className="input tracking-toolbar-select" value={filtroProveedor} onChange={e=>setFiltroProveedor(e.target.value)}>
+          <option value="Todos">Todos los proveedores</option>
+          {proveedoresAduana.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
+        </select>
+        <select className="input tracking-toolbar-select" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
+          <option value="Todos">Todos los estados</option>
+          {estadosDisponibles.map(estado=><option key={estado} value={estado}>{estado}</option>)}
+        </select>
+      </>}
     </div>
 
     <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. La fecha estimada y las alertas internas se calculan desde que se marca Recibido en Miami.</small>\n\n    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
