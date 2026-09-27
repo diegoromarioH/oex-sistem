@@ -234,7 +234,6 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       </div>
 
       <>
-        <>
         <FiltroDropdown label="Proveedores" value={filtroProveedor} onChange={setFiltroProveedor} options={[{value:"Todos",label:"Todos los proveedores"},...proveedoresAduana.map(p=>({value:String(p.id),label:p.nombre}))]}/>
         <FiltroDropdown label="Plazos" value={filtroPlazo} onChange={setFiltroPlazo} options={[{value:"Todos",label:"Todos los plazos"},{value:"en_tiempo",label:"En tiempo",tone:"success"},{value:"proximo",label:"Por vencer",tone:"warning"},{value:"vencido",label:"Vencidos",tone:"danger"}]}/>
         <FiltroDropdown label="Estados" value={filtroEstado} onChange={setFiltroEstado} options={[{value:"Todos",label:"Todos los estados"},...estadosDisponibles.map(estado=>({value:estado,label:estado}))]}/>
