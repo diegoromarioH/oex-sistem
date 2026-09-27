@@ -8,6 +8,7 @@ import Prealertas from "./Prealertas";
 import RegistrarTracking from "./Registrartracking";
 import TrackingsActivos from "./TrackingsActivos";
 import DarioImport from "./DarioImport";
+import GlobalConnection from "./GlobalConnection";
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 
 export default function Paqueteria({ envios, prealertas, facturasProveedor, auditLog, clientes, proveedores = [], rol, tarifas, configOperativa, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, vistaInicial = "dashboard", onVistaChange, onNavigate }) {
@@ -29,6 +30,7 @@ export default function Paqueteria({ envios, prealertas, facturasProveedor, audi
         <button className={`nav-btn ${vista === "prealertas" ? "active" : ""}`} onClick={() => setVista("prealertas")}>Prealertas ({pendientesConfirmar})</button>
         <button className={`nav-btn ${vista === "activos" ? "active" : ""}`} onClick={() => setVista("activos")}>Envíos activos ({trackingsActivos})</button>
         <button className={`nav-btn ${vista === "dario" ? "active" : ""}`} onClick={() => setVista("dario")}>Darío Import</button>
+        <button className={`nav-btn ${vista === "global" ? "active" : ""}`} onClick={() => setVista("global")}>Global Connect</button>
       </PageTitle>
 
       {vista === "dashboard" && <PaqueteriaDashboard envios={envios} prealertas={prealertas} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
@@ -37,6 +39,7 @@ export default function Paqueteria({ envios, prealertas, facturasProveedor, audi
       {vista === "prealertas" && <Prealertas prealertas={prealertas} clientes={clientes} proveedores={proveedores} configOperativa={configOperativa} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "activos" && <TrackingsActivos configOperativa={configOperativa} prealertas={prealertas} envios={envios} clientes={clientes} proveedores={proveedores} facturasProveedor={facturasProveedor} auditLog={auditLog} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} onNavigate={onNavigate} />}
       {vista === "dario" && <DarioImport prealertas={prealertas} envios={envios} tarifas={tarifas} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+      {vista === "global" && <GlobalConnection clientes={clientes} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
       {vista === "lista" && <EnviosList envios={envios} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
     </div>
   );
