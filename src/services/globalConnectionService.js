@@ -58,3 +58,31 @@ export async function asignarRecepcionGlobal({recepcion,cliente,destino,tipoEnvi
   await registrarAuditoria({...auth,accion:"Asignó paquete Global Connection",modulo:"Paquetería",registroCodigo:recepcion.tracking,detalle:`${cliente.nombre} · ${destino} · ${tipoEnvio} · Almacén ${recepcion.almacen_id}`});
   return tracking;
 }
+
+export async function importarLecturaGlobalConnection(items=[],auth={}){
+  if(!Array.isArray(items)||!items.length) throw new Error("No hay paquetes para importar.");
+  const ahora=new Date().toISOString(); let coincidencias=0,nuevos=0,errores=0;
+  for(const item of items.slice(0,50)){
+    try{
+      const tracking=String(item?.tracking||"").trim(), almacenId=String(item?.almacen_id||item?.almacenId||"").trim();
+      if(!tracking||!almacenId){errores++;continue}
+      const {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id").ilike("tracking",tracking).maybeSingle();
+      if(e0)throw e0;
+      const fechaMiami=item?.fecha_miami||item?.fechaMiami||null;
+      if(reg){
+        const patch={almacen_id:almacenId,actualizado_en:ahora};
+        if(fechaMiami&&!reg.fecha_miami)patch.fecha_miami=fechaMiami;
+        if((reg.estado==="Prealertado"||!reg.estado)&&!reg.envio_id)patch.estado="Miami";
+        const {error:e1}=await supabase.from("tracking_registros").update(patch).eq("id",reg.id); if(e1)throw e1;
+        const {error:e2}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,estado:"coincidencia",tracking_registro_id:reg.id,ultima_deteccion:ahora,detalle:{origen:"navegador"}},{onConflict:"almacen_id"}); if(e2)throw e2;
+        coincidencias++;
+      }else{
+        const {data:exist,error:e3}=await supabase.from("global_connection_recepciones").select("id,estado").eq("almacen_id",almacenId).maybeSingle(); if(e3)throw e3;
+        const {error:e4}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,estado:exist?.estado==="asignado"?"asignado":"sin_asignar",ultima_deteccion:ahora,detalle:{origen:"navegador"}},{onConflict:"almacen_id"}); if(e4)throw e4;
+        if(!exist)nuevos++;
+      }
+    }catch{errores++}
+  }
+  await registrarAuditoria({...auth,accion:"Importó lectura de Global Connection",modulo:"Paquetería",detalle:`${items.length} leídos · ${coincidencias} coincidencias · ${nuevos} nuevos · ${errores} errores`});
+  return {total:items.length,coincidencias,nuevos,errores};
+}
