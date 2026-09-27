@@ -81,8 +81,11 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
       if(!tracking||!almacenId){errores++;continue}
       const statusGlobal=String(item?.status_global||item?.status||"").trim();
       const estadoMapeado=estadoGlobalAOex(statusGlobal);
-      const {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino").ilike("tracking",tracking).maybeSingle();
+      const normalizarTracking=v=>String(v||"").trim().toUpperCase();
+      const mismoTracking=(a,b)=>{const x=normalizarTracking(a),y=normalizarTracking(b);if(!x||!y)return false;if(x===y)return true;const corto=x.length<=y.length?x:y,largo=x.length>y.length?x:y;return corto.length>=18&&largo.endsWith(corto)};
+      let {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino").ilike("tracking",tracking).maybeSingle();
       if(e0)throw e0;
+      if(!reg){const {data:candidatosReg,error:er}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino");if(er)throw er;const compatibles=(candidatosReg||[]).filter(x=>mismoTracking(x.tracking,tracking));if(compatibles.length===1)reg=compatibles[0];}
       const fechaRaw=item?.fecha_miami||item?.fechaMiami||null;
       const fechaMiami=fechaRaw?(()=>{const m=String(fechaRaw).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!m)return fechaRaw;const [,mes,dia,anio]=m;return `${anio}-${mes.padStart(2,"0")}-${dia.padStart(2,"0")}T12:00:00Z`})():null;
       const referenciaGlobal=item?.referencia_global||item?.nombre_global||null;
@@ -103,7 +106,7 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
       }else{
         let historico=null;
         const {data:hist,error:eh}=await supabase.from("envios").select("id,numero_envios,cliente,cliente_id,estado,trackings").not("trackings","is",null); if(eh)throw eh;
-        historico=(hist||[]).find(e=>(e.trackings||[]).some(t=>String(t?.codigo||"").trim().toUpperCase()===tracking.toUpperCase()))||null;
+        historico=(hist||[]).find(e=>(e.trackings||[]).some(t=>mismoTracking(t?.codigo,tracking)))||null;
                 const {data:exist,error:e3}=await supabase.from("global_connection_recepciones").select("id,estado,detalle,nombre_global,fecha_miami").eq("almacen_id",almacenId).maybeSingle(); if(e3)throw e3;
         if(historico){
           const {error:e4}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||null,estado:"coincidencia",cliente_id:historico.cliente_id||null,cliente_nombre:historico.cliente||null,ultima_deteccion:ahora,detalle:{origen:"navegador",referencia_global:item?.referencia_global||item?.nombre_global||null,instrucciones_global:item?.instrucciones_global||null,status_global:statusGlobal||null,estado_oex_detectado:estadoMapeado,historico_envio_id:historico.id,recibo:historico.numero_envios,estado_historico:historico.estado}},{onConflict:"almacen_id"}); if(e4)throw e4;
