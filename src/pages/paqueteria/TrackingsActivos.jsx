@@ -1,11 +1,10 @@
 // src/pages/paqueteria/TrackingsActivos.jsx
 import { useMemo, useState } from "react";
-import { Layers, CheckCircle2, XCircle, HelpCircle, Package, Weight, Clock3, ReceiptText, Search } from "lucide-react";
+import { Package, Weight, Clock3, ReceiptText, Search } from "lucide-react";
 import { actualizarTracking, eliminarTracking, corregirTipoTrackingActivo } from "../../services/trackingsService";
 import { estadosPorDestino, badgeEstado, esListoParaRetirar, esPendienteDeConfirmar, esListoParaRetiroProveedor } from "../../utils/estadosEnvio";
 import { limpiarTelefono } from "../../utils/clientes";
 import { numero } from "../../utils/numero";
-import { parseListaPesos, emparejarConTrackings } from "../../utils/parseListaPesos";
 import { calcularDeadlineTracking, formatoFechaEstimada } from "../../utils/deadlinesEntrega";
 import { useFeriadosNicaragua } from "../../hooks/useFeriadosNicaragua";
 import PipelineProgress from "../../components/PipelineProgress";
@@ -35,6 +34,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
   const [filtroTipo, setFiltroTipo] = useState("Todos");
   const [filtroDestino, setFiltroDestino] = useState("Todos");
   const [filtroProveedor, setFiltroProveedor] = useState("Todos");
+  const [filtroPlazo, setFiltroPlazo] = useState("Todos");
   const [pendientePeso, setPendientePeso] = useState(null);
   const [guardandoPeso, setGuardandoPeso] = useState(false);
 
@@ -63,6 +63,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       .filter((t) => filtroTipo === "Todos" || t.tipoEnvio === filtroTipo)
       .filter((t) => filtroDestino === "Todos" || t.destino === filtroDestino)
       .filter((t) => filtroProveedor === "Todos" || String(t.proveedorAduanaId) === String(filtroProveedor))
+      .filter((t) => filtroPlazo === "Todos" || t.deadline?.estadoDeadline === filtroPlazo)
       .filter((t) => {
         const c = t.vinculacion.cliente;
         return !q ||
@@ -76,7 +77,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
           (c?.codigo||"").toLowerCase().includes(q) ||
           (c?.telefono||"").toLowerCase().includes(q);
       });
-  }, [prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor]);
+  }, [prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor, filtroPlazo]);
 
   const actualizarCampo = async (t, campo, valor) => {
     try {
@@ -171,42 +172,6 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
     }
   };
 
-  const [loteAbierto,setLoteAbierto]=useState(false);
-  const [textoLote,setTextoLote]=useState("");
-  const [resultadoLote,setResultadoLote]=useState(null);
-  const [seleccionLote,setSeleccionLote]=useState(()=>new Set());
-  const [aplicandoLote,setAplicandoLote]=useState(false);
-
-  const analizarLote=()=>{
-    const {reconocidas,noReconocidas}=parseListaPesos(textoLote);
-    const elegibles = activos.filter((t) => !t.envioId);
-    const emparejadas=emparejarConTrackings(reconocidas,elegibles);
-    setResultadoLote({emparejadas,noReconocidas});
-    setSeleccionLote(new Set(emparejadas.filter(e=>e.tracking).map(e=>e.tracking.id)));
-  };
-  const limpiarLote=()=>{setTextoLote("");setResultadoLote(null);setSeleccionLote(new Set());};
-  const toggleSeleccionLote=(trackingId)=>setSeleccionLote(prev=>{const nuevo=new Set(prev);if(nuevo.has(trackingId))nuevo.delete(trackingId);else nuevo.add(trackingId);return nuevo;});
-  const aplicarLote=async()=>{
-    if(!resultadoLote)return;
-    const porAplicar=resultadoLote.emparejadas.filter(e=>e.tracking&&seleccionLote.has(e.tracking.id));
-    if(!porAplicar.length)return mostrarToast("No hay nada seleccionado para aplicar.","warning");
-    setAplicandoLote(true);
-    let exitosos=0;
-    try{
-      for(const item of porAplicar){
-        try{
-          await actualizarTracking({tracking:item.tracking,field:"peso",value:String(item.peso),auth});
-          await aplicarCambioEstado({...item.tracking,peso:item.peso},"Bodega OEX");
-          exitosos++;
-        }catch(err){console.log(`No se pudo aplicar ${item.identificador}:`,err);}
-      }
-      mostrarToast(`${exitosos} de ${porAplicar.length} tracking(s) actualizados a Bodega OEX.`);
-      limpiarLote();
-      setLoteAbierto(false);
-      await cargarDatos();
-    }finally{setAplicandoLote(false);}
-  };
-
   const manejarBlurPeso=(t,e)=>{
     if (t.envioId) return;
     const textoNuevo=e.target.value,nuevo=numero(textoNuevo),anterior=numero(t.peso);
@@ -242,6 +207,10 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
         {[['Todos','Todos'],['Aéreo','Aéreos'],['Marítimo','Marítimos']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroTipo===valor?'active':''}`} onClick={()=>setFiltroTipo(valor)}>{label}</button>)}
       </div>
 
+      <div className="tracking-filter-group plazo" aria-label="Filtrar por plazo de entrega">
+        {[['Todos','Plazo: todos'],['en_tiempo','✓ En tiempo'],['proximo','⏰ Por vencer'],['vencido','⚠ Vencidos']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroPlazo===valor?'active':''}`} onClick={()=>setFiltroPlazo(valor)}>{label}</button>)}
+      </div>
+
       <div className="tracking-filter-group destino" aria-label="Filtrar por destino">
         {[['Todos','Todos'],['Managua','Managua'],['Ometepe','Ometepe']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroDestino===valor?'active':''}`} onClick={()=>setFiltroDestino(valor)}>{label}</button>)}
       </div>
@@ -257,26 +226,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       </select>
     </div>
 
-    <div className="tracking-toolbar-actions">
-      <button className="btn tracking-lote-btn" onClick={()=>setLoteAbierto(v=>!v)}><Layers size={14}/>{loteAbierto?"Ocultar carga por lote":"Cargar lote de Bodega OEX"}</button>
-    </div>
-
-    <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. La fecha estimada y las alertas internas se calculan desde que se marca Recibido en Miami.</small>
-
-    {loteAbierto&&<div className="card" style={{background:"var(--surface-2, #f7f8fa)",marginTop:14,marginBottom:16}}>
-      <h4 style={{margin:"0 0 4px"}}>Pegar lista del proveedor</h4>
-      <p><small>Pega tal cual la lista que te manda el proveedor (ID de almacén + peso).</small></p>
-      <textarea className="input" style={{minHeight:140,fontFamily:"monospace",fontSize:"0.85rem"}} value={textoLote} onChange={e=>setTextoLote(e.target.value)}/>
-      <div className="segment mt-8"><button className="btn btn-primary" disabled={!textoLote.trim()} onClick={analizarLote}>Analizar lista</button>{resultadoLote&&<button className="btn btn-ghost" onClick={limpiarLote}>Limpiar</button>}</div>
-      {resultadoLote&&<div className="mt-16 tracking-lote-results">
-        <div className="grid-4"><div className="metric"><b>Con match</b><span className="metric-value" style={{color:"var(--success)"}}>{resultadoLote.emparejadas.filter(e=>e.tracking).length}</span></div><div className="metric"><b>Sin match</b><span className="metric-value">{resultadoLote.emparejadas.filter(e=>!e.tracking).length}</span></div><div className="metric"><b>Líneas no reconocidas</b><span className="metric-value">{resultadoLote.noReconocidas.length}</span></div><div className="metric"><b>Seleccionados</b><span className="metric-value">{seleccionLote.size}</span></div></div>
-        <div className="list mt-16">{resultadoLote.emparejadas.map((item,i)=><label key={i} className="row-card" style={{cursor:item.tracking?"pointer":"default",opacity:item.tracking?1:.6}}><div style={{display:"flex",alignItems:"center",gap:10}}>{item.tracking?<CheckCircle2 size={18} style={{color:"var(--success)"}}/>:<XCircle size={18}/>}<input type="checkbox" style={{display:item.tracking?"inline":"none"}} checked={item.tracking?seleccionLote.has(item.tracking.id):false} onChange={()=>item.tracking&&toggleSeleccionLote(item.tracking.id)}/><div><b>{item.identificador}</b> → {item.peso.toFixed(2)} lb<p><small>{item.tracking?`${item.tracking.vinculacion?.cliente?.nombre||item.tracking.cliente} · ${item.tracking.estado}`:"Sin coincidencia"}</small></p></div></div></label>)}</div>
-        {resultadoLote.noReconocidas.length>0&&<div className="mt-16"><p><HelpCircle size={16}/> <b>Líneas no reconocidas</b></p></div>}
-        <button className="btn btn-primary mt-16" disabled={aplicandoLote||seleccionLote.size===0} onClick={aplicarLote}>{aplicandoLote?"Aplicando...":`Aplicar a ${seleccionLote.size} tracking(s) → Bodega OEX`}</button>
-      </div>}
-    </div>}
-
-    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
+    <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. La fecha estimada y las alertas internas se calculan desde que se marca Recibido en Miami.</small>\n\n    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
     {pendientePeso&&<ModalRegistrarPeso tracking={pendientePeso.tracking} nuevoEstado={pendientePeso.nuevoEstado} guardando={guardandoPeso} onConfirmar={confirmarPesoYContinuar} onCancelar={()=>setPendientePeso(null)}/>} 
   </div>;
 }
