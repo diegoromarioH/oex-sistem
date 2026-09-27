@@ -1,6 +1,6 @@
 // src/pages/paqueteria/TrackingsActivos.jsx
-import { useMemo, useState } from "react";
-import { Package, Weight, Clock3, ReceiptText, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Package, Weight, Clock3, ReceiptText, Search, ChevronDown, Check } from "lucide-react";
 import { actualizarTracking, eliminarTracking, corregirTipoTrackingActivo } from "../../services/trackingsService";
 import { estadosPorDestino, badgeEstado, esListoParaRetirar, esPendienteDeConfirmar, esListoParaRetiroProveedor } from "../../utils/estadosEnvio";
 import { limpiarTelefono } from "../../utils/clientes";
@@ -26,6 +26,28 @@ const vincularCliente = (tracking, clientes = []) => {
   }
   return { cliente: null, motivo: null };
 };
+
+
+function FiltroDropdown({ value, onChange, label, options = [] }) {
+  const [abierto,setAbierto]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    const cerrar=(e)=>{if(ref.current&&!ref.current.contains(e.target))setAbierto(false);};
+    document.addEventListener("mousedown",cerrar);
+    return()=>document.removeEventListener("mousedown",cerrar);
+  },[]);
+  const actual=options.find(o=>o.value===value);
+  return <div className={`tracking-dropdown ${abierto?"open":""}`} ref={ref}>
+    <button type="button" className="tracking-dropdown-trigger" onClick={()=>setAbierto(v=>!v)} aria-expanded={abierto}>
+      <span>{value==="Todos"?label:(actual?.label||label)}</span><ChevronDown size={14}/>
+    </button>
+    {abierto&&<div className="tracking-dropdown-menu">
+      {options.map(o=><button type="button" key={o.value} className={`tracking-dropdown-option ${value===o.value?"selected":""} ${o.tone||""}`} onClick={()=>{onChange(o.value);setAbierto(false);}}>
+        <span>{o.label}</span>{value===o.value&&<Check size={14}/>}
+      </button>)}
+    </div>}
+  </div>;
+}
 
 export default function TrackingsActivos({ configOperativa, prealertas, envios = [], clientes = [], proveedores = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos, onNavigate }) {
   const feriados = useFeriadosNicaragua();
@@ -212,20 +234,10 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       </div>
 
       <>
-        <select className="input tracking-toolbar-select modern-select" value={filtroProveedor} onChange={e=>setFiltroProveedor(e.target.value)}>
-          <option value="Todos">Proveedores</option>
-          {proveedoresAduana.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-        <select className="input tracking-toolbar-select modern-select" value={filtroPlazo} onChange={e=>setFiltroPlazo(e.target.value)}>
-        <option value="Todos">Plazos</option>
-        <option value="en_tiempo">✓ En tiempo</option>
-        <option value="proximo">⏰ Por vencer</option>
-        <option value="vencido">⚠ Vencidos</option>
-      </select>
-        <select className="input tracking-toolbar-select modern-select" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
-          <option value="Todos">Estados</option>
-          {estadosDisponibles.map(estado=><option key={estado} value={estado}>{estado}</option>)}
-        </select>
+        <>
+        <FiltroDropdown label="Proveedores" value={filtroProveedor} onChange={setFiltroProveedor} options={[{value:"Todos",label:"Todos los proveedores"},...proveedoresAduana.map(p=>({value:String(p.id),label:p.nombre}))]}/>
+        <FiltroDropdown label="Plazos" value={filtroPlazo} onChange={setFiltroPlazo} options={[{value:"Todos",label:"Todos los plazos"},{value:"en_tiempo",label:"En tiempo",tone:"success"},{value:"proximo",label:"Por vencer",tone:"warning"},{value:"vencido",label:"Vencidos",tone:"danger"}]}/>
+        <FiltroDropdown label="Estados" value={filtroEstado} onChange={setFiltroEstado} options={[{value:"Todos",label:"Todos los estados"},...estadosDisponibles.map(estado=>({value:estado,label:estado}))]}/>
       </>
     </div>
 
