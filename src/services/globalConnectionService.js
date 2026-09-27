@@ -40,10 +40,11 @@ export async function asignarRecepcionGlobal({recepcion,cliente,destino,tipoEnvi
   if(e0)throw e0;
   if(existente)throw new Error("Este tracking ya existe en OEX. Actualiza la sincronización.");
   const ahora=new Date().toISOString();
+  const estadoInicial=estadoGlobalAOex(recepcion?.detalle?.status_global)||"Miami";
   const payload={
-    cliente:cliente.nombre,contacto:cliente.telefono||"",tracking:recepcion.tracking.trim(),estado:"Miami",
+    cliente:cliente.nombre,contacto:cliente.telefono||"",tracking:recepcion.tracking.trim(),estado:estadoInicial,
     almacen_id:recepcion.almacen_id,fecha_miami:recepcion.fecha_miami||ahora,destino,tipo_envio:tipoEnvio,
-    proveedor_aduana_id:1,origen_registro:"global_connection",peso:0,
+    origen_registro:"global_connection",peso:0,
     cliente_id:cliente.id,cliente_codigo:cliente.codigo||null,cliente_tipo:cliente.tipo||"General",fecha:ahora,
     created_by:auth.session?.user?.id||null,created_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"
   };
@@ -96,7 +97,7 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
         else if(estadoMapeado&&puedeAvanzar(anterior,estadoMapeado)&&!reg.envio_id){patch.estado=estadoMapeado;accion=`${anterior}_a_${estadoMapeado}`;actualizados++}
         else sinCambios++;
         const {error:e1}=await supabase.from("tracking_registros").update(patch).eq("id",reg.id); if(e1)throw e1;
-        const info={origen:"navegador",status_global:statusGlobal||null,estado_oex_detectado:estadoMapeado,estado_oex_anterior:anterior,estado_oex_final:patch.estado||anterior};
+        const info={origen:"navegador",referencia_global:item?.referencia_global||item?.nombre_global||null,instrucciones_global:item?.instrucciones_global||null,status_global:statusGlobal||null,estado_oex_detectado:estadoMapeado,estado_oex_anterior:anterior,estado_oex_final:patch.estado||anterior};
         const {error:e2}=await supabase.from("global_connection_recepciones").upsert({almacen_id:almacenId,tracking,fecha_miami:fechaMiami,nombre_global:item?.nombre_global||null,estado:"coincidencia",tracking_registro_id:reg.id,ultima_deteccion:ahora,detalle:info},{onConflict:"almacen_id"}); if(e2)throw e2;
         coincidencias++; detalle.push({tracking,almacenId,statusGlobal,anterior,final:patch.estado||anterior,accion});
       }else{
