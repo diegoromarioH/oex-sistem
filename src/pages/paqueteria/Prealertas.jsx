@@ -43,9 +43,16 @@ export default function Prealertas({ prealertas, clientes, proveedores = [], con
 
   const abrirEdicion = (t) => {
     setEditando(t.id);
-    setForm({ cliente:t.cliente||"", contacto:t.contacto||"", clienteCodigo:t.clienteCodigo||"", destino:t.destino||"Managua", tipoEnvio:t.tipoEnvio||"Aéreo", codigo:t.tracking||"", almacenId:t.almacenId||"", nota:t.nota||"" });
+    setForm({ clienteId:t.clienteId||null, cliente:t.cliente||"", contacto:t.contacto||"", clienteCodigo:t.clienteCodigo||"", destino:t.destino||"Managua", tipoEnvio:t.tipoEnvio||"Aéreo", codigo:t.tracking||"", almacenId:t.almacenId||"", nota:t.nota||"" });
   };
   const cambiar = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
+  const asignarCliente = (cliente) => setForm((f) => ({
+    ...f,
+    clienteId: cliente?.id || null,
+    cliente: cliente?.nombre || "",
+    contacto: cliente?.telefono || "",
+    clienteCodigo: cliente?.codigo || ""
+  }));
 
   const guardarEdicion = async (t) => {
     setGuardando(true);
@@ -103,7 +110,8 @@ export default function Prealertas({ prealertas, clientes, proveedores = [], con
         </div>}
 
         {estaEditando && <div className="mt-8" style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:10,padding:14}}><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10}}>
-          <label>Nombre<input className="input" value={form.cliente} onChange={e=>cambiar("cliente",e.target.value)} /></label>
+          <label style={{gridColumn:"1 / -1"}}>Cliente registrado<select className="input" value={form.clienteId||""} onChange={e=>asignarCliente(clientes.find(c=>String(c.id)===e.target.value)||null)}><option value="">Sin vincular / editar manualmente</option>{clientes.map(c=><option key={c.id} value={c.id}>{c.codigo} · {c.nombre} · {c.telefono||"Sin WhatsApp"}</option>)}</select><small>Selecciona un cliente para corregir la asignación. Nombre, código y WhatsApp se completan automáticamente.</small></label>
+          <label>Nombre<input className="input" value={form.cliente} onChange={e=>{cambiar("cliente",e.target.value); cambiar("clienteId",null);}} /></label>
           <label>WhatsApp<input className="input" value={form.contacto} onChange={e=>cambiar("contacto",e.target.value)} /></label>
           <label>Código cliente<input className="input" value={form.clienteCodigo} onChange={e=>cambiar("clienteCodigo",e.target.value)} /></label>
           <label>Tracking<input className="input" value={form.codigo} onChange={e=>cambiar("codigo",e.target.value)} /></label>
