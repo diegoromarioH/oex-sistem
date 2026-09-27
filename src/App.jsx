@@ -21,7 +21,7 @@ import GlobalSearch from "./components/GlobalSearch";
 import GlobalCreateMenu from "./components/GlobalCreateMenu";
 import logo from "./assets/logo.svg";
 import "./styles/sidebar.css";
-import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity, BookOpen, Scale, ChevronRight, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity, BookOpen, Scale, ChevronRight, RefreshCw, PackageSearch } from "lucide-react";
 
 const MODULOS = [
   { id: "dashboard", label: "Inicio", color: "var(--mod-dashboard)", icon: LayoutDashboard },
@@ -32,7 +32,8 @@ const MODULOS = [
     { subvista: "registrar", label: "Registrar tracking", descripcion: "Alta manual ligada a un cliente", icon: PackagePlus },
     { subvista: "prealertas", label: "Prealertas", descripcion: "Trackings sin confirmar de la landing", icon: Bell },
     { subvista: "activos", label: "Envíos activos", descripcion: "Trackings avanzando por el pipeline", icon: Truck },
-    { subvista: "dario", label: "Darío Import", descripcion: "Comparar estados y pesos del proveedor", icon: RefreshCw }
+    { subvista: "dario", label: "Darío Import", descripcion: "Comparar estados y pesos del proveedor", icon: RefreshCw },
+    { subvista: "global", label: "Global Connect", descripcion: "Recepción Miami y paquetes sin asignar", icon: PackageSearch }
   ]},
   { id: "finanzas", label: "Finanzas", color: "var(--mod-finanzas)", icon: Wallet, submenu: [
     { subvista: "resumen", label: "Resumen", descripcion: "KPIs, balance y costos del mes", icon: BarChart3 },
