@@ -208,28 +208,30 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       </div>
 
       <div className="tracking-filter-group destino" aria-label="Filtrar por destino">
-        {[['Todos','All'],['Managua','MGA'],['Ometepe','Ometepe']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroDestino===valor?'active':''}`} onClick={()=>setFiltroDestino(valor)}>{label}</button>)}
+        {[['Todos','All'],['Managua','MGA'],['Ometepe','OMETEPE']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroDestino===valor?'active':''}`} onClick={()=>setFiltroDestino(valor)}>{label}</button>)}
       </div>
 
       <>
-        <select className="input tracking-toolbar-select" value={filtroProveedor} onChange={e=>setFiltroProveedor(e.target.value)}>
+        <select className="input tracking-toolbar-select modern-select" value={filtroProveedor} onChange={e=>setFiltroProveedor(e.target.value)}>
           <option value="Todos">Proveedores</option>
           {proveedoresAduana.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
         </select>
-        <select className="input tracking-toolbar-select" value={filtroPlazo} onChange={e=>setFiltroPlazo(e.target.value)}>
+        <select className="input tracking-toolbar-select modern-select" value={filtroPlazo} onChange={e=>setFiltroPlazo(e.target.value)}>
         <option value="Todos">Plazos</option>
         <option value="en_tiempo">✓ En tiempo</option>
         <option value="proximo">⏰ Por vencer</option>
         <option value="vencido">⚠ Vencidos</option>
       </select>
-        <select className="input tracking-toolbar-select" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
+        <select className="input tracking-toolbar-select modern-select" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
           <option value="Todos">Estados</option>
           {estadosDisponibles.map(estado=><option key={estado} value={estado}>{estado}</option>)}
         </select>
       </>
     </div>
 
-    <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. La fecha estimada y las alertas internas se calculan desde que se marca Recibido en Miami.</small>\n\n    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
+    <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. La fecha estimada y las alertas internas se calculan desde que se marca Recibido en Miami.</small>
+
+    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
     {pendientePeso&&<ModalRegistrarPeso tracking={pendientePeso.tracking} nuevoEstado={pendientePeso.nuevoEstado} guardando={guardandoPeso} onConfirmar={confirmarPesoYContinuar} onCancelar={()=>setPendientePeso(null)}/>} 
   </div>;
 }
