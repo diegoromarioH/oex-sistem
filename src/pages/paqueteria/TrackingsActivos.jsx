@@ -204,18 +204,11 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       </div>
 
       <div className="tracking-filter-group" aria-label="Filtrar por tipo de envío">
-        {[['Todos','Todos'],['Aéreo','Aéreos'],['Marítimo','Marítimos']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroTipo===valor?'active':''}`} onClick={()=>setFiltroTipo(valor)}>{label}</button>)}
+        {[['Todos','All'],['Aéreo','AIR'],['Marítimo','MAR']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroTipo===valor?'active':''}`} onClick={()=>setFiltroTipo(valor)}>{label}</button>)}
       </div>
 
-      <select className="input tracking-toolbar-select" value={filtroPlazo} onChange={e=>setFiltroPlazo(e.target.value)}>
-        <option value="Todos">Plazos</option>
-        <option value="en_tiempo">✓ En tiempo</option>
-        <option value="proximo">⏰ Por vencer</option>
-        <option value="vencido">⚠ Vencidos</option>
-      </select>
-
       <div className="tracking-filter-group destino" aria-label="Filtrar por destino">
-        {[['Todos','Todos'],['Managua','Managua'],['Ometepe','Ometepe']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroDestino===valor?'active':''}`} onClick={()=>setFiltroDestino(valor)}>{label}</button>)}
+        {[['Todos','All'],['Managua','MGA'],['Ometepe','Ometepe']].map(([valor,label])=><button key={valor} type="button" className={`tracking-filter-btn ${filtroDestino===valor?'active':''}`} onClick={()=>setFiltroDestino(valor)}>{label}</button>)}
       </div>
 
       <>
@@ -223,6 +216,12 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
           <option value="Todos">Proveedores</option>
           {proveedoresAduana.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
         </select>
+        <select className="input tracking-toolbar-select" value={filtroPlazo} onChange={e=>setFiltroPlazo(e.target.value)}>
+        <option value="Todos">Plazos</option>
+        <option value="en_tiempo">✓ En tiempo</option>
+        <option value="proximo">⏰ Por vencer</option>
+        <option value="vencido">⚠ Vencidos</option>
+      </select>
         <select className="input tracking-toolbar-select" value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
           <option value="Todos">Estados</option>
           {estadosDisponibles.map(estado=><option key={estado} value={estado}>{estado}</option>)}
