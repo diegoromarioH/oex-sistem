@@ -74,7 +74,8 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
       const estadoMapeado=estadoGlobalAOex(statusGlobal);
       const {data:reg,error:e0}=await supabase.from("tracking_registros").select("id,tracking,estado,fecha_miami,envio_id,destino").ilike("tracking",tracking).maybeSingle();
       if(e0)throw e0;
-      const fechaMiami=item?.fecha_miami||item?.fechaMiami||null;
+      const fechaRaw=item?.fecha_miami||item?.fechaMiami||null;
+      const fechaMiami=fechaRaw?(()=>{const m=String(fechaRaw).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!m)return fechaRaw;const [,mes,dia,anio]=m;return `${anio}-${mes.padStart(2,"0")}-${dia.padStart(2,"0")}T12:00:00Z`})():null;
       const referenciaGlobal=item?.referencia_global||item?.nombre_global||null;
       const instruccionesGlobal=item?.instrucciones_global||null;
       if(reg){
@@ -108,7 +109,7 @@ export async function importarLecturaGlobalConnection(items=[],auth={}){
           if(!exist)nuevos++; detalle.push({tracking,almacenId,statusGlobal,anterior:null,final:"Sin asignar",accion:"sin_asignar"});
         }
       }
-    }catch(e){errores++;detalle.push({tracking:String(item?.tracking||""),accion:"error",error:e?.message||"Error"})}
+    }catch(e){errores++;detalle.push({tracking:String(item?.tracking||""),almacenId:String(item?.almacen_id||item?.almacenId||""),statusGlobal:String(item?.status_global||item?.status||""),accion:"error",error:e?.message||"Error"})}
   }
   await registrarAuditoria({...auth,accion:"Importó lectura de Global Connection",modulo:"Paquetería",detalle:`${items.length} leídos · ${coincidencias} coincidencias · ${actualizados} estados avanzados · ${nuevos} nuevos · ${errores} errores`});
   return {total:items.length,coincidencias,nuevos,actualizados,sinCambios,finalizados,errores,detalle};
