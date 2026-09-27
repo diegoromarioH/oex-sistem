@@ -1,11 +1,27 @@
 import { supabase } from "../supabase";
 import { registrarAuditoria } from "./coreService";
 
-export async function sincronizarGlobalConnection(){
-  const { data, error } = await supabase.functions.invoke("global-connection-sync", { body: {} });
-  if(error) throw error;
-  if(!data?.ok) throw new Error(data?.error || "No se pudo sincronizar Global Connection.");
-  return data;
+export async function sincronizarGlobalConnection({ onProgress } = {}){
+  let offset = 0, syncToken = null, lote = 0;
+  const total = { ok:true, totalDetectados:0, prealertasConfirmadas:0, yaRegistrados:0, sinAsignarNuevos:0, actualizadosSinRegresion:0, errores:0, detalle:[] };
+  do {
+    const { data, error } = await supabase.functions.invoke("global-connection-sync", { body: { offset, syncToken } });
+    if(error) throw error;
+    if(!data?.ok) throw new Error(data?.error || "No se pudo sincronizar Global Connection.");
+    syncToken = data.syncToken; lote = data.lote;
+    total.totalDetectados += Number(data.procesados || 0);
+    total.prealertasConfirmadas += Number(data.prealertasConfirmadas || 0);
+    total.yaRegistrados += Number(data.yaRegistrados || 0);
+    total.sinAsignarNuevos += Number(data.sinAsignarNuevos || 0);
+    total.actualizadosSinRegresion += Number(data.actualizadosSinRegresion || 0);
+    total.errores += Number(data.errores || 0);
+    total.detalle.push(...(data.detalle || []));
+    onProgress?.({ procesados: total.totalDetectados, total: Number(data.totalGlobal || total.totalDetectados), lote });
+    if(!data.tieneMas) break;
+    if(Number(data.nextOffset) <= offset) throw new Error("La sincronización no pudo avanzar al siguiente lote.");
+    offset = Number(data.nextOffset);
+  } while(lote < 100);
+  return total;
 }
 export async function listarRecepcionesGlobal(){
   const {data,error}=await supabase.from("global_connection_recepciones").select("*").order("ultima_deteccion",{ascending:false});
