@@ -3,6 +3,7 @@ import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { registrarAuditoria } from "./coreService";
 import { actualizarTrackingEnvio } from "./enviosService";
+import { puedeAvanzarEstado } from "../utils/estadosEnvio";
 
 const normalizar = (valor) => String(valor || "").trim().toLowerCase();
 
@@ -56,7 +57,8 @@ export const guardarSnapshotDario = async ({ trackingOEX, paquete }) => {
 export const aplicarEstadoDario = async ({ trackingOEX, estadoDario, auth }) => {
   const nuevoEstado = mapearEstadoDario(estadoDario, trackingOEX?.destino);
   if (!nuevoEstado) throw new Error("No se puede determinar el estado OEX. Revisa el estado de Darío y el destino del tracking.");
-  if (trackingOEX.estado === "Entregado") throw new Error("OEX ya marcó este tracking como Entregado. Darío no puede revertir la entrega final.");
+  if (trackingOEX.estado === nuevoEstado) return nuevoEstado;
+  if (!puedeAvanzarEstado(trackingOEX.estado, nuevoEstado, trackingOEX.destino)) throw new Error(`Darío reporta ${nuevoEstado}, pero OEX ya está en ${trackingOEX.estado}. No se retrocedió el estado.`);
   if (trackingOEX.envioId) throw new Error("Este tracking ya pertenece a un recibo. El cambio de estado debe revisarse desde el recibo para mantenerlo sincronizado.");
   const { error } = await supabase.from("tracking_registros").update({
     estado: nuevoEstado,
