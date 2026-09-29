@@ -195,9 +195,9 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
     <div className="card recomendaciones-filtros">
       <label className="recomendaciones-busqueda">
         <Search size={17} />
-        <input className="input" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre, teléfono, correo o identificador" />
+        <input className="input" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, teléfono, correo o identificador" />
       </label>
-      <select className="input input-sm" value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)} aria-label="Filtrar por estado">
+      <select className="input recomendaciones-estado" value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)} aria-label="Filtrar por estado">
         <option value="">Todos los estados</option>
         <option value="activo">Activo</option>
         <option value="pendiente">Pendiente</option>
