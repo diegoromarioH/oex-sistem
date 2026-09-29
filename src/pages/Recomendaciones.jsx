@@ -52,7 +52,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
       setSocios(sociosData);
       setClientesRecomendados(clientesData);
     }
-    catch (error) { mostrarToast?.("Error", textoError(error), "error"); }
+    catch (error) { mostrarToast?.(textoError(error), "error"); }
     finally { setCargando(false); }
   };
 
@@ -107,10 +107,10 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
     setGuardando(true);
     try {
       await guardarSocioRecomendacion({ ...form, id: editandoId }, auth);
-      mostrarToast?.("Guardado", editandoId ? "Socio OEX actualizado." : "Socio OEX agregado.");
+      mostrarToast?.(editandoId ? "Socio OEX actualizado." : "Socio OEX agregado.");
       setFormAbierto(false);
       await cargar();
-    } catch (error) { mostrarToast?.("No se pudo guardar", textoError(error), "error"); }
+    } catch (error) { mostrarToast?.(textoError(error), "error"); }
     finally { setGuardando(false); }
   };
 
@@ -119,15 +119,15 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
     if (!window.confirm(`¿Eliminar a ${socio.nombre} del programa? Esta acción no se puede deshacer.`)) return;
     try {
       await eliminarSocioRecomendacion(socio.id);
-      mostrarToast?.("Eliminado", "El Socio OEX fue eliminado.");
+      mostrarToast?.("El Socio OEX fue eliminado.");
       await cargar();
-    } catch (error) { mostrarToast?.("No se pudo eliminar", textoError(error), "error"); }
+    } catch (error) { mostrarToast?.(textoError(error), "error"); }
   };
 
   const copiar = async (identificador) => {
     const enlace = construirEnlaceRecomendacion(identificador);
-    try { await navigator.clipboard.writeText(enlace); mostrarToast?.("Enlace copiado", enlace); }
-    catch { mostrarToast?.("Enlace", enlace); }
+    try { await navigator.clipboard.writeText(enlace); mostrarToast?.(`Enlace copiado: ${enlace}`); }
+    catch { mostrarToast?.(enlace); }
   };
 
   const socioDetalle = socios.find((s) => s.id === socioDetalleId) || null;
@@ -138,7 +138,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
       <button className="btn btn-ghost" onClick={() => setSocioDetalleId(null)} style={{ marginBottom: 8 }}><ArrowLeft size={16} />Volver a Recomendaciones</button>
       <PageTitle title={socioDetalle.nombre} subtitle={`Socio OEX · ${socioDetalle.identificador.toUpperCase()}`}>
         <button className="btn" onClick={() => copiar(socioDetalle.identificador)}><Copy size={15} />Copiar enlace</button>
-        <button className="btn" onClick={() => abrirEditar(socioDetalle)}><Pencil size={15} />Editar socio</button>
+        <button className="btn" onClick={() => { setSocioDetalleId(null); abrirEditar(socioDetalle); }}><Pencil size={15} />Editar socio</button>
       </PageTitle>
       <div className="card socio-ficha-resumen">
         {socioDetalle.foto_url ? <img src={socioDetalle.foto_url} alt="" /> : <span className="socio-avatar socio-avatar-grande">{iniciales}</span>}
