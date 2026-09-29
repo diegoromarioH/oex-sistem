@@ -1,0 +1,1 @@
+alter table public.socios_recursos add column formato text check(formato in ('post','historia','horizontal')); alter table public.socios_recursos add constraint recursos_formato_solo_banner check(tipo='banner' or formato is null);
