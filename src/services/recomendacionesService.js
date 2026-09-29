@@ -81,6 +81,10 @@ export const guardarSocioRecomendacion = async ({ id, ...valores }, auth) => {
   const ahora = new Date().toISOString();
   const payload = {
     nombre: valores.nombre.trim(),
+    cedula: valores.cedula?.trim() || null,
+    banco: valores.banco?.trim() || null,
+    moneda_cuenta: valores.moneda_cuenta || null,
+    numero_cuenta: valores.numero_cuenta?.trim() || null,
     whatsapp: valores.whatsapp?.trim() || null,
     correo: valores.correo?.trim() || null,
     foto_url: valores.foto_path ? null : (valores.foto_url?.trim() || null),
