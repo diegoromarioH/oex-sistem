@@ -1,0 +1,48 @@
+.recomendaciones-page { --module-color: #f97316; }
+.recomendaciones-metricas .metric { position: relative; overflow: hidden; }
+.recomendaciones-metricas .metric > svg { color: var(--module-color); float: right; }
+.recomendaciones-aviso { display: flex; align-items: center; gap: 9px; }
+.recomendaciones-filtros { display: flex; align-items: center; gap: 12px; padding: 14px; }
+.recomendaciones-busqueda { flex: 1; position: relative; }
+.recomendaciones-busqueda > svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.recomendaciones-busqueda .input { padding-left: 40px; }
+.recomendaciones-tabla-wrap { padding: 0; overflow-x: auto; }
+.recomendaciones-tabla { width: 100%; border-collapse: collapse; min-width: 880px; }
+.recomendaciones-tabla th { text-align: left; color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; padding: 13px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.recomendaciones-tabla td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.recomendaciones-tabla tbody tr:last-child td { border-bottom: 0; }
+.recomendaciones-tabla tbody tr:hover { background: color-mix(in srgb, var(--module-color) 4%, var(--surface)); }
+.socio-identidad { display: flex; align-items: center; gap: 11px; min-width: 210px; }
+.socio-identidad img, .socio-avatar { width: 40px; height: 40px; border-radius: 50%; flex: 0 0 40px; object-fit: cover; }
+.socio-avatar { display: grid; place-items: center; background: color-mix(in srgb, var(--module-color) 16%, var(--surface)); color: var(--module-color); font-weight: 900; }
+.socio-identidad strong, .socio-identidad small, .tabla-subtexto { display: block; }
+.socio-identidad small, .tabla-subtexto { color: var(--text-muted); font-size: 12px; margin-top: 3px; }
+.enlace-copiar { display: inline-flex; align-items: center; gap: 7px; max-width: 245px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); padding: 7px 9px; cursor: pointer; }
+.enlace-copiar code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acciones-tabla { display: flex; justify-content: flex-end; gap: 2px; }
+.btn-icon { width: 38px; height: 38px; padding: 0; display: inline-grid; place-items: center; }
+.accion-eliminar { color: var(--danger); }
+.recomendaciones-vacio { min-height: 210px; display: grid; place-items: center; align-content: center; text-align: center; gap: 8px; color: var(--text-muted); }
+.recomendaciones-vacio b { color: var(--text); font-size: 17px; }
+
+.modal-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 18px; background: rgba(3, 12, 28, .64); backdrop-filter: blur(5px); }
+.modal-card { width: min(820px, 100%); max-height: calc(100vh - 36px); overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 22px; }
+.modal-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+.modal-header h2 { margin: 0 0 5px; color: var(--text); }
+.modal-header p { margin: 0; color: var(--text-muted); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+.field-help { display: block; margin-top: 5px; color: var(--text-muted); overflow-wrap: anywhere; }
+.switch-row { display: flex; align-items: flex-start; gap: 10px; margin: 16px 0 4px; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+.switch-row input { margin-top: 3px; accent-color: var(--module-color); }
+.switch-row b, .switch-row small { display: block; }
+.switch-row small { color: var(--text-muted); margin-top: 3px; }
+
+@media (max-width: 720px) {
+  .recomendaciones-filtros { align-items: stretch; flex-direction: column; }
+  .recomendaciones-filtros .input-sm { width: 100%; }
+  .recomendaciones-aviso { align-items: flex-start; }
+  .modal-overlay { padding: 0; align-items: end; }
+  .modal-card { max-height: 94vh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 18px 16px; }
+  .modal-actions { position: sticky; bottom: -18px; margin: 18px -16px -18px; padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--border); }
+  .modal-actions .btn { flex: 1; }
+}

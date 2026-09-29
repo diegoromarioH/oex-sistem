@@ -15,13 +15,14 @@ import Clientes from "./pages/Clientes";
 import Auditoria from "./pages/Auditoria";
 import Configuracion from "./pages/Configuracion";
 import EventosWeb from "./pages/EventosWeb";
+import Recomendaciones from "./pages/Recomendaciones";
 import Toast from "./components/Toast";
 import SidebarNav from "./components/SidebarNav";
 import GlobalSearch from "./components/GlobalSearch";
 import GlobalCreateMenu from "./components/GlobalCreateMenu";
 import logo from "./assets/logo.svg";
 import "./styles/sidebar.css";
-import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity, BookOpen, Scale, ChevronRight, RefreshCw, PackageSearch } from "lucide-react";
+import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity, BookOpen, Scale, ChevronRight, RefreshCw, PackageSearch, Handshake } from "lucide-react";
 
 const MODULOS = [
   { id: "dashboard", label: "Inicio", color: "var(--mod-dashboard)", icon: LayoutDashboard },
@@ -44,6 +45,7 @@ const MODULOS = [
     { subvista: "reportes", label: "Reportes", descripcion: "Reportes, estados, libro diario y glosario", icon: FileBarChart }
   ]},
   { id: "clientes", label: "Clientes", color: "var(--mod-clientes)", icon: Users },
+  { id: "recomendaciones", label: "Recomendaciones", color: "#f97316", icon: Handshake },
   { id: "eventos", label: "Eventos web", color: "var(--mod-dashboard)", icon: Activity },
   { id: "auditoria", label: "Auditoría", color: "var(--mod-auditoria)", icon: ShieldCheck },
   { id: "configuracion", label: "Configuración", color: "var(--mod-configuracion)", icon: Settings }
@@ -94,6 +96,7 @@ export default function App() {
       {vista === "finanzas" && subvistaFinanzas !== "reportes" && <Finanzas {...propsFinanzas} vistaInicial={subvistaFinanzas} onVistaChange={setSubvistaFinanzas} />}
       {vista === "finanzas" && subvistaFinanzas === "reportes" && <div className="page"><FinanzasReportes cuentasContables={datos.cuentasContables} envios={datos.envios} prealertas={datos.prealertas} facturasProveedor={datos.facturasProveedor} cuentasDinero={datos.cuentasDinero} balanceApertura={datos.balanceApertura} fechaApertura={datos.fechaApertura} gastos={datos.gastos} ingresos={datos.ingresos} empresa={empresa} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} /></div>}
       {vista === "clientes" && <Clientes clientes={datos.clientes} pedidos={datos.pedidos} envios={datos.envios} empresa={empresa} tarifas={tarifas} rol={rol} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
+      {vista === "recomendaciones" && <Recomendaciones rol={rol} auth={auth} mostrarToast={mostrarToast} />}
       {vista === "eventos" && <EventosWeb />}
       {vista === "auditoria" && <Auditoria auditLog={datos.auditLog} />}
       {vista === "configuracion" && <Configuracion tarifas={tarifas} setTarifas={setTarifas} configOperativa={configOperativa} setConfigOperativa={setConfigOperativa} empresa={empresa} setEmpresa={setEmpresa} cuentasDinero={datos.cuentasDinero} proveedores={datos.proveedores} auth={auth} rol={rol} tema={tema} setTema={cambiarTema} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} />}
