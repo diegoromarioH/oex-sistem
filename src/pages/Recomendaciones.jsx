@@ -4,6 +4,7 @@ import {
   Search, ShieldCheck, Tag, Trash2, Upload, Users, X
 } from "lucide-react";
 import PageTitle from "../components/PageTitle";
+import BibliotecaSocios from "../components/BibliotecaSocios";
 import FinanzasSocio from "../components/FinanzasSocio";
 import {
   construirEnlaceRecomendacion,
@@ -36,6 +37,7 @@ const textoError = (error) => {
 };
 
 export default function Recomendaciones({ rol, auth, mostrarToast }) {
+  const [biblioteca, setBiblioteca] = useState(false);
   const [socios, setSocios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -147,6 +149,8 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
     catch { mostrarToast?.(enlace); }
   };
 
+  if (biblioteca) return <BibliotecaSocios volver={() => setBiblioteca(false)} />;
+
   const socioDetalle = socios.find((s) => s.id === socioDetalleId) || null;
   if (socioDetalle) {
     const clientesDelSocio = clientesRecomendados.filter((c) => String(c.socio_recomendacion_id) === String(socioDetalle.id));
@@ -181,6 +185,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
       title="Programa de Recomendaciones"
       subtitle="Administra los Socios OEX, sus beneficios y enlaces de recomendación."
     >
+      <button type="button" className="btn" onClick={() => setBiblioteca(true)}>Biblioteca de socios</button>
       <button type="button" className="btn btn-primary" onClick={abrirNuevo}><Plus size={16} />Agregar Socio OEX</button>
     </PageTitle>
 
