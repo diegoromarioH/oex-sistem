@@ -4,6 +4,7 @@ import {
   Search, ShieldCheck, Tag, Trash2, Upload, Users, X
 } from "lucide-react";
 import PageTitle from "../components/PageTitle";
+import FinanzasSocio from "../components/FinanzasSocio";
 import {
   construirEnlaceRecomendacion,
   eliminarSocioRecomendacion,
@@ -165,6 +166,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
         <div className="metric"><ShieldCheck size={20} /><b>Estado</b><span className="metric-value" style={{ fontSize: 18 }}>{ESTADOS[socioDetalle.estado]?.texto || "Pendiente"}</span></div>
         <div className="metric"><Tag size={20} /><b>Tarifa promocional</b><span className="metric-value" style={{ fontSize: 18 }}>{socioDetalle.tarifa_promocional_activa ? "Activa" : "No activa"}</span></div>
       </div>
+      <FinanzasSocio key={socioDetalle.id} socio={socioDetalle} clientes={clientesDelSocio} mostrarToast={mostrarToast} />
       <div className="card">
         <h3>Clientes vinculados</h3>
         <div className="list mt-16">{clientesDelSocio.map((cliente) => <div className="row-card" key={cliente.id}><div><b>{cliente.nombre}</b> <span className="badge badge-info">{cliente.codigo_cliente || "Sin código"}</span><p>{cliente.telefono || "Sin teléfono"}</p></div><small>{cliente.recomendacion_origen === "enlace" ? "Enlace personal" : "Asignación manual"}{cliente.recomendacion_fecha ? ` · ${new Date(cliente.recomendacion_fecha).toLocaleDateString("es-NI")}` : ""}</small></div>)}</div>
