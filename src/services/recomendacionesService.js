@@ -19,7 +19,34 @@ export const listarSociosRecomendacion = async () => {
     .select("*")
     .order("creado_en", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return Promise.all((data || []).map(async (socio) => {
+    if (!socio.foto_path) return socio;
+    const { data: firma } = await supabase.storage.from("socios-oex").createSignedUrl(socio.foto_path, 3600);
+    return { ...socio, foto_url: firma?.signedUrl || socio.foto_url || null };
+  }));
+};
+
+export const subirFotoSocio = async (archivo) => {
+  const tipos = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+  if (!tipos[archivo?.type]) throw new Error("La foto debe ser JPG, PNG o WEBP.");
+  if (archivo.size > 3 * 1024 * 1024) throw new Error("La foto no puede superar 3 MB.");
+
+  const { data: sesion } = await supabase.auth.getSession();
+  const usuarioId = sesion?.session?.user?.id;
+  if (!usuarioId) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
+
+  const nombre = `${crypto.randomUUID()}.${tipos[archivo.type]}`;
+  const ruta = `${usuarioId}/${nombre}`;
+  const { error } = await supabase.storage.from("socios-oex").upload(ruta, archivo, {
+    cacheControl: "3600",
+    contentType: archivo.type,
+    upsert: false,
+  });
+  if (error) throw error;
+
+  const { data: firma, error: errorFirma } = await supabase.storage.from("socios-oex").createSignedUrl(ruta, 3600);
+  if (errorFirma) throw errorFirma;
+  return { foto_path: ruta, foto_url: firma.signedUrl };
 };
 
 export const listarClientesRecomendados = async () => {
@@ -56,7 +83,8 @@ export const guardarSocioRecomendacion = async ({ id, ...valores }, auth) => {
     nombre: valores.nombre.trim(),
     whatsapp: valores.whatsapp?.trim() || null,
     correo: valores.correo?.trim() || null,
-    foto_url: valores.foto_url?.trim() || null,
+    foto_url: valores.foto_path ? null : (valores.foto_url?.trim() || null),
+    foto_path: valores.foto_path?.trim() || null,
     identificador: normalizarIdentificador(valores.identificador || valores.nombre),
     estado: valores.estado || "pendiente",
     porcentaje_utilidad: Number(valores.porcentaje_utilidad || 20),

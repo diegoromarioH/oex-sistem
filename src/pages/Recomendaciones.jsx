@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, BadgeDollarSign, Check, Copy, Handshake, Link2, Pencil, Plus,
-  Search, ShieldCheck, Tag, Trash2, Users, X
+  ArrowLeft, BadgeDollarSign, Camera, Check, Copy, Handshake, Link2, Pencil, Plus,
+  Search, ShieldCheck, Tag, Trash2, Upload, Users, X
 } from "lucide-react";
 import PageTitle from "../components/PageTitle";
 import {
@@ -11,12 +11,13 @@ import {
   listarClientesRecomendados,
   listarSociosRecomendacion,
   normalizarIdentificador,
+  subirFotoSocio,
 } from "../services/recomendacionesService";
 import "../styles/Recomendaciones.css";
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 const FORM_INICIAL = {
-  nombre: "", whatsapp: "+505 ", correo: "", foto_url: "", identificador: "",
+  nombre: "", whatsapp: "+505 ", correo: "", foto_url: "", foto_path: "", identificador: "",
   estado: "pendiente", porcentaje_utilidad: 20, tarifa_maritima: "", tarifa_aerea: "",
   tarifa_promocional_activa: false, metodo_pago: "", datos_pago: "", notas: "", fecha_ingreso: hoy(),
 };
@@ -42,6 +43,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
   const [form, setForm] = useState(FORM_INICIAL);
   const [busqueda, setBusqueda] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState("");
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [clientesRecomendados, setClientesRecomendados] = useState([]);
   const [socioDetalleId, setSocioDetalleId] = useState(null);
 
@@ -85,7 +87,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
     setEditandoId(socio.id);
     setForm({
       nombre: socio.nombre || "", whatsapp: socio.whatsapp || "+505 ", correo: socio.correo || "",
-      foto_url: socio.foto_url || "", identificador: socio.identificador || "", estado: socio.estado || "pendiente",
+      foto_url: socio.foto_url || "", foto_path: socio.foto_path || "", identificador: socio.identificador || "", estado: socio.estado || "pendiente",
       porcentaje_utilidad: socio.porcentaje_utilidad ?? 20, tarifa_maritima: socio.tarifa_maritima ?? "",
       tarifa_aerea: socio.tarifa_aerea ?? "", tarifa_promocional_activa: Boolean(socio.tarifa_promocional_activa),
       metodo_pago: socio.metodo_pago || "", datos_pago: socio.datos_pago || "", notas: socio.notas || "",
@@ -95,6 +97,19 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
   };
 
   const actualizar = (campo, valor) => setForm(actual => ({ ...actual, [campo]: valor }));
+
+  const seleccionarFoto = async (evento) => {
+    const archivo = evento.target.files?.[0];
+    evento.target.value = "";
+    if (!archivo) return;
+    setSubiendoFoto(true);
+    try {
+      const foto = await subirFotoSocio(archivo);
+      setForm(actual => ({ ...actual, ...foto }));
+      mostrarToast?.("Foto cargada correctamente.");
+    } catch (error) { mostrarToast?.(error.message || "No se pudo subir la foto.", "error"); }
+    finally { setSubiendoFoto(false); }
+  };
 
   const cambiarNombre = (nombre) => setForm(actual => ({
     ...actual,
@@ -225,8 +240,19 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
           <label><span className="field-label">Nombre completo *</span><input className="input" required value={form.nombre} onChange={e => cambiarNombre(e.target.value)} /></label>
           <label><span className="field-label">WhatsApp</span><input className="input" value={form.whatsapp} onChange={e => actualizar("whatsapp", e.target.value)} /></label>
           <label><span className="field-label">Correo</span><input className="input" type="email" value={form.correo} onChange={e => actualizar("correo", e.target.value)} /></label>
-          <label><span className="field-label">URL de foto o avatar</span><input className="input" type="url" value={form.foto_url} onChange={e => actualizar("foto_url", e.target.value)} placeholder="https://…" /></label>
-          <label><span className="field-label">Identificador *</span><input className="input" required value={form.identificador} onChange={e => actualizar("identificador", normalizarIdentificador(e.target.value))} placeholder="maria25" /><small className="field-help">oexni.com/prealerta/{form.identificador || "identificador"}</small></label>
+          <div className="foto-socio-campo">
+            <span className="field-label">Foto o avatar</span>
+            <div className="foto-socio-selector">
+              {form.foto_url ? <img src={form.foto_url} alt="Vista previa" /> : <span><Camera size={22} /></span>}
+              <div>
+                <label className="btn foto-socio-subir"><Upload size={15} />{subiendoFoto ? "Subiendo…" : form.foto_url ? "Cambiar foto" : "Subir foto"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={seleccionarFoto} disabled={subiendoFoto} /></label>
+                <small className="field-help">JPG, PNG o WEBP · máximo 3 MB</small>
+              </div>
+              {form.foto_url && <button type="button" className="btn btn-ghost btn-icon" onClick={() => setForm(actual => ({ ...actual, foto_url: "", foto_path: "" }))} aria-label="Quitar foto"><X size={16} /></button>}
+            </div>
+          </div>
+          <label><span className="field-label">Identificador del enlace *</span><input className="input" required value={form.identificador} onChange={e => actualizar("identificador", normalizarIdentificador(e.target.value))} placeholder="maria25" /><small className="field-help">Se genera automáticamente con el nombre y puedes cambiarlo.</small></label>
+          <label className="enlace-generado-campo"><span className="field-label">Enlace de recomendación</span><div className="enlace-generado"><code>https://oexni.com/prealerta/{form.identificador || "identificador"}</code><button type="button" className="btn btn-ghost btn-icon" onClick={() => copiar(form.identificador)} disabled={!form.identificador} title="Copiar enlace"><Copy size={15} /></button></div></label>
           <label><span className="field-label">Estado</span><select className="input" value={form.estado} onChange={e => actualizar("estado", e.target.value)}><option value="pendiente">Pendiente</option><option value="activo">Activo</option><option value="inactivo">Inactivo</option><option value="suspendido">Suspendido</option></select></label>
           <label><span className="field-label">Ganancia sobre utilidad (%)</span><input className="input" type="number" min="0" max="100" step="0.01" value={form.porcentaje_utilidad} onChange={e => actualizar("porcentaje_utilidad", e.target.value)} /></label>
           <label><span className="field-label">Fecha de ingreso</span><input className="input" type="date" value={form.fecha_ingreso} onChange={e => actualizar("fecha_ingreso", e.target.value)} /></label>

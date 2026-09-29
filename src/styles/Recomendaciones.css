@@ -41,6 +41,16 @@
 .switch-row input { margin-top: 3px; accent-color: var(--module-color); }
 .switch-row b, .switch-row small { display: block; }
 .switch-row small { color: var(--text-muted); margin-top: 3px; }
+.foto-socio-campo { min-width: 0; }
+.foto-socio-selector { display: flex; align-items: center; gap: 11px; min-height: 58px; padding: 9px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.foto-socio-selector > img, .foto-socio-selector > span { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: 0 0 48px; }
+.foto-socio-selector > span { display: grid; place-items: center; color: var(--module-color); background: color-mix(in srgb, var(--module-color) 14%, var(--surface)); }
+.foto-socio-selector > div { flex: 1; min-width: 0; }
+.foto-socio-subir { position: relative; overflow: hidden; }
+.foto-socio-subir input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.enlace-generado-campo { grid-column: 1 / -1; }
+.enlace-generado { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 4px 5px 4px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.enlace-generado code { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--module-color); }
 
 @media (max-width: 720px) {
   .recomendaciones-filtros { align-items: stretch; flex-direction: column; }
