@@ -15,6 +15,8 @@ import FinanzasBalanceApertura from "./FinanzasBalanceApertura";
 import FinanzasLibroDiario from "./FinanzasLibroDiario";
 import FinanzasCorteCaja from "./FinanzasCorteCaja";
 import FinanzasEstadoResultados from "./FinanzasEstadoResultados";
+import RetirosSocios from "../../components/RetirosSocios";
+import { listarRetirosSocio } from "../../services/sociosFinanzasService";
 
 const nombreMes = (fechaISO) => {
   if (!fechaISO) return "Sin fecha";
@@ -48,6 +50,20 @@ const TarjetaKPI = ({ etiqueta, valor, activa, onClick, etiquetaAccion, icono: I
 
 export default function Finanzas({ envios, gastos, ingresos = [], clientes = [], prealertas = [], proveedores = [], facturasProveedor = [], cuentasContables = [], cuentasDinero = [], balanceApertura = [], fechaApertura, configOperativa, empresa, rol, auth, mostrarToast, cargarDatos, vistaInicial = "resumen", onVistaChange }) {
   const [vista, setVista] = useState(vistaInicial);
+  const [comisionesSocios, setComisionesSocios] = useState([]);
+  const [revisionSocios, setRevisionSocios] = useState(0);
+  useEffect(() => {
+    let activo = true;
+    listarRetirosSocio().then(retiros => {
+      if (activo) setComisionesSocios(retiros.filter(r => r.estado !== "anulado").map(r => ({
+        id: "socio-" + r.id, fechaISO: r.creado_en, fecha: new Date(r.creado_en).toLocaleDateString("es-NI"),
+        descripcion: r.numero + " · " + r.socio_nombre, categoria: "Comisiones de recomendaciones",
+        monto: Number(r.monto_usd), moneda: "USD", creadoPor: "Programa de Recomendaciones",
+      })));
+    }).catch(err => mostrarToast?.(err.message || "No se pudieron cargar las comisiones de socios.", "error"));
+    return () => { activo = false; };
+  }, [revisionSocios, vista]);
+  const gastosConComisiones = useMemo(() => [...gastos, ...comisionesSocios], [gastos, comisionesSocios]);
   // El mega-menú del TopNav (App.jsx) puede pedir que Finanzas abra
   // directo en una sub-página específica (ej. "Libro diario") aunque el
   // módulo ya esté montado — este efecto es lo que hace que el clic
@@ -64,10 +80,10 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
   const mesesDisponibles = useMemo(() => {
     const set = new Set();
     envios.forEach((e) => set.add(nombreMes(e.fechaISO)));
-    gastos.forEach((g) => set.add(nombreMes(g.fechaISO)));
+    gastosConComisiones.forEach((g) => set.add(nombreMes(g.fechaISO)));
     facturasProveedor.forEach((f) => set.add(nombreMes(f.fechaISO)));
     return [...set].sort((a, b) => (a < b ? 1 : -1));
-  }, [envios, gastos, facturasProveedor]);
+  }, [envios, gastosConComisiones, facturasProveedor]);
 
   // mesFiltro es solo una etiqueta de texto ("Agosto 2026") — para poder
   // consultar el libro diario (que necesita fechas ISO reales) hace falta
@@ -81,10 +97,10 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
       mapa.set(nombreMes(fechaISO), { anio: d.getFullYear(), mes: d.getMonth() });
     };
     envios.forEach((e) => registrar(e.fechaISO));
-    gastos.forEach((g) => registrar(g.fechaISO));
+    gastosConComisiones.forEach((g) => registrar(g.fechaISO));
     facturasProveedor.forEach((f) => registrar(f.fechaISO));
     return mapa;
-  }, [envios, gastos, facturasProveedor]);
+  }, [envios, gastosConComisiones, facturasProveedor]);
 
   // Rango real (ISO) para la consulta al libro diario: el mes elegido, o
   // "desde siempre hasta hoy" si no hay filtro de mes activo.
@@ -112,15 +128,15 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
       .catch(() => { if (!cancelado) setResultadoLedger(null); })
       .finally(() => { if (!cancelado) setCargandoLedger(false); });
     return () => { cancelado = true; };
-  }, [rangoLedger.desde, rangoLedger.hasta]);
+  }, [rangoLedger.desde, rangoLedger.hasta, vista, revisionSocios]);
 
   const enviosFiltrados = useMemo(
     () => (mesFiltro ? envios.filter((e) => nombreMes(e.fechaISO) === mesFiltro) : envios),
     [envios, mesFiltro]
   );
   const gastosFiltrados = useMemo(
-    () => (mesFiltro ? gastos.filter((g) => nombreMes(g.fechaISO) === mesFiltro) : gastos),
-    [gastos, mesFiltro]
+    () => (mesFiltro ? gastosConComisiones.filter((g) => nombreMes(g.fechaISO) === mesFiltro) : gastosConComisiones),
+    [gastosConComisiones, mesFiltro]
   );
   const ingresosFiltrados = useMemo(
     () => (mesFiltro ? ingresos.filter((i) => nombreMes(i.fechaISO) === mesFiltro) : ingresos),
@@ -216,7 +232,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
       acumular(e.fechaISO, "paqueteria", numero(e.total));
       acumular(e.fechaISO, "gananciaPaq", numero(e.gananciaReal));
     });
-    gastos.forEach((g) => acumular(g.fechaISO, "gastos", numero(g.monto)));
+    gastosConComisiones.forEach((g) => acumular(g.fechaISO, "gastos", numero(g.monto)));
     ingresos.forEach((i) => acumular(i.fechaISO, "otrosIngresos", numero(i.monto)));
     facturasProveedor.forEach((f) => {
       // costosProveedor: monto real facturado, solo informativo (badge).
@@ -228,7 +244,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
     return [...mapa.values()]
       .map((m) => ({ ...m, balance: m.gananciaPaq + m.otrosIngresos - m.gastos - m.diferenciaProveedor }))
       .sort((a, b) => (a.mes < b.mes ? 1 : -1));
-  }, [envios, gastos, ingresos, facturasProveedor]);
+  }, [envios, gastosConComisiones, ingresos, facturasProveedor]);
 
   // === Gastos por categoría (respeta el filtro de mes) — ya no se muestra
   // en el Resumen (vive en Finanzas → Gastos), pero se sigue usando para
@@ -276,6 +292,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
         <button className={`nav-btn ${vista === "ingresos" ? "active" : ""}`} onClick={() => setVista("ingresos")}>Ingresos</button>
         <button className={`nav-btn ${vista === "gastos" ? "active" : ""}`} onClick={() => setVista("gastos")}>Gastos</button>
         <button className={`nav-btn ${vista === "proveedores" ? "active" : ""}`} onClick={() => setVista("proveedores")}>Proveedores</button>
+        <button className={`nav-btn ${vista === "socios" ? "active" : ""}`} onClick={() => setVista("socios")}>Pagos a socios</button>
         <button className={`nav-btn ${vista === "cuentas" ? "active" : ""}`} onClick={() => setVista("cuentas")}>Cuentas</button>
         <button className={`nav-btn ${vista === "apertura" ? "active" : ""}`} onClick={() => setVista("apertura")}>Balance inicial</button>
         <button className={`nav-btn ${vista === "libro" ? "active" : ""}`} onClick={() => setVista("libro")}>Libro diario</button>
@@ -360,6 +377,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
       )}
 
       {vista === "libro" && <FinanzasLibroDiario />}
+      {vista === "socios" && <RetirosSocios mostrarToast={mostrarToast} alCambiar={() => { setRevisionSocios(v => v + 1); cargarDatos?.(); }} />}
 
       {vista === "caja" && (
         <FinanzasCorteCaja
@@ -433,7 +451,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
         <p>Separamos la rentabilidad de las operaciones del dinero que realmente está en caja/bancos. No tienen que ser el mismo número.</p>
         <div className="grid-4 mt-16">
           <div className="metric"><b>Utilidad neta cobrada</b><span className="metric-value">${utilidadNetaCobrada.toFixed(2)}</span><small>Margen cobrado menos gastos operativos</small></div>
-          <div className="metric"><b>Gastos operativos</b><span className="metric-value">${totalGastos.toFixed(2)}</span><small>Dinero que ya salió por operación</small></div>
+          <div className="metric"><b>Gastos operativos</b><span className="metric-value">${totalGastos.toFixed(2)}</span><small>Incluye comisiones solicitadas, aunque aún estén pendientes de pago</small></div>
           <div className="metric"><b>Capital financiado a clientes</b><span className="metric-value">${costoFinanciadoClientes.toFixed(2)}</span><small>Proveedor pagado, cliente aún debe</small></div>
           <div className="metric"><b>Costo pendiente de facturar</b><span className="metric-value">${costoPendienteFacturar.toFixed(2)}</span><small>Costo congelado; todavía no es CxP</small></div>
         </div>
