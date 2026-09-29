@@ -15,11 +15,15 @@
 import { useState } from "react";
 import { numero } from "../utils/numero";
 import { formatoMoneda } from "../utils/moneda";
-import { saldarEnvio } from "../services/enviosService";
+import { saldarEnvio, actualizarEstadoEnvio } from "../services/enviosService";
+import { supabase } from "../supabase";
 import { solicitarNavegacion } from "../utils/navegacion";
 
-export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empresa, auth, mostrarToast, cargarDatos, etiquetaBoton = "Marcar retirado y saldar" }) {
+export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empresa, auth, mostrarToast, cargarDatos, etiquetaBoton = "Gestionar recibo" }) {
   const [abierto, setAbierto] = useState(false);
+  const [accion, setAccion] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const tieneSaldo = numero(envio.saldo) > 0;
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [metodo, setMetodo] = useState("Transferencia");
   const [recibidoPor, setRecibidoPor] = useState("");
@@ -43,13 +47,15 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empre
   };
 
   const confirmar = async () => {
-    if (!cuentaDineroSeleccionada) {
+    if (tieneSaldo && !cuentaDineroSeleccionada) {
       mostrarToast("Selecciona a qué cuenta entra el pago.", "warning");
       return;
     }
     setGuardando(true);
     try {
-      await saldarEnvio({
+      if (!tieneSaldo) {
+        await actualizarEstadoEnvio({ envio, nuevoEstado: "Entregado", prompts: { pedirMetodo: () => "", pedirReferencia: () => "" }, auth });
+      } else await saldarEnvio({
         envio,
         pago: { metodo, moneda: monedaPago, recibidoPor: metodo === "Efectivo" ? recibidoPor : undefined },
         cuentaDinero: cuentaDineroSeleccionada,
@@ -57,7 +63,7 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empre
         tasaCambio,
         auth
       });
-      mostrarToast(`Envío ${envio.numero} saldado y marcado como retirado.`);
+      mostrarToast(tieneSaldo ? `Envío ${envio.numero} saldado y marcado como retirado.` : `Envío ${envio.numero} marcado como retirado.`);
       setAbierto(false);
       setRecibidoPor("");
       setCuentaDineroId("");
@@ -70,14 +76,55 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empre
     }
   };
 
+  const condonar = async () => {
+    if (motivo.trim().length < 3) return mostrarToast("Escribe el motivo de la condonación.", "warning");
+    setGuardando(true);
+    try {
+      const { error } = await supabase.rpc("condonar_saldo_envio", {
+        p_envio_id: envio.id,
+        p_saldo_esperado: numero(envio.saldo),
+        p_motivo: motivo.trim(),
+        p_usuario: auth.usuarioActual?.nombre || auth.session?.user?.email || "Usuario"
+      });
+      if (error) throw error;
+      mostrarToast(`Saldo de ${envio.numero} condonado.`);
+      setAbierto(false);
+      setAccion("");
+      setMotivo("");
+      await cargarDatos();
+    } catch (err) {
+      mostrarToast(err.message || "No se pudo condonar el saldo.", "error");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   return (
     <div>
-      <button type="button" className="btn btn-primary" onClick={() => setAbierto((v) => !v)}>
+      <button type="button" className="btn btn-primary" disabled={guardando} onClick={() => { setAbierto((v) => !v); setAccion(""); }}>
         {abierto ? "Cancelar" : etiquetaBoton}
       </button>
 
       {abierto && (
+        <div className="mt-8" style={{ textAlign: "left" }}>
+          <div className="segment">
+            <button type="button" className={`nav-btn ${accion === "pago" ? "active" : ""}`} disabled={guardando} onClick={() => setAccion("pago")}>
+              {tieneSaldo ? "Marcar retirado y saldar" : "Marcar retirado"}
+            </button>
+            {tieneSaldo && <button type="button" className={`nav-btn ${accion === "condonar" ? "active" : ""}`} disabled={guardando} onClick={() => setAccion("condonar")}>Condonar saldo</button>}
+          </div>
+          {accion === "condonar" && (
+            <div className="form-grid mt-8">
+              <p>Se condonarán ${numero(envio.saldo).toFixed(2)}. No se registrará un pago y el paquete conservará su estado.</p>
+              <label><span className="field-label">Motivo de la condonación *</span><textarea className="input" value={motivo} maxLength={500} onChange={(e) => setMotivo(e.target.value)} placeholder="Explica por qué OEX asume este saldo" /></label>
+              <button type="button" className="btn btn-primary" disabled={guardando || motivo.trim().length < 3} onClick={condonar}>{guardando ? "Guardando..." : "Confirmar condonación"}</button>
+            </div>
+          )}
+        </div>
+      )}
+      {abierto && accion === "pago" && (
         <div className="form-grid mt-8" style={{ borderTop: "1px solid #D8DADD", paddingTop: 12 }}>
+          {tieneSaldo && <>
           <label>
             <span className="field-label">Fecha del pago</span>
             <input className="input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} max={new Date().toISOString().slice(0, 10)} />
@@ -131,8 +178,9 @@ export default function FormularioSaldarEnvio({ envio, cuentasDinero = [], empre
             </label>
           )}
 
-          <button className="btn btn-primary" disabled={guardando || !cuentaDineroSeleccionada} onClick={confirmar} style={{ alignSelf: "end" }}>
-            {guardando ? "Guardando..." : `Confirmar pago de $${numero(envio.saldo).toFixed(2)}`}
+          </>}
+          <button className="btn btn-primary" disabled={guardando || (tieneSaldo && !cuentaDineroSeleccionada)} onClick={confirmar} style={{ alignSelf: "end" }}>
+            {guardando ? "Guardando..." : tieneSaldo ? `Confirmar pago de ${numero(envio.saldo).toFixed(2)}` : "Confirmar retiro sin cobro"}
           </button>
         </div>
       )}
