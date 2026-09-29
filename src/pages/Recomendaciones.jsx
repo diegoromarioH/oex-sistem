@@ -18,7 +18,7 @@ import "../styles/Recomendaciones.css";
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 const FORM_INICIAL = {
-  nombre: "", whatsapp: "+505 ", correo: "", foto_url: "", foto_path: "", identificador: "",
+  nombre: "", cedula: "", banco: "", moneda_cuenta: "", numero_cuenta: "", whatsapp: "+505 ", correo: "", foto_url: "", foto_path: "", identificador: "",
   estado: "pendiente", porcentaje_utilidad: 20, tarifa_maritima: "", tarifa_aerea: "",
   tarifa_promocional_activa: false, metodo_pago: "", datos_pago: "", notas: "", fecha_ingreso: hoy(),
 };
@@ -87,6 +87,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
   const abrirEditar = (socio) => {
     setEditandoId(socio.id);
     setForm({
+      cedula: socio.cedula || "", banco: socio.banco || "", moneda_cuenta: socio.moneda_cuenta || "", numero_cuenta: socio.numero_cuenta || "",
       nombre: socio.nombre || "", whatsapp: socio.whatsapp || "+505 ", correo: socio.correo || "",
       foto_url: socio.foto_url || "", foto_path: socio.foto_path || "", identificador: socio.identificador || "", estado: socio.estado || "pendiente",
       porcentaje_utilidad: socio.porcentaje_utilidad ?? 20, tarifa_maritima: socio.tarifa_maritima ?? "",
@@ -239,7 +240,8 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
       <form className="modal-card recomendaciones-form" onSubmit={guardar}>
         <div className="modal-header"><div><h2>{editandoId ? "Editar Socio OEX" : "Agregar Socio OEX"}</h2><p>Información administrativa del Programa de Recomendaciones.</p></div><button type="button" className="btn btn-ghost btn-icon" onClick={() => setFormAbierto(false)} aria-label="Cerrar"><X size={19} /></button></div>
         <div className="form-grid">
-          <label><span className="field-label">Nombre completo *</span><input className="input" required value={form.nombre} onChange={e => cambiarNombre(e.target.value)} /></label>
+          <label><span className="field-label">Nombre y apellido *</span><input className="input" required value={form.nombre} onChange={e => cambiarNombre(e.target.value)} /></label>
+          <label><span className="field-label">Cédula</span><input className="input" value={form.cedula} maxLength={30} onChange={e => actualizar("cedula", e.target.value)} placeholder="Número de cédula" /></label>
           <label><span className="field-label">WhatsApp</span><input className="input" value={form.whatsapp} onChange={e => actualizar("whatsapp", e.target.value)} /></label>
           <label><span className="field-label">Correo</span><input className="input" type="email" value={form.correo} onChange={e => actualizar("correo", e.target.value)} /></label>
           <div className="foto-socio-campo">
@@ -261,7 +263,10 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
           <label><span className="field-label">Tarifa marítima personal</span><input className="input" type="number" min="0" step="0.01" value={form.tarifa_maritima} onChange={e => actualizar("tarifa_maritima", e.target.value)} placeholder="Sin definir" /></label>
           <label><span className="field-label">Tarifa aérea personal</span><input className="input" type="number" min="0" step="0.01" value={form.tarifa_aerea} onChange={e => actualizar("tarifa_aerea", e.target.value)} placeholder="Sin definir" /></label>
           <label><span className="field-label">Método de pago</span><input className="input" value={form.metodo_pago} onChange={e => actualizar("metodo_pago", e.target.value)} placeholder="Transferencia, efectivo…" /></label>
-          <label><span className="field-label">Datos para el pago</span><input className="input" value={form.datos_pago} onChange={e => actualizar("datos_pago", e.target.value)} placeholder="Cuenta o referencia" /></label>
+          <label><span className="field-label">Banco</span><input className="input" value={form.banco} maxLength={100} onChange={e => actualizar("banco", e.target.value)} placeholder="Nombre del banco" /></label>
+          <label><span className="field-label">Moneda de la cuenta</span><select className="input" value={form.moneda_cuenta} onChange={e => actualizar("moneda_cuenta", e.target.value)}><option value="">Selecciona una moneda</option><option value="USD">Dólares (USD)</option><option value="NIO">Córdobas (NIO)</option></select></label>
+          <label><span className="field-label">Número de cuenta</span><input className="input" value={form.numero_cuenta} maxLength={80} onChange={e => actualizar("numero_cuenta", e.target.value)} placeholder="Número de cuenta bancaria" /></label>
+          {form.datos_pago && <p className="field-help">Datos de pago anteriores: {form.datos_pago}</p>}
         </div>
         <label className="switch-row"><input type="checkbox" checked={form.tarifa_promocional_activa} onChange={e => actualizar("tarifa_promocional_activa", e.target.checked)} /><span><b>Tarifa promocional activa</b><small>Se aplica únicamente a los envíos personales del Socio OEX.</small></span></label>
         <label><span className="field-label">Notas internas</span><textarea className="input" value={form.notas} onChange={e => actualizar("notas", e.target.value)} placeholder="Observaciones administrativas…" /></label>
