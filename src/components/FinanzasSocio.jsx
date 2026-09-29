@@ -1,28 +1,10 @@
 import { useEffect, useState } from "react";
-import jsPDF from "jspdf";
+import { descargarReporteSocio } from "../services/socioReportePdf";
 import RetirosSocios from "./RetirosSocios";
 import { listarComisionesSocio, listarRetirosSocio, solicitarRetiroSocio, agruparCortesSocio, dineroSocio as dinero, fechaSocio as fecha } from "../services/sociosFinanzasService";
 
 const etiquetas = { curso: "Ganancias en curso", revision: "Ganancias en revisión", disponible: "Disponible para retiro", pendiente: "Pendiente de pago", pagado: "Total pagado" };
-function descargarReporte(socio, cortes, retiros) {
-  const doc = new jsPDF(); let y = 20;
-  const linea = texto => { for (const l of doc.splitTextToSize(texto, 178)) { if (y > 275) { doc.addPage(); y = 20; } doc.text(l, 16, y); y += 6; } };
-  doc.setFontSize(12); linea("OEX | Finanzas del socio · " + socio.nombre); doc.setFontSize(10);
-  linea("Generado: " + fecha(new Date().toISOString()));
-  linea("Pagos del 1 al 5. Entrega, cobro y 3 días cumplidos. Sin mínimo.");
-  cortes.forEach(c => {
-    linea("Corte / período de pago: " + c.periodo);
-    Object.keys(etiquetas).forEach(k => linea(etiquetas[k] + ": " + dinero(c[k])));
-    c.filas.forEach(f => linea(f.numero_envios + " · " + f.cliente + " | Utilidad " + dinero(f.utilidad) + " | Comisión " + dinero(f.comision) + " | " + etiquetas[f.estado_comision])); y += 4;
-  });
-  retiros.forEach(r => {
-    linea(r.numero + " · " + r.estado + " · " + dinero(r.monto_usd));
-    linea("Solicitud " + fecha(r.creado_en) + (r.fecha_pago ? " | Pago " + fecha(r.fecha_pago) + " · " + r.referencia : ""));
-    (r.socios_retiros_detalle || []).forEach(d => linea(d.numero_envio + " · " + d.periodo + " | Utilidad " + dinero(d.utilidad) + " | Comisión " + dinero(d.comision)));
-  });
-  doc.save("OEX-finanzas-" + socio.identificador + ".pdf");
-}
-export default function FinanzasSocio({ socio, mostrarToast }) {
+export default function FinanzasSocio({ socio, clientes = [], mostrarToast }) {
   const [filas, setFilas] = useState([]), [retiros, setRetiros] = useState([]);
   const [cargando, setCargando] = useState(true), [error, setError] = useState("");
   const [revision, setRevision] = useState(0), [corte, setCorte] = useState(null), [guardando, setGuardando] = useState(false);
@@ -43,7 +25,7 @@ export default function FinanzasSocio({ socio, mostrarToast }) {
   };
   return <>
     <section className="card">
-      <div className="page-title"><h3>Finanzas del socio</h3><div className="segment"><button className="btn" disabled={cargando} onClick={() => setRevision(v => v + 1)}>Actualizar</button><button className="btn" disabled={cargando || Boolean(error)} onClick={() => descargarReporte(socio, cortes, retiros)}>Descargar reporte PDF</button></div></div>
+      <div className="page-title"><h3>Finanzas del socio</h3><div className="segment"><button className="btn" disabled={cargando} onClick={() => setRevision(v => v + 1)}>Actualizar</button><button className="btn" disabled={cargando || Boolean(error)} onClick={() => descargarReporteSocio({ socio, cortes, retiros, clientes })}>Descargar reporte PDF</button></div></div>
       {cargando ? <p>Cargando cortes y comisiones…</p> : error ? <p role="alert">{error}</p> : <>
         <div className="grid-4 recomendaciones-metricas">{Object.entries(etiquetas).map(([k, label]) => <div className="metric" key={k}><b>{label}</b><span className="metric-value">{dinero(totales[k])}</span></div>)}</div>
         <p className="muted">En curso: falta entrega o cobro. En revisión: faltan costos, fecha de entrega o completar 3 días. Disponible: cumple las condiciones. Los cortes indican el primer período de pago, del 1 al 5 del mes siguiente; los saldos disponibles se conservan.</p>
