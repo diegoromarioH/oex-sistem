@@ -127,8 +127,9 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
     <PageTitle
       title="Programa de Recomendaciones"
       subtitle="Administra los Socios OEX, sus beneficios y enlaces de recomendación."
-      actions={<button type="button" className="btn btn-primary" onClick={abrirNuevo}><Plus size={16} />Agregar Socio OEX</button>}
-    />
+    >
+      <button type="button" className="btn btn-primary" onClick={abrirNuevo}><Plus size={16} />Agregar Socio OEX</button>
+    </PageTitle>
 
     <div className="grid-4 recomendaciones-metricas">
       <div className="metric"><Handshake size={20} /><b>Socios registrados</b><span className="metric-value">{metricas.total}</span></div>
