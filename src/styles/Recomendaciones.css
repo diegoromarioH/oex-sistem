@@ -13,8 +13,13 @@
 .recomendaciones-tabla tbody tr:last-child td { border-bottom: 0; }
 .recomendaciones-tabla tbody tr:hover { background: color-mix(in srgb, var(--module-color) 4%, var(--surface)); }
 .socio-identidad { display: flex; align-items: center; gap: 11px; min-width: 210px; }
+.socio-identidad-boton { width: 100%; border: 0; padding: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.socio-identidad-boton:hover strong { color: var(--module-color); }
 .socio-identidad img, .socio-avatar { width: 40px; height: 40px; border-radius: 50%; flex: 0 0 40px; object-fit: cover; }
 .socio-avatar { display: grid; place-items: center; background: color-mix(in srgb, var(--module-color) 16%, var(--surface)); color: var(--module-color); font-weight: 900; }
+.socio-ficha-resumen { display: flex; align-items: center; gap: 16px; }
+.socio-ficha-resumen > img, .socio-avatar-grande { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; flex: 0 0 68px; }
+.socio-ficha-resumen p { margin: 8px 0 0; color: var(--text-muted); }
 .socio-identidad strong, .socio-identidad small, .tabla-subtexto { display: block; }
 .socio-identidad small, .tabla-subtexto { color: var(--text-muted); font-size: 12px; margin-top: 3px; }
 .enlace-copiar { display: inline-flex; align-items: center; gap: 7px; max-width: 245px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); padding: 7px 9px; cursor: pointer; }

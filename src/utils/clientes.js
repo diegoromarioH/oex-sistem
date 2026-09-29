@@ -56,7 +56,7 @@ export const obtenerTrackingsCrudos = (valor) => {
   return [];
 };
 
-export const normalizarCliente = (c) => ({ id:c.id, codigo:c.codigo_cliente||"", nombre:c.nombre||"", telefono:c.telefono||"", correo:c.correo||"", direccion:c.direccion||"", tipo:c.tipo_cliente||"General", tarifaPreferencial:c.tarifa_preferencial||"", observaciones:c.observaciones||"", createdBy:c.created_by_name||"", updatedBy:c.updated_by_name||"", createdAt:c.created_at||"", fecha:c.created_at?new Date(c.created_at).toLocaleString("es-NI"):"" });
+export const normalizarCliente = (c) => ({ id:c.id, codigo:c.codigo_cliente||"", nombre:c.nombre||"", telefono:c.telefono||"", correo:c.correo||"", direccion:c.direccion||"", tipo:c.tipo_cliente||"General", tarifaPreferencial:c.tarifa_preferencial||"", observaciones:c.observaciones||"", socioRecomendacionId:c.socio_recomendacion_id||null, recomendacionOrigen:c.recomendacion_origen||"", recomendacionFecha:c.recomendacion_fecha||"", createdBy:c.created_by_name||"", updatedBy:c.updated_by_name||"", createdAt:c.created_at||"", fecha:c.created_at?new Date(c.created_at).toLocaleString("es-NI"):"" });
 
 export const normalizarAudit = (a) => ({ id:a.id, fechaISO:a.created_at||"", fecha:a.created_at?new Date(a.created_at).toLocaleString("es-NI"):"", usuario:a.user_name||"", accion:a.accion||"", modulo:a.modulo||"", registro:a.registro_codigo||"", detalle:a.detalle||"" });
 

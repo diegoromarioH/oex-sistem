@@ -1,6 +1,6 @@
 // src/pages/Clientes.jsx
-import { useMemo, useState } from "react";
-import { UserPlus, PieChart as PieChartIcon, History as HistoryIcon, Pencil, X, ArrowLeft, Search, FileText, Weight, Trophy, DollarSign } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { UserPlus, PieChart as PieChartIcon, History as HistoryIcon, Pencil, X, ArrowLeft, Search, FileText, Trophy, DollarSign, Handshake, Tag, Trash2 } from "lucide-react";
 import { numero } from "../utils/numero";
 import { guardarClienteManual, eliminarCliente } from "../services/clientesService";
 import { exportarClientesExcel } from "../services/excelService";
@@ -8,6 +8,7 @@ import { confirmarAccionCritica } from "../services/coreService";
 import ModalRecibo from "../components/ModalRecibo";
 import PageTitle from "../components/PageTitle";
 import { generarEstadoCuentaCliente } from "../services/pdfService";
+import { actualizarRecomendacionCliente, listarSociosRecomendacion } from "../services/recomendacionesService";
 
 const formVacio = { nombre: "", telefono: "+505 ", correo: "", direccion: "", tipo: "General", observaciones: "" };
 
@@ -202,6 +203,9 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
         onGuardar={guardar}
         onCancelarEdicion={cancelarEdicion}
         onEliminar={() => eliminar(clienteDetalle)}
+        auth={auth}
+        mostrarToast={mostrarToast}
+        cargarDatos={cargarDatos}
       />
     );
   }
@@ -368,9 +372,46 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
 // historial completo de recibos/envíos. Trae su propio buscador porque
 // un cliente frecuente puede acumular muchos envíos y desplazarse por
 // todos sin filtro sería incómodo.
-function ClienteDetalle({ cliente, envios, totalGastado, empresa, tarifas, editando, camposForm, guardando, rol, onVolver, onEditar, onGuardar, onCancelarEdicion, onEliminar }) {
+function ClienteDetalle({ cliente, envios, totalGastado, empresa, tarifas, editando, camposForm, guardando, rol, onVolver, onEditar, onGuardar, onCancelarEdicion, onEliminar, mostrarToast, cargarDatos }) {
   const [busquedaEnvio, setBusquedaEnvio] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
+  const [socios, setSocios] = useState([]);
+  const [editandoRecomendacion, setEditandoRecomendacion] = useState(false);
+  const [socioSeleccionado, setSocioSeleccionado] = useState(cliente.socioRecomendacionId || "");
+  const [guardandoRecomendacion, setGuardandoRecomendacion] = useState(false);
+
+  useEffect(() => {
+    listarSociosRecomendacion()
+      .then(setSocios)
+      .catch(() => mostrarToast?.("No se pudieron cargar los Socios OEX.", "error"));
+  }, []);
+
+  useEffect(() => setSocioSeleccionado(cliente.socioRecomendacionId || ""), [cliente.socioRecomendacionId]);
+
+  const socioAsignado = socios.find((s) => String(s.id) === String(cliente.socioRecomendacionId)) || null;
+  const guardarRecomendacion = async () => {
+    if (!socioSeleccionado) return;
+    setGuardandoRecomendacion(true);
+    try {
+      await actualizarRecomendacionCliente({ clienteId: cliente.id, socioId: socioSeleccionado, origen: "manual" });
+      mostrarToast?.("Identificador de recomendación actualizado.");
+      setEditandoRecomendacion(false);
+      await cargarDatos?.();
+    } catch (error) { mostrarToast?.(error.message || "No se pudo actualizar la recomendación.", "error"); }
+    finally { setGuardandoRecomendacion(false); }
+  };
+
+  const quitarRecomendacion = async () => {
+    if (!window.confirm("¿Quitar la recomendación de este cliente?")) return;
+    setGuardandoRecomendacion(true);
+    try {
+      await actualizarRecomendacionCliente({ clienteId: cliente.id, socioId: null });
+      mostrarToast?.("Recomendación removida.");
+      setEditandoRecomendacion(false);
+      await cargarDatos?.();
+    } catch (error) { mostrarToast?.(error.message || "No se pudo remover la recomendación.", "error"); }
+    finally { setGuardandoRecomendacion(false); }
+  };
 
   const estadosDisponibles = useMemo(() => [...new Set(envios.map((e) => e.estado))], [envios]);
 
@@ -437,6 +478,29 @@ function ClienteDetalle({ cliente, envios, totalGastado, empresa, tarifas, edita
             {cliente.correo && <p><b>Correo:</b> {cliente.correo}</p>}
             {cliente.direccion && <p><b>Dirección:</b> {cliente.direccion}</p>}
             {cliente.observaciones && <p><b>Observaciones:</b> {cliente.observaciones}</p>}
+          </div>
+
+          <div className="card mt-16" style={{ borderTop: "3px solid #f97316" }}>
+            <div className="page-title" style={{ margin: 0 }}>
+              <div>
+                <h3 style={{ display: "flex", alignItems: "center", gap: 8, margin: 0 }}><Handshake size={18} />Recomendación</h3>
+                <p style={{ marginTop: 5 }}>Asocia este cliente con el Socio OEX que lo recomendó.</p>
+              </div>
+              {!editandoRecomendacion && <button className="btn" onClick={() => setEditandoRecomendacion(true)}><Pencil size={14} />{socioAsignado ? "Cambiar" : "Asignar"}</button>}
+            </div>
+
+            {editandoRecomendacion ? <div className="segment mt-16" style={{ alignItems: "center", flexWrap: "wrap" }}>
+              <select className="input" style={{ minWidth: 240 }} value={socioSeleccionado} onChange={(e) => setSocioSeleccionado(e.target.value)}>
+                <option value="">Seleccionar Socio OEX…</option>
+                {socios.map((s) => <option key={s.id} value={s.id}>{s.identificador.toUpperCase()} · {s.nombre}</option>)}
+              </select>
+              <button className="btn btn-primary" disabled={!socioSeleccionado || guardandoRecomendacion} onClick={guardarRecomendacion}>{guardandoRecomendacion ? "Guardando…" : "Guardar"}</button>
+              <button className="btn" disabled={guardandoRecomendacion} onClick={() => { setEditandoRecomendacion(false); setSocioSeleccionado(cliente.socioRecomendacionId || ""); }}>Cancelar</button>
+              {socioAsignado && <button className="btn btn-danger" disabled={guardandoRecomendacion} onClick={quitarRecomendacion}><Trash2 size={14} />Quitar</button>}
+            </div> : socioAsignado ? <div className="mt-16" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <span className="badge badge-warning" style={{ fontSize: 14, padding: "8px 11px" }}><Tag size={14} />{socioAsignado.identificador.toUpperCase()}</span>
+              <div><b>{socioAsignado.nombre}</b><small style={{ display: "block", opacity: .65 }}>Origen: {cliente.recomendacionOrigen === "enlace" ? "Enlace personal" : "Asignación manual"}{cliente.recomendacionFecha ? ` · ${new Date(cliente.recomendacionFecha).toLocaleDateString("es-NI")}` : ""}</small></div>
+            </div> : <p className="mt-16" style={{ opacity: .7 }}>Este cliente no tiene un identificador de recomendación asignado.</p>}
           </div>
 
           <div className="card mt-16">

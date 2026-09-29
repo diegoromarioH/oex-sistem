@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  BadgeDollarSign, Check, Copy, Handshake, Link2, Pencil, Plus,
+  ArrowLeft, BadgeDollarSign, Check, Copy, Handshake, Link2, Pencil, Plus,
   Search, ShieldCheck, Tag, Trash2, Users, X
 } from "lucide-react";
 import PageTitle from "../components/PageTitle";
@@ -8,6 +8,7 @@ import {
   construirEnlaceRecomendacion,
   eliminarSocioRecomendacion,
   guardarSocioRecomendacion,
+  listarClientesRecomendados,
   listarSociosRecomendacion,
   normalizarIdentificador,
 } from "../services/recomendacionesService";
@@ -41,10 +42,16 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
   const [form, setForm] = useState(FORM_INICIAL);
   const [busqueda, setBusqueda] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState("");
+  const [clientesRecomendados, setClientesRecomendados] = useState([]);
+  const [socioDetalleId, setSocioDetalleId] = useState(null);
 
   const cargar = async () => {
     setCargando(true);
-    try { setSocios(await listarSociosRecomendacion()); }
+    try {
+      const [sociosData, clientesData] = await Promise.all([listarSociosRecomendacion(), listarClientesRecomendados()]);
+      setSocios(sociosData);
+      setClientesRecomendados(clientesData);
+    }
     catch (error) { mostrarToast?.("Error", textoError(error), "error"); }
     finally { setCargando(false); }
   };
@@ -123,6 +130,34 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
     catch { mostrarToast?.("Enlace", enlace); }
   };
 
+  const socioDetalle = socios.find((s) => s.id === socioDetalleId) || null;
+  if (socioDetalle) {
+    const clientesDelSocio = clientesRecomendados.filter((c) => String(c.socio_recomendacion_id) === String(socioDetalle.id));
+    const iniciales = socioDetalle.nombre.split(" ").slice(0, 2).map(p => p[0]).join("").toUpperCase();
+    return <div className="page recomendaciones-page">
+      <button className="btn btn-ghost" onClick={() => setSocioDetalleId(null)} style={{ marginBottom: 8 }}><ArrowLeft size={16} />Volver a Recomendaciones</button>
+      <PageTitle title={socioDetalle.nombre} subtitle={`Socio OEX · ${socioDetalle.identificador.toUpperCase()}`}>
+        <button className="btn" onClick={() => copiar(socioDetalle.identificador)}><Copy size={15} />Copiar enlace</button>
+        <button className="btn" onClick={() => abrirEditar(socioDetalle)}><Pencil size={15} />Editar socio</button>
+      </PageTitle>
+      <div className="card socio-ficha-resumen">
+        {socioDetalle.foto_url ? <img src={socioDetalle.foto_url} alt="" /> : <span className="socio-avatar socio-avatar-grande">{iniciales}</span>}
+        <div><span className="badge badge-warning"><Tag size={13} />{socioDetalle.identificador.toUpperCase()}</span><p>{socioDetalle.whatsapp || "Sin WhatsApp"}{socioDetalle.correo ? ` · ${socioDetalle.correo}` : ""}</p></div>
+      </div>
+      <div className="grid-4 recomendaciones-metricas">
+        <div className="metric"><Users size={20} /><b>Clientes recomendados</b><span className="metric-value">{clientesDelSocio.length}</span></div>
+        <div className="metric"><BadgeDollarSign size={20} /><b>Ganancia</b><span className="metric-value">{Number(socioDetalle.porcentaje_utilidad).toFixed(0)}%</span></div>
+        <div className="metric"><ShieldCheck size={20} /><b>Estado</b><span className="metric-value" style={{ fontSize: 18 }}>{ESTADOS[socioDetalle.estado]?.texto || "Pendiente"}</span></div>
+        <div className="metric"><Tag size={20} /><b>Tarifa promocional</b><span className="metric-value" style={{ fontSize: 18 }}>{socioDetalle.tarifa_promocional_activa ? "Activa" : "No activa"}</span></div>
+      </div>
+      <div className="card">
+        <h3>Clientes vinculados</h3>
+        <div className="list mt-16">{clientesDelSocio.map((cliente) => <div className="row-card" key={cliente.id}><div><b>{cliente.nombre}</b> <span className="badge badge-info">{cliente.codigo_cliente || "Sin código"}</span><p>{cliente.telefono || "Sin teléfono"}</p></div><small>{cliente.recomendacion_origen === "enlace" ? "Enlace personal" : "Asignación manual"}{cliente.recomendacion_fecha ? ` · ${new Date(cliente.recomendacion_fecha).toLocaleDateString("es-NI")}` : ""}</small></div>)}</div>
+        {clientesDelSocio.length === 0 && <p className="muted">Todavía no hay clientes asociados con este identificador.</p>}
+      </div>
+    </div>;
+  }
+
   return <div className="page recomendaciones-page">
     <PageTitle
       title="Programa de Recomendaciones"
@@ -139,7 +174,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
     </div>
 
     <div className="info-box recomendaciones-aviso">
-      <Link2 size={17} /> En esta primera etapa los enlaces se crean y administran aquí. La asociación automática y las etiquetas por enlace se incorporarán posteriormente.
+      <Link2 size={17} /> Las asignaciones manuales ya están disponibles desde la ficha del cliente. El enlace personal queda preparado para la asociación automática de la prealerta.
     </div>
 
     <div className="card recomendaciones-filtros">
@@ -160,15 +195,16 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
       <div className="card recomendaciones-vacio"><Handshake size={34} /><b>No hay Socios OEX para mostrar</b><span>Agrega el primero o cambia los filtros.</span></div>
     ) : <div className="recomendaciones-tabla-wrap card">
       <table className="recomendaciones-tabla">
-        <thead><tr><th>Socio OEX</th><th>Estado</th><th>Ganancia</th><th>Tarifa promocional</th><th>Enlace</th><th aria-label="Acciones" /></tr></thead>
+        <thead><tr><th>Socio OEX</th><th>Clientes</th><th>Estado</th><th>Ganancia</th><th>Tarifa promocional</th><th>Enlace</th><th aria-label="Acciones" /></tr></thead>
         <tbody>{filtrados.map(socio => {
           const estado = ESTADOS[socio.estado] || ESTADOS.pendiente;
           const iniciales = socio.nombre.split(" ").slice(0, 2).map(p => p[0]).join("").toUpperCase();
           return <tr key={socio.id}>
-            <td><div className="socio-identidad">
+            <td><button type="button" className="socio-identidad socio-identidad-boton" onClick={() => setSocioDetalleId(socio.id)}>
               {socio.foto_url ? <img src={socio.foto_url} alt="" /> : <span className="socio-avatar">{iniciales}</span>}
               <div><strong>{socio.nombre}</strong><small>{socio.whatsapp || socio.correo || "Sin contacto registrado"}</small></div>
-            </div></td>
+            </button></td>
+            <td><strong>{clientesRecomendados.filter(c => String(c.socio_recomendacion_id) === String(socio.id)).length}</strong></td>
             <td><span className={`badge ${estado.clase}`}>{estado.texto}</span></td>
             <td><strong>{Number(socio.porcentaje_utilidad).toFixed(0)}%</strong><small className="tabla-subtexto">de utilidad elegible</small></td>
             <td>{socio.tarifa_promocional_activa ? <span className="badge badge-success"><Check size={12} />Activa</span> : <span className="badge badge-neutral">No activa</span>}</td>

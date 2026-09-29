@@ -22,6 +22,34 @@ export const listarSociosRecomendacion = async () => {
   return data || [];
 };
 
+export const listarClientesRecomendados = async () => {
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("id,codigo_cliente,nombre,telefono,socio_recomendacion_id,recomendacion_origen,recomendacion_fecha")
+    .not("socio_recomendacion_id", "is", null)
+    .order("recomendacion_fecha", { ascending: false, nullsFirst: false });
+  if (error) throw error;
+  return data || [];
+};
+
+export const actualizarRecomendacionCliente = async ({ clienteId, socioId, origen = "manual" }) => {
+  const asignado = Boolean(socioId);
+  const payload = {
+    socio_recomendacion_id: asignado ? Number(socioId) : null,
+    recomendacion_origen: asignado ? origen : null,
+    recomendacion_fecha: asignado ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from("clientes")
+    .update(payload)
+    .eq("id", clienteId)
+    .select("id,socio_recomendacion_id,recomendacion_origen,recomendacion_fecha")
+    .single();
+  if (error) throw error;
+  return data;
+};
+
 export const guardarSocioRecomendacion = async ({ id, ...valores }, auth) => {
   const ahora = new Date().toISOString();
   const payload = {
