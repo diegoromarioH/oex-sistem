@@ -98,13 +98,13 @@ export const corregirTipoTrackingActivo = async ({ tracking, nuevoTipo, proveedo
   return { costoInterno };
 };
 
-export const actualizarTracking=async({tracking,field,value,auth})=>{
+export const actualizarTracking=async({tracking,field,value,fechaMiami,auth})=>{
   const columna=COLUMNAS_EDITABLES[field];
   if(!columna) throw new Error(`Campo no editable: ${field}`);
   if(tracking.envioId && ["estado","peso","tipoEnvio"].includes(field)) throw new Error("Este tracking ya pertenece a un recibo. Haz el cambio desde el recibo para mantener todo sincronizado.");
   if(field==="estado"&&value==="Miami"&&!String(tracking.almacenId||"").trim()) throw new Error("Antes de marcar como Recibido en Miami, registra el ID de almacén.");
   const cambios={[columna]:value,updated_by:auth.session?.user?.id||null,updated_by_name:auth.usuarioActual?.nombre||auth.usuarioActual?.email||auth.session?.user?.email||"Usuario"};
-  if(field==="estado"&&value==="Miami"&&!tracking.fechaMiami) cambios.fecha_miami=new Date().toISOString();
+  if(field==="estado"&&value==="Miami"&&(fechaMiami||!tracking.fechaMiami)) cambios.fecha_miami=fechaMiami||new Date().toISOString();
   const {error}=await supabase.from("tracking_registros").update(cambios).eq("id",tracking.id);
   if(error) throw error;
   await registrarAuditoria({...auth,accion:field==="peso"?"Registró peso":"Actualizó tracking",modulo:"Trackings",registroCodigo:tracking.tracking||tracking.almacenId||"",detalle:`${field}: ${value}`});
