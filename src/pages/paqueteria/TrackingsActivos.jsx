@@ -101,9 +101,9 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       });
   }, [prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor, filtroPlazo]);
 
-  const actualizarCampo = async (t, campo, valor) => {
+  const actualizarCampo = async (t, campo, valor, fechaMiami) => {
     try {
-      await actualizarTracking({ tracking:t, field:campo, value:valor, auth });
+      await actualizarTracking({ tracking:t, field:campo, value:valor, fechaMiami, auth });
       await cargarDatos();
     } catch (err) {
       mostrarToast(err.message || "No se pudo actualizar.", "error");
@@ -167,7 +167,22 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
     if (idxActual !== -1 && idxNuevo !== -1 && idxNuevo < idxActual) {
       if (!window.confirm(`Vas a RETROCEDER el estado de "${t.estado}" a "${nuevoEstado}".\n\n¿Seguro que quieres hacer esto?`)) return;
     }
-    await actualizarCampo(t, "estado", nuevoEstado);
+    let fechaMiami;
+    if (nuevoEstado === "Miami" && t.estado !== "Miami") {
+      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Managua", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const fechaInicial = (t.fechaMiami ? t.fechaMiami.slice(0, 10) : hoy).split("-").reverse().join("-");
+      const fecha = window.prompt("Fecha de llegada al almacén de Miami (DD-MM-AAAA):", fechaInicial);
+      if (fecha === null) return;
+      const formatoValido = /^\d{2}-\d{2}-\d{4}$/.test(fecha);
+      const fechaISO = formatoValido ? fecha.split("-").reverse().join("-") : "";
+      const fechaValida = formatoValido && !Number.isNaN(Date.parse(fechaISO + "T12:00:00Z")) && new Date(fechaISO + "T12:00:00Z").toISOString().slice(0, 10) === fechaISO;
+      if (!fechaValida || fechaISO > hoy) {
+        mostrarToast("Ingresa una fecha válida en formato DD-MM-AAAA, sin superar el día de hoy.", "warning");
+        return;
+      }
+      fechaMiami = fechaISO + "T12:00:00-06:00";
+    }
+    await actualizarCampo(t, "estado", nuevoEstado, fechaMiami);
   };
 
   const cambiarEstado = async (t, nuevoEstado) => {
