@@ -170,14 +170,17 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
     let fechaMiami;
     if (nuevoEstado === "Miami" && t.estado !== "Miami") {
       const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Managua", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-      const fecha = window.prompt("Fecha de llegada al almacén de Miami (AAAA-MM-DD):", t.fechaMiami ? t.fechaMiami.slice(0, 10) : hoy);
+      const fechaInicial = (t.fechaMiami ? t.fechaMiami.slice(0, 10) : hoy).split("-").reverse().join("-");
+      const fecha = window.prompt("Fecha de llegada al almacén de Miami (DD-MM-AAAA):", fechaInicial);
       if (fecha === null) return;
-      const fechaValida = /^\d{4}-\d{2}-\d{2}$/.test(fecha) && !Number.isNaN(Date.parse(fecha + "T12:00:00Z")) && new Date(fecha + "T12:00:00Z").toISOString().slice(0, 10) === fecha;
-      if (!fechaValida || fecha > hoy) {
-        mostrarToast("Ingresa una fecha válida de llegada, sin superar el día de hoy.", "warning");
+      const formatoValido = /^\d{2}-\d{2}-\d{4}$/.test(fecha);
+      const fechaISO = formatoValido ? fecha.split("-").reverse().join("-") : "";
+      const fechaValida = formatoValido && !Number.isNaN(Date.parse(fechaISO + "T12:00:00Z")) && new Date(fechaISO + "T12:00:00Z").toISOString().slice(0, 10) === fechaISO;
+      if (!fechaValida || fechaISO > hoy) {
+        mostrarToast("Ingresa una fecha válida en formato DD-MM-AAAA, sin superar el día de hoy.", "warning");
         return;
       }
-      fechaMiami = fecha + "T12:00:00-06:00";
+      fechaMiami = fechaISO + "T12:00:00-06:00";
     }
     await actualizarCampo(t, "estado", nuevoEstado, fechaMiami);
   };
