@@ -69,7 +69,7 @@ export const registrarTracking = async ({ form, clientesEnMemoria, proveedorAdua
   await registrarAuditoria({...auth,accion:"Registró tracking",modulo:"Trackings",registroCodigo:codigo||almacenId,detalle:`${cliente} · ${estadoInicial==="Miami"?"Recibido en Miami":"Prealertado"} · ${proveedorAduana.nombre} · $${costoInterno.toFixed(2)}/lb`});
 };
 
-const COLUMNAS_EDITABLES={peso:"peso",estado:"estado",almacenId:"almacen_id",costoInterno:"costo_interno",nota:"nota",tipoEnvio:"tipo_envio"};
+const COLUMNAS_EDITABLES={fechaMiami:"fecha_miami",peso:"peso",estado:"estado",almacenId:"almacen_id",costoInterno:"costo_interno",nota:"nota",tipoEnvio:"tipo_envio"};
 export const corregirTipoTrackingActivo = async ({ tracking, nuevoTipo, proveedorAduana, facturaProveedor = null, configOperativa, auth }) => {
   if (!["Marítimo", "Aéreo"].includes(nuevoTipo)) throw new Error("Tipo de envío inválido.");
   if (!tracking?.id) throw new Error("Tracking inválido.");
