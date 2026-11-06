@@ -49,6 +49,29 @@ function FiltroDropdown({ value, onChange, label, options = [] }) {
   </div>;
 }
 
+const fechaNicaragua = (valor) => {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Managua", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date(valor));
+  const parte = (tipo) => partes.find((p) => p.type === tipo)?.value;
+  return `${parte("year")}-${parte("month")}-${parte("day")}`;
+};
+
+const solicitarFechaMiami = (actual, mostrarToast) => {
+  const hoy = fechaNicaragua(new Date());
+  const fechaInicial = (actual ? fechaNicaragua(actual) : hoy).split("-").reverse().join("-");
+  const fecha = window.prompt("Fecha de recepción en Miami (DD-MM-AAAA):", fechaInicial);
+  if (fecha === null) return null;
+  const formatoValido = /^\d{2}-\d{2}-\d{4}$/.test(fecha);
+  const fechaISO = formatoValido ? fecha.split("-").reverse().join("-") : "";
+  const fechaValida = formatoValido && !Number.isNaN(Date.parse(fechaISO + "T12:00:00Z")) && new Date(fechaISO + "T12:00:00Z").toISOString().slice(0, 10) === fechaISO;
+  if (!fechaValida || fechaISO > hoy) {
+    mostrarToast("Ingresa una fecha válida en formato DD-MM-AAAA, sin superar el día de hoy.", "warning");
+    return null;
+  }
+  return fechaISO + "T12:00:00-06:00";
+};
+
 export default function TrackingsActivos({ configOperativa, prealertas, envios = [], clientes = [], proveedores = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos, onNavigate }) {
   const feriados = useFeriadosNicaragua();
   const [busqueda, setBusqueda] = useState("");
@@ -99,7 +122,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
           (c?.codigo||"").toLowerCase().includes(q) ||
           (c?.telefono||"").toLowerCase().includes(q);
       });
-  }, [prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor, filtroPlazo]);
+  }, [prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor, filtroPlazo, configOperativa]);
 
   const actualizarCampo = async (t, campo, valor, fechaMiami) => {
     try {
@@ -107,6 +130,18 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
       await cargarDatos();
     } catch (err) {
       mostrarToast(err.message || "No se pudo actualizar.", "error");
+    }
+  };
+
+  const editarFechaMiami = async (t) => {
+    const fecha = solicitarFechaMiami(t.fechaMiami, mostrarToast);
+    if (!fecha) return;
+    try {
+      await actualizarTracking({ tracking:t, field:"fechaMiami", value:fecha, auth });
+      await cargarDatos();
+      mostrarToast("Fecha de recepción actualizada.");
+    } catch (err) {
+      mostrarToast(err.message || "No se pudo actualizar la fecha.", "error");
     }
   };
 
@@ -169,18 +204,8 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
     }
     let fechaMiami;
     if (nuevoEstado === "Miami" && t.estado !== "Miami") {
-      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Managua", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-      const fechaInicial = (t.fechaMiami ? t.fechaMiami.slice(0, 10) : hoy).split("-").reverse().join("-");
-      const fecha = window.prompt("Fecha de llegada al almacén de Miami (DD-MM-AAAA):", fechaInicial);
-      if (fecha === null) return;
-      const formatoValido = /^\d{2}-\d{2}-\d{4}$/.test(fecha);
-      const fechaISO = formatoValido ? fecha.split("-").reverse().join("-") : "";
-      const fechaValida = formatoValido && !Number.isNaN(Date.parse(fechaISO + "T12:00:00Z")) && new Date(fechaISO + "T12:00:00Z").toISOString().slice(0, 10) === fechaISO;
-      if (!fechaValida || fechaISO > hoy) {
-        mostrarToast("Ingresa una fecha válida en formato DD-MM-AAAA, sin superar el día de hoy.", "warning");
-        return;
-      }
-      fechaMiami = fechaISO + "T12:00:00-06:00";
+      fechaMiami = solicitarFechaMiami(t.fechaMiami, mostrarToast);
+      if (!fechaMiami) return;
     }
     await actualizarCampo(t, "estado", nuevoEstado, fechaMiami);
   };
@@ -257,12 +282,12 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
 
     <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. La fecha estimada y las alertas internas se calculan desde que se marca Recibido en Miami.</small>
 
-    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
+    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} editarFechaMiami={editarFechaMiami} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
     {pendientePeso&&<ModalRegistrarPeso tracking={pendientePeso.tracking} nuevoEstado={pendientePeso.nuevoEstado} guardando={guardandoPeso} onConfirmar={confirmarPesoYContinuar} onCancelar={()=>setPendientePeso(null)}/>} 
   </div>;
 }
 
-function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, actualizarCampo, corregirTipo, manejarBlurPeso, eliminar, onNavigate }) {
+function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, editarFechaMiami, actualizarCampo, corregirTipo, manejarBlurPeso, eliminar, onNavigate }) {
   const [expandido,setExpandido]=useState(false);
   const c=t.vinculacion?.cliente;
   const nombreMostrar=c?.nombre||t.cliente;
@@ -300,8 +325,12 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, act
 
     {expandido&&<div className="mt-8" style={{borderTop:"1px solid var(--border)",paddingTop:10}}>
       <div className="page-title" style={{margin:"0 0 4px"}}><small>{t.fecha}</small>{!vinculado&&<button className="btn btn-danger" onClick={()=>eliminar(t)}>Eliminar</button>}</div>
-      {deadline&&<div className="info-box mt-8" style={{background:deadline.estadoDeadline==="vencido"?"var(--danger-soft)":deadline.estadoDeadline==="proximo"?"var(--warning-soft)":"var(--success-soft)",color:deadline.estadoDeadline==="vencido"?"var(--danger)":deadline.estadoDeadline==="proximo"?"var(--warning)":"var(--success)"}}><b>Fecha estimada de entrega:</b> {formatoFechaEstimada(deadline)} · {textoEstado}. Cálculo desde recepción en Miami el {new Date(t.fechaMiami).toLocaleDateString("es-NI")}.</div>}
-      <PipelineProgress estado={t.estado} destino={t.destino} tipoEnvio={t.tipoEnvio} auditLog={auditLog} registroCodigo={t.tracking||t.almacenId}/>
+      {deadline&&<div className="info-box mt-8" style={{background:deadline.estadoDeadline==="vencido"?"var(--danger-soft)":deadline.estadoDeadline==="proximo"?"var(--warning-soft)":"var(--success-soft)",color:deadline.estadoDeadline==="vencido"?"var(--danger)":deadline.estadoDeadline==="proximo"?"var(--warning)":"var(--success)"}}><b>Fecha estimada de entrega:</b> {formatoFechaEstimada(deadline)} · {textoEstado}. Cálculo desde recepción en Miami el {fechaNicaragua(t.fechaMiami).split("-").reverse().join("/")}.</div>}
+      <div className="mt-8" style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <span>Fecha de recepción en Miami: <b>{t.fechaMiami ? fechaNicaragua(t.fechaMiami).split("-").reverse().join("/") : "Sin registrar"}</b></span>
+        <button type="button" className="btn btn-ghost" onClick={()=>editarFechaMiami(t)}>{t.fechaMiami ? "Editar" : "Registrar fecha"}</button>
+      </div>
+      <PipelineProgress estado={t.estado} destino={t.destino} tipoEnvio={t.tipoEnvio} auditLog={auditLog} registroCodigo={t.tracking||t.almacenId} fechaMiami={t.fechaMiami}/>
       {vinculado&&<div className="info-box mt-8"><ReceiptText size={15} style={{verticalAlign:"-3px",marginRight:5}}/>Este paquete pertenece al recibo <b>{t.recibo?.numero || t.envioId}</b>. Para mantener todos los paquetes sincronizados, cambia el estado desde <button type="button" className="inline-navigation-link" onClick={()=>onNavigate?.("paqueteria","lista")}>Recibos</button>.</div>}
       {esperandoPago&&!vinculado&&<div className="info-box mt-8">Esperando pago al proveedor para poder avanzar. Ir a <button type="button" className="inline-navigation-link" onClick={()=>onNavigate?.("finanzas","proveedores")}>Proveedores</button>.</div>}
       <div className="tracking-detail-actions mt-8">
