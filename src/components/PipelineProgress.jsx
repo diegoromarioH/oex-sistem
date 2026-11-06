@@ -46,7 +46,7 @@ function construirFechasPorPaso({ auditLog, registroCodigo, pasos, idxActual }) 
   return mapa;
 }
 
-export default function PipelineProgress({ estado, destino, tipoEnvio, auditLog, registroCodigo }) {
+export default function PipelineProgress({ estado, destino, tipoEnvio, auditLog, registroCodigo, fechaMiami }) {
   const pasos = estadosPorDestino(destino);
   const idxActual = pasos.indexOf(estado);
   const viewportRef = useRef(null);
@@ -65,6 +65,7 @@ export default function PipelineProgress({ estado, destino, tipoEnvio, auditLog,
   if (idxActual === -1) return null;
 
   const fechasPorPaso = construirFechasPorPaso({ auditLog, registroCodigo, pasos, idxActual });
+  if (fechaMiami) fechasPorPaso.Miami = new Date(fechaMiami).toLocaleDateString("es-NI", { timeZone: "America/Managua", day: "2-digit", month: "2-digit" });
 
   return (
     <div className="pipeline-mobile-shell">

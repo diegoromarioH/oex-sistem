@@ -60,7 +60,18 @@ const umbralAlertaPorTipo = (tipoEnvio = "") => {
 
 export const calcularDeadlineTracking = (tracking, feriados = [], hoy = new Date(), tiemposEntrega = PROMESAS_DEFAULT) => {
   const promesa = promesaPorDestinoTipo(tracking?.destino, tracking?.tipoEnvio, tiemposEntrega);
-  const inicio = fechaLocal(tracking?.fechaMiami);
+  const fechaMiami = tracking?.fechaMiami;
+  let inicio = null;
+  if (fechaMiami) {
+    const instante = new Date(fechaMiami);
+    if (!Number.isNaN(instante.getTime())) {
+      const partes = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Managua", year: "numeric", month: "2-digit", day: "2-digit"
+      }).formatToParts(instante);
+      const valor = (tipo) => Number(partes.find((p) => p.type === tipo)?.value);
+      inicio = new Date(valor("year"), valor("month") - 1, valor("day"));
+    }
+  }
   if (!promesa || !inicio) return null;
   const fechaMin = sumarDiasHabiles(inicio, promesa[0], feriados);
   const fechaMax = sumarDiasHabiles(inicio, promesa[1], feriados);
