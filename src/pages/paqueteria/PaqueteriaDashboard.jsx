@@ -3,7 +3,7 @@
 // y tipo, libras activas/históricas y resumen de recibos activos. Los
 // trackings y los recibos se cuentan por separado para no duplicar paquetes.
 import { useMemo, useState } from "react";
-import { Bell, ChevronDown, Package, Receipt } from "lucide-react";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import "../../styles/PaqueteriaDashboard.css";
 import { numero } from "../../utils/numero";
 import { PIPELINE_MANAGUA, PIPELINE_OMETEPE, esPendienteDeConfirmar } from "../../utils/estadosEnvio";
@@ -83,6 +83,7 @@ const PanelResumen = ({ titulo, subtitulo, destacado, destacadoDetalle, destacad
 );
 
 export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos }) {
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [mostrarResumen, setMostrarResumen] = useState(false);
   const [filtroDestino, setFiltroDestino] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState(null);
@@ -229,13 +230,12 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
     <div className="paqueteria-dashboard">
       <section className="paqueteria-movil-resumen card" aria-label="Resumen de Paquetería">
         <div className="paqueteria-movil-metricas">
-          <div><Package size={17} aria-hidden="true" /><strong>{trackingsActivos.length}</strong><small>Trackings activos</small></div>
-          <div><Receipt size={17} aria-hidden="true" /><strong>{resumenRecibos.total}</strong><small>Recibos activos</small></div>
+          <div><strong>{trackingsActivos.length}</strong><small>Trackings activos</small></div>
+          <div><strong>{resumenRecibos.total}</strong><small>Recibos activos</small></div>
+          <button type="button" className="paqueteria-prealertas-toggle" aria-expanded={mostrarPrealertas} onClick={() => setMostrarPrealertas(v => !v)}>
+            <strong>{pendientesConfirmar.length}</strong><small>Prealertas pendientes</small>
+          </button>
         </div>
-        <button type="button" className="btn btn-ghost paqueteria-prealertas-toggle" aria-expanded={mostrarPrealertas} onClick={() => setMostrarPrealertas(v => !v)}>
-          <Bell size={17} aria-hidden="true" />
-          <span>Prealertas pendientes</span><b>{pendientesConfirmar.length}</b>
-        </button>
         <button type="button" className="btn btn-ghost paqueteria-resumen-toggle" aria-expanded={mostrarResumen} aria-controls="resumen-detallado" onClick={() => setMostrarResumen(v => !v)}>
           {mostrarResumen ? "Ocultar desglose" : "Ver peso y desglose"} <ChevronDown size={17} aria-hidden="true" />
         </button>
@@ -309,21 +309,26 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
         </div>
       )}
 
-      <div className="card">
+      <div className="card paqueteria-recibos">
         <div className="page-title" style={{ margin: 0 }}>
           <h3>Recibos {filtroEstado ? `· ${filtroEstado}` : soloActivos ? "activos" : "(todos)"}</h3>
           <div className="segment paqueteria-filtros">
             <input className="input input-sm paqueteria-buscar" aria-label="Buscar recibo por cliente" placeholder="Buscar por nombre" value={busquedaRecibo} onChange={(e) => setBusquedaRecibo(e.target.value)} />
-            <select className="input input-sm" aria-label="Filtrar por pago" value={filtroPago} onChange={(e) => setFiltroPago(e.target.value)}><option value="">Pagados y no pagados</option><option value="pagado">Pagados</option><option value="pendiente">No pagados</option></select>
-            <select className="input input-sm" aria-label="Filtrar por estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-              <option value="">Filtrar por estado…</option>
-              {TODOS_LOS_ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
-            </select>
-            <label className="stack-gap-sm" style={{ display: "flex", alignItems: "center", gap: 6, flexDirection: "row" }}>
-              <input type="checkbox" checked={soloActivos} disabled={!!filtroEstado} onChange={(e) => setSoloActivos(e.target.checked)} />
-              <small>Solo activos (no entregados)</small>
-            </label>
-            {hayFiltrosActivos && <button className="btn btn-ghost" onClick={limpiarFiltros}>Limpiar filtros</button>}
+            <button type="button" className="btn btn-ghost paqueteria-filtros-toggle" aria-expanded={mostrarFiltros} aria-controls="paqueteria-filtros-extra" onClick={() => setMostrarFiltros(v => !v)}>
+              <SlidersHorizontal size={16} aria-hidden="true" /> Filtros
+            </button>
+            <div id="paqueteria-filtros-extra" className="paqueteria-filtros-extra" data-visible-movil={mostrarFiltros}>
+              <select className="input input-sm" aria-label="Filtrar por pago" value={filtroPago} onChange={(e) => setFiltroPago(e.target.value)}><option value="">Pagados y no pagados</option><option value="pagado">Pagados</option><option value="pendiente">No pagados</option></select>
+              <select className="input input-sm" aria-label="Filtrar por estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+                <option value="">Filtrar por estado…</option>
+                {TODOS_LOS_ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
+              </select>
+              <label className="stack-gap-sm" style={{ display: "flex", alignItems: "center", gap: 6, flexDirection: "row" }}>
+                <input type="checkbox" checked={soloActivos} disabled={!!filtroEstado} onChange={(e) => setSoloActivos(e.target.checked)} />
+                <small>Solo activos (no entregados)</small>
+              </label>
+              {hayFiltrosActivos && <button className="btn btn-ghost" onClick={limpiarFiltros}>Limpiar filtros</button>}
+            </div>
           </div>
         </div>
 

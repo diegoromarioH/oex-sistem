@@ -134,7 +134,12 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 9px;
   }
-  .recibo-identidad { grid-column: 1 / -1; }
+  .recibo-operativo { gap: 7px; padding: 9px; }
+  .recibo-identidad { grid-column: 1; grid-row: 1; }
+  .recibo-estados { grid-column: 1 / -1; grid-row: 2; }
+  .recibo-estados small { flex-basis: auto; }
+  .recibo-importe { grid-column: 2; grid-row: 1; max-width: 120px; }
+  .recibo-icono { display: none; }
   .recibo-vistas .nav-btn { padding-inline: 7px; }
   .recibo-acciones > .btn { width: auto; }
 }
