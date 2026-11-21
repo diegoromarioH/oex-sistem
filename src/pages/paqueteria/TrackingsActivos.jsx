@@ -8,6 +8,7 @@ import { numero } from "../../utils/numero";
 import { calcularDeadlineTracking, formatoFechaEstimada } from "../../utils/deadlinesEntrega";
 import { useFeriadosNicaragua } from "../../hooks/useFeriadosNicaragua";
 import PipelineProgress from "../../components/PipelineProgress";
+import ResumenRecibo from "./ResumenRecibo";
 import ModalRegistrarPeso from "../../components/ModalRegistrarPeso";
 import "../../styles/TrackingsActivos.css";
 
@@ -85,44 +86,82 @@ export default function TrackingsActivos({ registroId, configOperativa, prealert
 
   const proveedoresAduana = useMemo(() => proveedores.filter((p) => p.tipo === "Aduana / Flete"), [proveedores]);
 
-  const estadosDisponibles = useMemo(() => {
-    const estados = prealertas
-      .filter((t) => !esPendienteDeConfirmar(t) && t.estado !== "Entregado")
-      .map((t) => t.estado)
-      .filter(Boolean);
-    return [...new Set(estados)].sort((a, b) => a.localeCompare(b, "es"));
-  }, [prealertas]);
+  const [conRecibo, setConRecibo] = useState(() =>
+    registroId != null && prealertas.some((tracking) => tracking.id === registroId && tracking.envioId != null && envios.some((envio) => String(envio.id) === String(tracking.envioId)))
+  );
 
-  const activos = useMemo(() => {
-    const q = busqueda.toLowerCase().trim();
-    return prealertas
-      .filter((t) => registroId == null ? !esPendienteDeConfirmar(t) && t.estado !== "Entregado" : t.id === registroId)
-      .map((t) => ({
-        ...t,
-        vinculacion: vincularCliente(t, clientes),
-        proveedorAduana: proveedores.find((p) => String(p.id) === String(t.proveedorAduanaId)) || null,
-        recibo: t.envioId ? envios.find((e) => String(e.id) === String(t.envioId)) || null : null,
-        deadline: calcularDeadlineTracking(t, feriados, new Date(), configOperativa?.tiemposEntrega)
-      }))
-      .filter((t) => filtroEstado === "Todos" || t.estado === filtroEstado)
-      .filter((t) => filtroTipo === "Todos" || t.tipoEnvio === filtroTipo)
-      .filter((t) => filtroDestino === "Todos" || t.destino === filtroDestino)
-      .filter((t) => filtroProveedor === "Todos" || String(t.proveedorAduanaId) === String(filtroProveedor))
-      .filter((t) => filtroPlazo === "Todos" || t.deadline?.estadoDeadline === filtroPlazo)
-      .filter((t) => {
-        const c = t.vinculacion.cliente;
-        return !q ||
-          (t.cliente||"").toLowerCase().includes(q) ||
-          (t.clienteCodigo||"").toLowerCase().includes(q) ||
-          (t.tracking||"").toLowerCase().includes(q) ||
-          (t.almacenId||"").toLowerCase().includes(q) ||
-          (t.proveedorAduana?.nombre||"").toLowerCase().includes(q) ||
-          (t.recibo?.numero||"").toLowerCase().includes(q) ||
-          (c?.nombre||"").toLowerCase().includes(q) ||
-          (c?.codigo||"").toLowerCase().includes(q) ||
-          (c?.telefono||"").toLowerCase().includes(q);
-      });
-  }, [registroId, prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor, filtroPlazo, configOperativa]);
+  const { paquetes, grupos } = useMemo(() => {
+    const porRecibo = new Map(envios.map((envio) => [String(envio.id), { envio, trackings: [] }]));
+    const sinRecibo = [];
+    for (const tracking of prealertas) {
+      const grupo = porRecibo.get(String(tracking.envioId));
+      if (grupo) {
+        grupo.trackings.push(tracking);
+      } else if (tracking.id === registroId || (!esPendienteDeConfirmar(tracking) && tracking.estado !== "Entregado")) {
+        sinRecibo.push(tracking);
+      }
+    }
+    return {
+      paquetes: sinRecibo,
+      grupos: [...porRecibo.values()]
+        .filter(({ envio }) => envio.estado !== "Entregado")
+        .map(({ envio, trackings }) => ({
+          envio,
+          trackings,
+          historicos: (envio.trackings || []).filter((guardado) => !trackings.some((actual) => {
+            if (guardado.id != null && String(actual.id) === String(guardado.id)) return true;
+            const codigo = guardado.tracking || guardado.codigo;
+            return codigo ? actual.tracking === codigo : guardado.almacenId && actual.almacenId === guardado.almacenId;
+          }))
+        }))
+    };
+  }, [envios, prealertas, registroId]);
+
+  const prepararTracking = (tracking) => ({
+    ...tracking,
+    vinculacion: vincularCliente(tracking, clientes),
+    proveedorAduana: proveedoresAduana.find((proveedor) => String(proveedor.id) === String(tracking.proveedorAduanaId)),
+    deadline: calcularDeadlineTracking(tracking, feriados, new Date(), configOperativa?.tiemposEntrega)
+  });
+
+  const q = busqueda.trim().toLowerCase();
+  const coincideTexto = (campos) => !q || campos.some((valor) => String(valor ?? "").toLowerCase().includes(q));
+  const coincideTracking = (tracking, coincideRecibo = false) => {
+    const cliente = tracking.vinculacion.cliente;
+    return (filtroTipo === "Todos" || tracking.tipoEnvio === filtroTipo) &&
+      (filtroProveedor === "Todos" || String(tracking.proveedorAduanaId) === filtroProveedor) &&
+      (filtroPlazo === "Todos" || tracking.deadline?.estadoDeadline === filtroPlazo) &&
+      (coincideRecibo || coincideTexto([
+        tracking.tracking, tracking.codigo, tracking.almacenId, tracking.cliente, tracking.clienteCodigo,
+        tracking.proveedorAduana?.nombre, cliente?.nombre, cliente?.codigo, cliente?.telefono
+      ]));
+  };
+
+  const coincideUbicacion = ({ estado, destino }) =>
+    (filtroEstado === "Todos" || estado === filtroEstado) && (filtroDestino === "Todos" || destino === filtroDestino);
+
+  const estadosDisponibles = [...new Set([...paquetes.map((t) => t.estado), ...grupos.map(({ envio }) => envio.estado)].filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "es"));
+
+  const activos = paquetes
+    .filter((tracking) => (registroId == null || tracking.id === registroId) && coincideUbicacion(tracking))
+    .map(prepararTracking)
+    .filter((tracking) => coincideTracking(tracking));
+
+  const recibosActivos = grupos.filter(({ envio, trackings, historicos }) => {
+    if (registroId != null && !trackings.some((tracking) => tracking.id === registroId)) return false;
+    if (!coincideUbicacion(envio)) return false;
+    const datosRecibo = coincideTexto([envio.numero, envio.cliente, envio.clienteCodigo, envio.contacto]);
+    const paquetesRecibo = [
+      ...trackings,
+      ...historicos.map((tracking) => ({ ...tracking, tipoEnvio: tracking.tipoEnvio || envio.tipoEnvio }))
+    ];
+    if (!paquetesRecibo.length) {
+      return datosRecibo && filtroProveedor === "Todos" && filtroPlazo === "Todos" &&
+        (filtroTipo === "Todos" || envio.tipoEnvio === filtroTipo);
+    }
+    return paquetesRecibo.some((tracking) => coincideTracking(prepararTracking(tracking), datosRecibo));
+  });
 
   const actualizarCampo = async (t, campo, valor, fechaMiami) => {
     try {
@@ -251,18 +290,45 @@ export default function TrackingsActivos({ registroId, configOperativa, prealert
     catch(err){mostrarToast(err.message||"No se pudo eliminar.","error");}
   };
 
+  const renderTracking = (tracking, recibo) => (
+    <FilaTrackingActivo
+      key={tracking.id}
+      t={{ ...tracking, recibo }}
+      auditLog={auditLog}
+      facturasProveedor={facturasProveedor}
+      cambiarEstado={cambiarEstado}
+      editarFechaMiami={editarFechaMiami}
+      actualizarCampo={actualizarCampo}
+      corregirTipo={corregirTipo}
+      manejarBlurPeso={manejarBlurPeso}
+      eliminar={eliminar}
+      onNavigate={onNavigate}
+      abiertoInicial={registroId === tracking.id}
+    />
+  );
+
   return <div className="card tracking-activos-card">
     <div className="tracking-activos-header">
       <div>
-        <div className="tracking-activos-title"><h3>Envíos activos</h3><span className="tracking-count">{activos.length}</span></div>
-        <small className="tracking-help">Busca por tracking, recibo, cliente, proveedor o ID de almacén. Puedes combinar todos los filtros.</small>
+        <div className="tracking-activos-title"><h3>Envíos activos</h3><span className="tracking-count">{conRecibo ? recibosActivos.length : activos.length}</span></div>
+
       </div>
     </div>
 
+    {registroId == null && (
+      <div className="recibo-vistas" role="group" aria-label="Envíos por recibo">
+        <button type="button" className="nav-btn" aria-pressed={!conRecibo} onClick={() => setConRecibo(false)}>
+          <Package size={16} aria-hidden="true" /> Sin recibo <span>{activos.length}</span>
+        </button>
+        <button type="button" className="nav-btn" aria-pressed={conRecibo} onClick={() => setConRecibo(true)}>
+          <ReceiptText size={16} aria-hidden="true" /> Con recibo <span>{recibosActivos.length}</span>
+        </button>
+      </div>
+    )}
     <div className="tracking-toolbar">
       <div style={{position:"relative"}}>
         <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-faint)",pointerEvents:"none"}}/>
-        <input className="input tracking-search" style={{paddingLeft:35}} placeholder="Buscar tracking, cliente, recibo..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}/>
+        <input className="input tracking-search" style={{paddingLeft:35}} aria-label="Buscar tracking, cliente o recibo" placeholder="Buscar tracking, cliente o recibo" value={busqueda} onChange={e=>setBusqueda(e.target.value)}/>
       </div>
 
       <div className="tracking-filter-group" aria-label="Filtrar por tipo de envío">
@@ -280,15 +346,44 @@ export default function TrackingsActivos({ registroId, configOperativa, prealert
       </>
     </div>
 
-    <small className="tracking-help">Los trackings con recibo siguen visibles para poder buscarlos. Su estado se cambia desde el recibo y se aplica a todos los paquetes del grupo. La fecha estimada y las alertas internas se calculan desde que se marca Recibido en Miami.</small>
-
-    <div className="list mt-8">{activos.map(t=><FilaTrackingActivo key={t.id} t={t} auditLog={auditLog} facturasProveedor={facturasProveedor} cambiarEstado={cambiarEstado} editarFechaMiami={editarFechaMiami} actualizarCampo={actualizarCampo} corregirTipo={corregirTipo} manejarBlurPeso={manejarBlurPeso} eliminar={eliminar} onNavigate={onNavigate}/>)}{activos.length===0&&<div className="tracking-empty"><b>No hay envíos con estos filtros.</b><p>Prueba cambiando proveedor, tipo, destino, estado o búsqueda.</p></div>}</div>
+    <div className="list recibo-resultados" key={conRecibo ? "con-recibo" : "sin-recibo"}>
+      {conRecibo ? recibosActivos.map(({ envio, trackings, historicos }) => (
+        <article className="recibo-operativo" key={envio.id}>
+          <ResumenRecibo envio={envio} paquetes={trackings.length + historicos.length} />
+          <button type="button" className="btn btn-primary recibo-abrir" onClick={() => onNavigate("paqueteria", "lista", envio.id)}>Ver recibo</button>
+          {(trackings.length > 0 || historicos.length > 0) && (
+            <details className="recibo-paquetes" open={registroId != null}>
+              <summary>Ver paquetes ({trackings.length + historicos.length})</summary>
+              <div className="list recibo-panel">
+                {trackings.map((tracking) => renderTracking(prepararTracking(tracking), envio))}
+                {historicos.map((tracking, index) => (
+                    <div className="mini-tracking-row" key={index}>
+                      <b>{tracking.tracking || tracking.codigo || tracking.almacenId || "Sin código"}</b>
+                      <small>{tracking.tipoEnvio || envio.tipoEnvio} · {numero(tracking.peso).toFixed(1)} lb</small>
+                    </div>
+                  ))}
+              </div>
+            </details>
+          )}
+        </article>
+      )) : activos.map((tracking) => renderTracking(tracking))}
+      {(conRecibo ? recibosActivos.length : activos.length) === 0 && (
+        <div className="tracking-empty">
+          <b>{conRecibo ? "No hay recibos activos con estos filtros." : "No hay trackings sin recibo con estos filtros."}</b>
+          {q && registroId == null && (conRecibo ? activos.length : recibosActivos.length) > 0 && (
+            <button type="button" className="btn mt-8" onClick={() => setConRecibo(!conRecibo)}>
+              {conRecibo ? "Ver coincidencias sin recibo" : "Ver coincidencias con recibo"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
     {pendientePeso&&<ModalRegistrarPeso tracking={pendientePeso.tracking} nuevoEstado={pendientePeso.nuevoEstado} guardando={guardandoPeso} onConfirmar={confirmarPesoYContinuar} onCancelar={()=>setPendientePeso(null)}/>} 
   </div>;
 }
 
-function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, editarFechaMiami, actualizarCampo, corregirTipo, manejarBlurPeso, eliminar, onNavigate }) {
-  const [expandido,setExpandido]=useState(false);
+function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, editarFechaMiami, actualizarCampo, corregirTipo, manejarBlurPeso, eliminar, onNavigate, abiertoInicial = false }) {
+  const [expandido,setExpandido]=useState(abiertoInicial);
   const c=t.vinculacion?.cliente;
   const nombreMostrar=c?.nombre||t.cliente;
   const codigoMostrar=c?.codigo||t.clienteCodigo||"Sin registrar";
@@ -301,7 +396,7 @@ function FilaTrackingActivo({ t, auditLog, facturasProveedor, cambiarEstado, edi
   const vinculado=Boolean(t.envioId);
 
   return <div className="row-card tracking-item" style={{flexDirection:"column",alignItems:"stretch"}}>
-    <button type="button" className="page-title tracking-item-head" style={{margin:0,width:"100%",background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0}} onClick={()=>setExpandido(v=>!v)}>
+    <button type="button" className="page-title tracking-item-head" style={{margin:0,width:"100%",background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0}} aria-expanded={expandido} onClick={()=>setExpandido(v=>!v)}>
       <div className="tracking-item-main">
         <div className="tracking-item-code">
           <b>{t.tracking||t.almacenId||"Sin código"}</b>

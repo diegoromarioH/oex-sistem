@@ -8,10 +8,15 @@ import { confirmarAccionCritica } from "../../services/coreService";
 import { estadosPorDestino, badgeEstado, esListoParaRetirar } from "../../utils/estadosEnvio";
 import Timeline from "../../components/Timeline";
 import FormularioSaldarEnvio from "../../components/FormularioSaldarEnvio";
+import ResumenRecibo from "./ResumenRecibo";
 import PipelineProgress from "../../components/PipelineProgress";
 
-export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, mostrarPipeline = true, compacto = false }) {
+export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, mostrarPipeline = true }) {
   const [expandido, setExpandido] = useState(false);
+  const tieneSaldo = numero(envio.saldo) > 0;
+  const listo = esListoParaRetirar(envio.estado);
+  const mostrarCobro = listo || (envio.estado === "Entregado" && tieneSaldo);
+  const etiquetaCobro = tieneSaldo ? "Saldar y marcar retirado" : "Marcar retirado";
   const telefono = limpiarTelefono(envio.contacto);
   const whatsappUrl = /^[1-9][0-9]{7,14}$/.test(telefono) ? `https://wa.me/${telefono}` : null;
   const mensajeEstado = `Hola ${envio.cliente}, tu envío ${envio.numero} está en estado: ${envio.estado}.`;
@@ -90,49 +95,37 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
   const estadosRecibo = (idxActual >= idxBodega ? pipeline.slice(Math.max(idxBodega, 0)) : pipeline).filter((e) => e !== "Entregado");
 
   return (
-    <div className={`row-card recibo-item ${compacto ? "recibo-item--compacto" : ""}`} style={{ flexDirection: "column", alignItems: "stretch" }}>
-      <div className="page-title" style={{ margin: 0 }}>
-        <div>
-          <b>{envio.numero || "Sin cliente"}</b> <span className={`badge ${badgeEstado(envio.estado)}`}>{envio.estado}</span>{" "}
-          <span className={`badge ${numero(envio.saldo) <= 0.005 ? "badge-success" : "badge-warning"}`}>{numero(envio.saldo) <= 0.005 ? "Pagado" : "No pagado"}</span>{" "}
-          <span className="badge badge-neutral">{envio.tipoEnvio}</span>
-          <p>{envio.cliente || "Sin cliente"} · {envio.clienteCodigo || "Sin registrar"} · {envio.destino}</p>
-          <small>{envio.fecha}</small>
-        </div>
-        <div className="stack-gap-sm text-right">
-          <b>${numero(envio.total).toFixed(2)}</b>
-          <small>{numero(envio.totalLibras).toFixed(1)} lb</small>
-        </div>
-      </div>
-
+    <article className="recibo-operativo">
+      <ResumenRecibo envio={envio} />
       {mostrarPipeline && <PipelineProgress estado={envio.estado} destino={envio.destino} />}
-
-      <div className="segment mt-8 recibo-acciones-principales">
-        {envio.estado !== "Entregado" && (
-          <select className="input input-sm" value={envio.estado} onChange={(e) => cambiarEstado(e.target.value)}>
-            {estadosRecibo.map((e) => <option key={e} value={e}>{e}</option>)}
-          </select>
-        )}
-        <button className="btn" onClick={() => generarDetalleEnvio(envio, tarifas, empresa)}>PDF detalle</button>
-        {compacto && <button className="btn btn-ghost" onClick={() => setExpandido((v) => !v)}>{expandido ? "Cerrar detalles" : "Gestionar recibo"}</button>}
+      {mostrarCobro && <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} etiquetaBoton={etiquetaCobro} />}
+      <div className="recibo-acciones">
         {whatsappUrl && <a className="btn btn-whatsapp" href={`${whatsappUrl}?text=${encodeURIComponent(mensajeEstado)}`} target="_blank" rel="noreferrer">WhatsApp</a>}
-        {(!compacto || expandido) && <>
-        {whatsappUrl && esListoParaRetirar(envio.estado) && (
-          <div>
-            <button type="button" className="btn btn-primary" onClick={avisarListoParaRetirar}>Avisar listo para retirar</button>
-            <small style={{ display: "block" }}>Descarga el PDF y adjúntalo en WhatsApp.</small>
-          </div>
-        )}
-        <div style={{ flexBasis: "100%" }}>
-          <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />
-        </div>
-        {!compacto && <button className="btn btn-ghost" onClick={() => setExpandido((v) => !v)}>{expandido ? "Ocultar trackings" : `Ver trackings (${envio.trackings.length})`}</button>}
-        <button className="btn btn-danger" onClick={eliminar}>Eliminar</button>
-        </>}
+        <button type="button" className={`btn ${!mostrarCobro && envio.estado !== "Entregado" ? "btn-primary" : "btn-ghost"}`} aria-expanded={expandido} onClick={() => setExpandido((v) => !v)}>
+          {expandido ? "Cerrar detalles" : "Más"}
+        </button>
       </div>
 
       {expandido && (
-        <div className="mini-tracking-list">
+        <div className="recibo-panel">
+          <div className="recibo-acciones">
+            {envio.estado !== "Entregado" && (
+              <select className="input input-sm" aria-label="Estado del envío" value={envio.estado} onChange={(e) => cambiarEstado(e.target.value)}>
+                {!estadosRecibo.includes(envio.estado) && <option value={envio.estado}>{envio.estado}</option>}
+                {estadosRecibo.map((e) => <option key={e} value={e}>{e}</option>)}
+              </select>
+            )}
+            <button type="button" className="btn" onClick={() => generarDetalleEnvio(envio, tarifas, empresa)}>Descargar PDF</button>
+            {whatsappUrl && listo && <button type="button" className="btn" onClick={avisarListoParaRetirar} title="Descarga el PDF para adjuntarlo en WhatsApp">Avisar retiro y descargar PDF</button>}
+            {rol === "admin" && <button type="button" className="btn btn-danger" onClick={eliminar}>Eliminar</button>}
+          </div>
+          {!mostrarCobro && <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />}
+        </div>
+      )}
+
+      {expandido && (
+        <div className="mini-tracking-list recibo-panel">
+          <h4>Paquetes ({envio.trackings.length})</h4>
           {envio.trackings.map((t, i) => (
             <div className="mini-tracking-row" key={i}>
               <b>{t.tracking || t.codigo || "Sin código"}</b>
@@ -152,7 +145,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
         </div>
       )}
 
-      {(!compacto || expandido) && <Timeline auditLog={auditLog} modulo="Paquetería" registroCodigo={envio.numero} />}
-    </div>
+      {expandido && <Timeline auditLog={auditLog} modulo="Paquetería" registroCodigo={envio.numero} />}
+    </article>
   );
 }

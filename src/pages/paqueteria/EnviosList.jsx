@@ -31,7 +31,7 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
         (e.cliente || "").toLowerCase().includes(q) ||
         (e.numero || "").toLowerCase().includes(q) ||
         (e.clienteCodigo || "").toLowerCase().includes(q) ||
-        (e.trackings || []).some((t) => (t.codigo || "").toLowerCase().includes(q) || String(t.almacenId || "").toLowerCase().includes(q)))
+        (e.trackings || []).some((t) => String(t.codigo || t.tracking || "").toLowerCase().includes(q) || String(t.almacenId || "").toLowerCase().includes(q)))
     );
   }, [envios, busqueda, filtroEstado, filtroPago, filtroTipo, filtroDestino]);
 
@@ -59,7 +59,7 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
   return (
     <div className="card recibos-card">
       <div className="page-title recibos-title">
-        <div><h3>Todos los recibos</h3><small>{filtrados.length} de {envios.length} recibos</small></div>
+        <div><h3>Historial de recibos</h3><small>{filtrados.length} de {envios.length} recibos</small></div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{modoEstadoCuenta && <button className="btn btn-ghost" onClick={seleccionarPendientesVisibles}>Seleccionar pendientes</button>}<button className={`btn ${modoEstadoCuenta ? "btn-primary" : ""}`} onClick={alternarEstadoCuenta}>{modoEstadoCuenta ? "Cancelar estado de cuenta" : "Estado de cuenta"}</button>{modoEstadoCuenta && <button className="btn" disabled={!recibosSeleccionados.length} onClick={generarEstadoCuenta}>Generar ({recibosSeleccionados.length})</button>}<button className="btn recibos-exportar" onClick={() => exportarEnviosExcel(filtrados)}>Exportar Excel</button></div>
       </div>
 
@@ -79,7 +79,7 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
         </div>
 
         <div className="tracking-filter-group recibos-pago" aria-label="Filtrar recibos por pago">
-          {[["", "Todos"], ["pagado", "Pagados"], ["pendiente", "No pagados"]].map(([valor, etiqueta]) => (
+          {[["", "Todos"], ["pagado", "Pagados"], ["pendiente", "Saldo pendiente"]].map(([valor, etiqueta]) => (
             <button key={etiqueta} type="button" className={`tracking-filter-btn ${filtroPago === valor ? "active" : ""}`} onClick={() => setFiltroPago(valor)}>{etiqueta}</button>
           ))}
         </div>
@@ -94,7 +94,7 @@ export default function EnviosList({ envios, auditLog, rol, tarifas, empresa, cu
 
       <div className="list recibos-list">
         {filtrados.map((e) => (
-          <div key={e.id} style={{ display: "grid", gridTemplateColumns: modoEstadoCuenta && numero(e.saldo) > 0.005 ? "28px minmax(0,1fr)" : "1fr", gap: 8, alignItems: "start" }}>{modoEstadoCuenta && numero(e.saldo) > 0.005 && <input type="checkbox" aria-label={`Seleccionar ${e.numero}`} checked={seleccionados.has(e.id)} onChange={() => toggleSeleccion(e.id)} style={{ marginTop: 18 }} />}<EnvioItem envio={e} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} mostrarPipeline={false} compacto /></div>
+          <div key={e.id} style={{ display: "grid", gridTemplateColumns: modoEstadoCuenta && numero(e.saldo) > 0.005 ? "28px minmax(0,1fr)" : "1fr", gap: 8, alignItems: "start" }}>{modoEstadoCuenta && numero(e.saldo) > 0.005 && <input type="checkbox" aria-label={`Seleccionar ${e.numero}`} checked={seleccionados.has(e.id)} onChange={() => toggleSeleccion(e.id)} style={{ marginTop: 18 }} />}<EnvioItem envio={e} auditLog={auditLog} rol={rol} tarifas={tarifas} empresa={empresa} cuentasDinero={cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} mostrarPipeline={false} /></div>
         ))}
         {filtrados.length === 0 && <p>No hay envíos que coincidan.</p>}
       </div>
