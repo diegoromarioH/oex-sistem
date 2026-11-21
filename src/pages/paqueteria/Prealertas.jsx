@@ -110,7 +110,7 @@ export default function Prealertas({ registroId, prealertas, clientes, proveedor
           <div style={{marginTop:12,textAlign:"right"}}><button className="btn btn-primary" onClick={()=>confirmar(t)}>Confirmar y pasar a Miami</button></div>
         </div>}
 
-        {estaEditando && <div className="mt-8" style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:10,padding:14}}><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10}}>
+        {estaEditando && <div className="mt-8" style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:10,padding:14}}><div className="form-grid">
           {!c&&<label style={{gridColumn:"1 / -1"}}>Vincular a cliente existente<select className="input" value={form.clienteId||""} onChange={e=>asignarCliente(clientes.find(c=>String(c.id)===e.target.value)||null)}><option value="">Cliente nuevo / sin vincular</option>{clientes.map(c=><option key={c.id} value={c.id}>{c.codigo} · {c.nombre} · {c.telefono||"Sin WhatsApp"}</option>)}</select><small>Si este cliente ya existe, selecciónalo aquí. Si es nuevo, deja esta opción y completa sus datos.</small></label>}
           <label>Nombre<input className="input" value={form.cliente} onChange={e=>{cambiar("cliente",e.target.value); cambiar("clienteId",null);}} /></label>
           <label>WhatsApp<input className="input" value={form.contacto} onChange={e=>cambiar("contacto",e.target.value)} /></label>

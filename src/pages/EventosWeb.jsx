@@ -95,7 +95,7 @@ export default function EventosWeb() {
         <section className="eventos-card eventos-recientes">
           <h2>Actividad reciente</h2>
           {eventos.length === 0 ? <p className="eventos-vacio">Los nuevos eventos aparecerán aquí.</p> : (
-            <div className="eventos-tabla-wrap">
+            <div className="eventos-tabla-wrap" tabIndex={0} role="region" aria-label="Tabla de eventos web">
               <table className="eventos-tabla">
                 <thead><tr><th>Evento</th><th>Página</th><th>Dispositivo</th><th>Fecha</th></tr></thead>
                 <tbody>

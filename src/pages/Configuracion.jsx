@@ -147,7 +147,7 @@ export default function Configuracion({ tarifas, setTarifas, configOperativa, se
 
   return (
     <div className="page">
-      <PageTitle title="Configuración" subtitle="Tarifas, empresa, apariencia y mantenimiento">
+      <PageTitle navigation title="Configuración" subtitle="Tarifas, empresa, apariencia y mantenimiento">
         <button className={`nav-btn ${vista === "tarifas" ? "active" : ""}`} onClick={() => cambiarVista("tarifas")}>Tarifas</button>
         <button className={`nav-btn ${vista === "empresa" ? "active" : ""}`} onClick={() => cambiarVista("empresa")}>Empresa y documentos</button>
         <button className={`nav-btn ${vista === "apariencia" ? "active" : ""}`} onClick={() => cambiarVista("apariencia")}>Apariencia</button>
