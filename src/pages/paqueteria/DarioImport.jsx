@@ -106,7 +106,7 @@ export default function DarioImport({ prealertas = [], envios = [], tarifas, aut
     <div className="panel dario-table-panel">
       <div className="dario-results"><strong>{filas.length}</strong> de {base.length} trackings</div>
       {cargando ? <p className="muted">Cargando sincronización…</p> : filas.length === 0 ? <div className="empty-state"><strong>No hay resultados con estos filtros.</strong><p>Prueba limpiando los filtros o actualizando desde Darío.</p></div> :
-      <div className="table-wrap"><table className="dario-table"><thead><tr><th>Tracking</th><th>Estado Darío</th><th>Estado OEX</th><th>Peso Darío</th><th>Peso OEX</th><th>Destino</th><th>Acciones</th></tr></thead><tbody>
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="Comparación de trackings"><table className="dario-table"><thead><tr><th>Tracking</th><th>Estado Darío</th><th>Estado OEX</th><th>Peso Darío</th><th>Peso OEX</th><th>Destino</th><th>Acciones</th></tr></thead><tbody>
         {filas.map((fila) => <tr key={fila.d.id} className={fila.tieneDiferencia ? "has-difference" : ""}>
           <td><strong>{fila.d.tracking_codigo}</strong>{fila.oex?.cliente && <small>{fila.oex.cliente}</small>}</td>
           <td><span className="badge badge-neutral">{fila.d.dario_estado || "—"}</span></td>

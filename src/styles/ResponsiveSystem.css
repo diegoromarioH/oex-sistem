@@ -218,3 +218,53 @@ table { max-width: 100%; }
     scroll-behavior: auto !important;
   }
 }
+
+.table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.sidebar-mobile-close { display: none; }
+
+@media (max-width: 860px) {
+  .sidebar-brand { padding-right: 58px; }
+  .sidebar-mobile-close {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .hamburger, .topbar-mini .btn,
+  .sidebar-modulo-btn, .sidebar-chevron, .sidebar-subitem {
+    min-height: 44px;
+  }
+
+  .hamburger, .topbar-mini .global-create-trigger { min-width: 44px; }
+  .global-search-results, .global-create-menu { max-height: calc(100dvh - var(--topbar-height) - 16px); overflow-y: auto; }
+}
+
+@media (max-width: 720px) {
+  .page-navigation .nav-btn, .recibos-toolbar .tracking-filter-btn { min-height: 44px; }
+  .form-grid > *, .tracking-row > *, .product-row > * { min-width: 0; }
+  .row-card .form-grid { flex-basis: 100%; }
+  .page input:not([type="checkbox"], [type="radio"]), .page select, .page textarea { min-width: 0 !important; }
+  .table-wrap, .eventos-tabla-wrap, .recomendaciones-tabla-wrap { overscroll-behavior-inline: contain; }
+  .table-wrap th, .table-wrap td { white-space: nowrap; }
+  .eventos-metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .evento-metrica { min-width: 0; flex-wrap: wrap; overflow-wrap: anywhere; }
+  .login-card .btn { min-height: 44px; }
+}
+
+@media (max-width: 360px) {
+  .topbar-mini { gap: 4px; padding-inline: 7px; }
+}

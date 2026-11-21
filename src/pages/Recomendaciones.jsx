@@ -216,7 +216,7 @@ export default function Recomendaciones({ rol, auth, mostrarToast }) {
 
     {cargando ? <div className="card muted">Cargando Socios OEX…</div> : filtrados.length === 0 ? (
       <div className="card recomendaciones-vacio"><Handshake size={34} /><b>No hay Socios OEX para mostrar</b><span>Agrega el primero o cambia los filtros.</span></div>
-    ) : <div className="recomendaciones-tabla-wrap card">
+    ) : <div className="recomendaciones-tabla-wrap card" tabIndex={0} role="region" aria-label="Tabla de recomendaciones">
       <table className="recomendaciones-tabla">
         <thead><tr><th>Socio OEX</th><th>Clientes</th><th>Estado</th><th>Ganancia</th><th>Tarifa promocional</th><th>Enlace</th><th aria-label="Acciones" /></tr></thead>
         <tbody>{filtrados.map(socio => {

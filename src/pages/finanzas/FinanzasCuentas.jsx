@@ -167,7 +167,7 @@ export default function FinanzasCuentas({ cuentasContables = [], cuentasDinero =
           </div>
         )}
 
-        <div className="mt-16" style={{ overflowX: "auto" }}>
+        <div className="mt-16 table-wrap" tabIndex={0} role="region" aria-label="Saldos por cuenta">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ textAlign: "left", borderBottom: "2px solid var(--border)" }}>

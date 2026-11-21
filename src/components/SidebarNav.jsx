@@ -1,4 +1,5 @@
 // src/components/SidebarNav.jsx
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const ChevronAbajo = ({ abierto }) => (
@@ -13,7 +14,7 @@ const ChevronColapsar = ({ colapsado }) => (
   </svg>
 );
 
-export default function SidebarNav({ modulos, vistaActiva, subvistaActiva, onNavigate, colapsado, onToggleColapso, abiertoMovil, brand, brandLabel }) {
+export default function SidebarNav({ modulos, vistaActiva, subvistaActiva, onNavigate, colapsado, onToggleColapso, abiertoMovil, onCloseMobile, brand, brandLabel }) {
   const [expandido, setExpandido] = useState(vistaActiva);
 
   useEffect(() => {
@@ -41,13 +42,19 @@ export default function SidebarNav({ modulos, vistaActiva, subvistaActiva, onNav
   };
 
   return (
-    <aside className={`sidebar ${colapsado ? "sidebar--colapsado" : ""} ${abiertoMovil ? "sidebar--abierta-movil" : ""}`}>
+    <aside id="menu-principal" onKeyDown={e => { if (abiertoMovil && e.key === "Escape") onCloseMobile(); }} className={`sidebar ${colapsado ? "sidebar--colapsado" : ""} ${abiertoMovil ? "sidebar--abierta-movil" : ""}`}>
       <button type="button" className="sidebar-brand" onClick={() => onNavigate("dashboard")}>
         {brand}
         {!colapsado && <b>{brandLabel}</b>}
       </button>
 
-      <nav className="sidebar-nav">
+      {abiertoMovil && (
+        <button type="button" id="cerrar-menu-movil" className="sidebar-mobile-close" onClick={onCloseMobile} aria-label="Cerrar menú">
+          <X size={20} aria-hidden="true" />
+        </button>
+      )}
+
+      <nav className="sidebar-nav" aria-label="Módulos">
         {modulos.map((m) => {
           const tieneSubmenu = m.submenu && m.submenu.length > 0;
           const activo = vistaActiva === m.id;

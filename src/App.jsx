@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useDatosOEX } from "./hooks/useDatosOEX";
 import { useTarifas } from "./hooks/useTarifas";
@@ -80,6 +80,22 @@ export default function App() {
   useEffect(() => { const media=window.matchMedia?.("(prefers-color-scheme: dark)"); if(!media)return; const cambio=e=>setTemaSistema(e.matches?"dark":"light"); media.addEventListener?.("change",cambio); return()=>media.removeEventListener?.("change",cambio); },[]);
   const temaResuelto=tema==="system"?temaSistema:tema;
   const [sidebarColapsado, setSidebarColapsado] = useState(() => localStorage.getItem("oex_sidebar_colapsado") === "1"); const [sidebarAbiertoMovil, setSidebarAbiertoMovil] = useState(false);
+  const botonMenu = useRef(null);
+  const cerrarMenuMovil = () => {
+    setSidebarAbiertoMovil(false);
+    requestAnimationFrame(() => botonMenu.current?.focus());
+  };
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 860px)");
+    const cerrarEnEscritorio = (evento) => {
+      if (!evento.matches) setSidebarAbiertoMovil(false);
+    };
+    media.addEventListener("change", cerrarEnEscritorio);
+    return () => media.removeEventListener("change", cerrarEnEscritorio);
+  }, []);
+  useEffect(() => {
+    if (sidebarAbiertoMovil) document.getElementById("cerrar-menu-movil")?.focus();
+  }, [sidebarAbiertoMovil]);
   const toggleSidebarColapsado = () => setSidebarColapsado(actual => { const nuevo = !actual; localStorage.setItem("oex_sidebar_colapsado", nuevo ? "1" : "0"); return nuevo; });
   const cambiarTema = nuevo => { setTema(nuevo); localStorage.setItem("oex_tema", nuevo); };
   if (cargandoAuth) return <div className="page">Verificando acceso…</div>;
@@ -89,9 +105,9 @@ export default function App() {
   const itemActivo = moduloActivo?.submenu?.find(item => item.subvista === subvistaActiva);
   const propsFinanzas = { pedidos:datos.pedidos, envios:datos.envios, gastos:datos.gastos, ingresos:datos.ingresos, clientes:datos.clientes, prealertas:datos.prealertas, proveedores:datos.proveedores, facturasProveedor:datos.facturasProveedor, cuentasContables:datos.cuentasContables, cuentasDinero:datos.cuentasDinero, balanceApertura:datos.balanceApertura, fechaApertura:datos.fechaApertura, configOperativa, empresa, rol, auth, mostrarToast, cargarDatos:datos.cargarDatos };
   return <div className="app-shell app-shell--sidebar" data-theme={temaResuelto} style={{ "--module-color": moduloActivo?.color }}>
-    {sidebarAbiertoMovil && <div className="sidebar-backdrop" onClick={() => setSidebarAbiertoMovil(false)} />}
-    <SidebarNav modulos={MODULOS} vistaActiva={vista} subvistaActiva={subvistaActiva} onNavigate={navegarA} colapsado={sidebarColapsado} onToggleColapso={toggleSidebarColapsado} abiertoMovil={sidebarAbiertoMovil} brand={<img src={logo} alt="OEX" />} brandLabel="OEX Sistema" />
-    <div className="main-column"><div className="topbar-mini"><button className="hamburger" onClick={() => setSidebarAbiertoMovil(true)} aria-label="Abrir menú"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 5h14M2 9h14M2 13h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg></button><nav className="current-location" aria-label="Ubicación actual"><button type="button" onClick={() => navegarA(vista)}>{moduloActivo?.label}</button>{itemActivo && <><ChevronRight size={14} aria-hidden="true" /><span>{itemActivo.label}</span></>}</nav><GlobalSearch clientes={datos.clientes} prealertas={datos.prealertas} envios={datos.envios} onNavigate={navegarA} /><GlobalCreateMenu onNavigate={navegarA} /><div className="segment topbar-account"><span className="badge badge-neutral">{usuarioActual?.nombre || usuarioActual?.email} · {rol}</span><button className="btn btn-ghost" onClick={logout}>Salir</button></div></div><div className="mobile-location" aria-label="Ubicación actual"><button type="button" onClick={() => navegarA(vista)}>{moduloActivo?.label}</button>{itemActivo && <><ChevronRight size={13} aria-hidden="true" /><span>{itemActivo.label}</span></>}</div>
+    {sidebarAbiertoMovil && <div className="sidebar-backdrop" onClick={cerrarMenuMovil} />}
+    <SidebarNav modulos={MODULOS} vistaActiva={vista} subvistaActiva={subvistaActiva} onNavigate={navegarA} colapsado={sidebarColapsado && !sidebarAbiertoMovil} onToggleColapso={toggleSidebarColapsado} abiertoMovil={sidebarAbiertoMovil} onCloseMobile={cerrarMenuMovil} brand={<img src={logo} alt="OEX" />} brandLabel="OEX Sistema" />
+    <div className="main-column" inert={sidebarAbiertoMovil}><div className="topbar-mini"><button ref={botonMenu} type="button" className="hamburger" aria-expanded={sidebarAbiertoMovil} aria-controls="menu-principal" onClick={() => setSidebarAbiertoMovil(true)} aria-label="Abrir menú"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 5h14M2 9h14M2 13h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg></button><nav className="current-location" aria-label="Ubicación actual"><button type="button" onClick={() => navegarA(vista)}>{moduloActivo?.label}</button>{itemActivo && <><ChevronRight size={14} aria-hidden="true" /><span>{itemActivo.label}</span></>}</nav><GlobalSearch clientes={datos.clientes} prealertas={datos.prealertas} envios={datos.envios} onNavigate={navegarA} /><GlobalCreateMenu onNavigate={navegarA} /><div className="segment topbar-account"><span className="badge badge-neutral">{usuarioActual?.nombre || usuarioActual?.email} · {rol}</span><button className="btn btn-ghost" onClick={logout}>Salir</button></div></div><div className="mobile-location" aria-label="Ubicación actual"><button type="button" onClick={() => navegarA(vista)}>{moduloActivo?.label}</button>{itemActivo && <><ChevronRight size={13} aria-hidden="true" /><span>{itemActivo.label}</span></>}</div>
       {vista === "dashboard" && <Dashboard pedidos={datos.pedidos} envios={datos.envios} gastos={datos.gastos} prealertas={datos.prealertas} proveedores={datos.proveedores} facturasProveedor={datos.facturasProveedor} configOperativa={configOperativa} empresa={empresa} cuentasDinero={datos.cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} setVista={setVista} irAPrealertas={irAPrealertas} />}
       {vista === "paqueteria" && <Paqueteria registroId={registroId} envios={datos.envios} prealertas={datos.prealertas} facturasProveedor={datos.facturasProveedor} auditLog={datos.auditLog} clientes={datos.clientes} proveedores={datos.proveedores} rol={rol} tarifas={tarifas} configOperativa={configOperativa} empresa={empresa} cuentasDinero={datos.cuentasDinero} auth={auth} mostrarToast={mostrarToast} cargarDatos={datos.cargarDatos} vistaInicial={subvistaPaqueteria} onNavigate={navegarA} />}
       {vista === "finanzas" && (
