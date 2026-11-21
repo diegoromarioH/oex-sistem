@@ -1,5 +1,6 @@
 // src/pages/paqueteria/EnvioItem.jsx
 import { useState } from "react";
+import { limpiarTelefono } from "../../utils/clientes";
 import { numero } from "../../utils/numero";
 import { actualizarTrackingEnvio, actualizarEstadoEnvio, eliminarEnvio } from "../../services/enviosService";
 import { generarDetalleEnvio } from "../../services/pdfService";
@@ -11,6 +12,9 @@ import PipelineProgress from "../../components/PipelineProgress";
 
 export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuentasDinero = [], auth, mostrarToast, cargarDatos, mostrarPipeline = true, compacto = false }) {
   const [expandido, setExpandido] = useState(false);
+  const telefono = limpiarTelefono(envio.contacto);
+  const whatsappUrl = /^[1-9][0-9]{7,14}$/.test(telefono) ? `https://wa.me/${telefono}` : null;
+  const mensajeEstado = `Hola ${envio.cliente}, tu envío ${envio.numero} está en estado: ${envio.estado}.`;
 
   const guardarPeso = async (i, campo, valor) => {
     try {
@@ -76,7 +80,7 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
       saldo > 0 ? `Saldo pendiente: $${saldo.toFixed(2)}` : "Sin saldo pendiente.",
       "Revisa el PDF adjunto con el detalle de tu envío. Por favor, responde este mensaje para coordinar la entrega o el retiro. ¡Muchas gracias!"
     ].filter(Boolean).join("\n");
-    window.open(`https://wa.me/${(envio.contacto || "").replace(/\D/g, "")}?text=${encodeURIComponent(lineas)}`, "_blank");
+    window.open(`${whatsappUrl}?text=${encodeURIComponent(lineas)}`, "_blank");
     mostrarToast("PDF descargado — adjúntalo manualmente en el chat de WhatsApp que se abrió.");
   };
 
@@ -111,10 +115,13 @@ export default function EnvioItem({ envio, auditLog, rol, tarifas, empresa, cuen
         )}
         <button className="btn" onClick={() => generarDetalleEnvio(envio, tarifas, empresa)}>PDF detalle</button>
         {compacto && <button className="btn btn-ghost" onClick={() => setExpandido((v) => !v)}>{expandido ? "Cerrar detalles" : "Gestionar recibo"}</button>}
+        {whatsappUrl && <a className="btn btn-whatsapp" href={`${whatsappUrl}?text=${encodeURIComponent(mensajeEstado)}`} target="_blank" rel="noreferrer">WhatsApp</a>}
         {(!compacto || expandido) && <>
-        <a className="btn btn-whatsapp" href={`https://wa.me/${(envio.contacto || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${envio.cliente}, tu envío ${envio.numero} está en estado: ${envio.estado}.`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
-        {esListoParaRetirar(envio.estado) && (
-          <button className="btn btn-primary" onClick={avisarListoParaRetirar}>📦 Avisar listo para retirar</button>
+        {whatsappUrl && esListoParaRetirar(envio.estado) && (
+          <div>
+            <button type="button" className="btn btn-primary" onClick={avisarListoParaRetirar}>Avisar listo para retirar</button>
+            <small style={{ display: "block" }}>Descarga el PDF y adjúntalo en WhatsApp.</small>
+          </div>
         )}
         <div style={{ flexBasis: "100%" }}>
           <FormularioSaldarEnvio envio={envio} cuentasDinero={cuentasDinero} empresa={empresa} auth={auth} mostrarToast={mostrarToast} cargarDatos={cargarDatos} />
