@@ -91,7 +91,7 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
         value={consulta}
         onChange={(e) => { setConsulta(e.target.value); setAbierto(true); }}
         onFocus={() => setAbierto(true)}
-        placeholder="Buscar cliente, tracking o recibo"
+        placeholder="Buscar en OEx"
         aria-label="Buscar en todo OEX"
         aria-expanded={mostrarResultados}
         aria-controls="global-search-results"

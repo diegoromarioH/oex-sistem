@@ -20,13 +20,13 @@ export default function Paqueteria({ registroId, envios, prealertas, facturasPro
 
   return (
     <div className="page paqueteria-page">
-      <PageTitle title="Paquetería" subtitle="Trackings, tarifas por destino/tipo y seguimiento de envíos">
+      <PageTitle navigation title="Paquetería" subtitle="Trackings, tarifas por destino/tipo y seguimiento de envíos">
         <button className={`nav-btn ${vista === "dashboard" ? "active" : ""}`} onClick={() => setVista("dashboard")}>Dashboard</button>
         <button className={`nav-btn ${vista === "lista" ? "active" : ""}`} onClick={() => setVista("lista")}>Recibos</button>
         <button className={`nav-btn ${vista === "nuevo" ? "active" : ""}`} onClick={() => setVista("nuevo")}>+ Generar recibo</button>
         <button className={`nav-btn ${vista === "registrar" ? "active" : ""}`} onClick={() => setVista("registrar")}>+ Registrar tracking</button>
         <button className={`nav-btn ${vista === "prealertas" ? "active" : ""}`} onClick={() => setVista("prealertas")}>Prealertas ({pendientesConfirmar})</button>
-        <button className={`nav-btn nav-btn-envios-activos ${vista === "activos" ? "active" : ""}`} onClick={() => setVista("activos")}>Envíos activos ({trackingsActivos})</button>
+        <button className={`nav-btn ${vista === "activos" ? "active" : ""}`} onClick={() => setVista("activos")}>Envíos activos ({trackingsActivos})</button>
         <button className={`nav-btn ${vista === "dario" ? "active" : ""}`} onClick={() => setVista("dario")}>Darío Import</button>
         <button className={`nav-btn ${vista === "global" ? "active" : ""}`} onClick={() => setVista("global")}>Global Connect</button>
       </PageTitle>

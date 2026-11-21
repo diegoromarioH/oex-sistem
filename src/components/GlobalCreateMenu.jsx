@@ -35,7 +35,7 @@ export default function GlobalCreateMenu({ onNavigate }) {
 
   return (
     <div className="global-create" ref={contenedor}>
-      <button type="button" className="btn btn-primary global-create-trigger" onClick={() => setAbierto((v) => !v)} aria-expanded={abierto} aria-haspopup="menu">
+      <button type="button" className="btn btn-primary global-create-trigger" onClick={() => setAbierto((v) => !v)} aria-label="Nuevo" aria-expanded={abierto} aria-haspopup="menu">
         <Plus size={17} /><span>Nuevo</span>
       </button>
       {abierto && (
