@@ -15,7 +15,7 @@ const formVacio = { nombre: "", telefono: "+505 ", correo: "", direccion: "", ti
 // Paleta para el pastel de tipos de cliente.
 const COLORES_TIPO = ["#7e3bed", "#22c55e", "#f59e0b", "#3b82f6", "#ec4899", "#14b8a6"];
 
-export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth, mostrarToast, cargarDatos }) {
+export default function Clientes({ clienteInicialId, clientes, envios, empresa, tarifas, rol, auth, mostrarToast, cargarDatos }) {
   const [form, setForm] = useState(formVacio);
   const [editandoId, setEditandoId] = useState(null);
   // Controla el panel de "Nuevo cliente" — antes el formulario siempre
@@ -30,8 +30,8 @@ export default function Clientes({ clientes, envios, empresa, tarifas, rol, auth
   // navega a una vista de detalle completa (misma pantalla, cambia de
   // pestaña) — más espacio para el historial y deja la lista libre de
   // clic accidental sobre otro cliente mientras revisas uno.
-  const [vista, setVista] = useState("lista"); // "lista" | "detalle"
-  const [clienteDetalleId, setClienteDetalleId] = useState(null);
+  const [vista, setVista] = useState(clienteInicialId == null ? "lista" : "detalle"); // "lista" | "detalle"
+  const [clienteDetalleId, setClienteDetalleId] = useState(clienteInicialId);
 
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase();

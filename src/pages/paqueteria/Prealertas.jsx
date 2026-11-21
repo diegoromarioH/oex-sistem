@@ -4,7 +4,7 @@ import { confirmarTracking, eliminarTracking, actualizarPrealerta } from "../../
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 import { buscarClientesParecidos, limpiarTelefono } from "../../utils/clientes";
 
-export default function Prealertas({ prealertas, clientes, proveedores = [], configOperativa, rol, auth, mostrarToast, cargarDatos }) {
+export default function Prealertas({ registroId, prealertas, clientes, proveedores = [], configOperativa, rol, auth, mostrarToast, cargarDatos }) {
   const [confirmando, setConfirmando] = useState(null);
   const [editando, setEditando] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -36,10 +36,11 @@ export default function Prealertas({ prealertas, clientes, proveedores = [], con
   const pendientes = useMemo(() => {
     const q = busqueda.toLowerCase();
     return prealertas.filter(esPendienteDeConfirmar).filter((t) => {
+      if (registroId != null) return t.id === registroId;
       const c = resolverVinculo(t)?.cliente;
       return !q || [t.cliente,t.clienteCodigo,t.contacto,t.tracking,t.almacenId,c?.nombre,c?.codigo,c?.telefono].some((v) => String(v || "").toLowerCase().includes(q));
     });
-  }, [prealertas, clientes, busqueda]);
+  }, [prealertas, clientes, busqueda, registroId]);
 
   const abrirEdicion = (t) => {
     setEditando(t.id);

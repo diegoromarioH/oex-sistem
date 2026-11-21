@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, UserRound, Package, ReceiptText, X } from "lucide-react";
 
+import { esPendienteDeConfirmar } from "../utils/estadosEnvio";
+
 const texto = (valor) => String(valor || "").toLowerCase().trim();
 
 export default function GlobalSearch({ clientes = [], prealertas = [], envios = [], onNavigate }) {
@@ -8,6 +10,7 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
   const [abierto, setAbierto] = useState(false);
   const contenedor = useRef(null);
   const q = texto(consulta);
+  const mostrarResultados = abierto && q.length >= 2;
 
   useEffect(() => {
     const cerrar = (e) => {
@@ -27,7 +30,7 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
     const encontrados = [];
 
     clientes.forEach((c) => {
-      const campos = [c.nombre, c.codigo, c.telefono, c.whatsapp, c.email];
+      const campos = [c.nombre, c.codigo, c.telefono, c.whatsapp, c.correo];
       if (campos.some((v) => texto(v).includes(q))) {
         encontrados.push({
           id: `cliente-${c.id}`,
@@ -35,7 +38,7 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
           titulo: c.nombre || "Cliente sin nombre",
           detalle: [c.codigo, c.telefono || c.whatsapp].filter(Boolean).join(" · "),
           icono: UserRound,
-          destino: ["clientes"]
+          destino: ["clientes", undefined, c.id]
         });
       }
     });
@@ -43,7 +46,7 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
     prealertas.forEach((t) => {
       const cliente = t.vinculacion?.cliente?.nombre || t.cliente;
       const codigo = t.tracking || t.codigo || t.almacenId;
-      const campos = [t.tracking, t.codigo, t.almacenId, cliente, t.clienteCodigo, t.telefono];
+      const campos = [t.tracking, t.codigo, t.almacenId, cliente, t.clienteCodigo, t.contacto];
       if (campos.some((v) => texto(v).includes(q))) {
         encontrados.push({
           id: `tracking-${t.id}`,
@@ -51,7 +54,7 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
           titulo: codigo || "Tracking sin código",
           detalle: [cliente, t.destino, t.estado].filter(Boolean).join(" · "),
           icono: Package,
-          destino: ["paqueteria", "activos"]
+          destino: ["paqueteria", esPendienteDeConfirmar(t) ? "prealertas" : "activos", t.id]
         });
       }
     });
@@ -68,7 +71,7 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
           titulo: e.numero || "Recibo sin número",
           detalle: [e.cliente, e.destino, e.estado].filter(Boolean).join(" · "),
           icono: ReceiptText,
-          destino: ["paqueteria", "lista"]
+          destino: ["paqueteria", "lista", e.id]
         });
       }
     });
@@ -79,7 +82,6 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
   const elegir = (resultado) => {
     onNavigate(...resultado.destino);
     setAbierto(false);
-    setConsulta("");
   };
 
   return (
@@ -91,12 +93,16 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
         onFocus={() => setAbierto(true)}
         placeholder="Buscar cliente, tracking o recibo"
         aria-label="Buscar en todo OEX"
-        aria-expanded={abierto}
+        aria-expanded={mostrarResultados}
+        aria-controls="global-search-results"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && mostrarResultados && resultados.length === 1) elegir(resultados[0]);
+        }}
       />
       {consulta && <button type="button" className="global-search-clear" onClick={() => setConsulta("")} aria-label="Limpiar búsqueda"><X size={14} /></button>}
 
-      {abierto && q.length >= 2 && (
-        <div className="global-search-results">
+      {mostrarResultados && (
+        <div id="global-search-results" className="global-search-results">
           {resultados.map((r) => (
             <button type="button" key={r.id} onClick={() => elegir(r)}>
               <span className="global-search-result-icon"><r.icono size={16} /></span>

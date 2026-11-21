@@ -72,7 +72,7 @@ const solicitarFechaMiami = (actual, mostrarToast) => {
   return fechaISO + "T12:00:00-06:00";
 };
 
-export default function TrackingsActivos({ configOperativa, prealertas, envios = [], clientes = [], proveedores = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos, onNavigate }) {
+export default function TrackingsActivos({ registroId, configOperativa, prealertas, envios = [], clientes = [], proveedores = [], facturasProveedor = [], auditLog = [], rol, auth, mostrarToast, cargarDatos, onNavigate }) {
   const feriados = useFeriadosNicaragua();
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
@@ -96,7 +96,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
   const activos = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     return prealertas
-      .filter((t) => !esPendienteDeConfirmar(t) && t.estado !== "Entregado")
+      .filter((t) => registroId == null ? !esPendienteDeConfirmar(t) && t.estado !== "Entregado" : t.id === registroId)
       .map((t) => ({
         ...t,
         vinculacion: vincularCliente(t, clientes),
@@ -122,7 +122,7 @@ export default function TrackingsActivos({ configOperativa, prealertas, envios =
           (c?.codigo||"").toLowerCase().includes(q) ||
           (c?.telefono||"").toLowerCase().includes(q);
       });
-  }, [prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor, filtroPlazo, configOperativa]);
+  }, [registroId, prealertas, envios, clientes, proveedores, feriados, busqueda, filtroEstado, filtroTipo, filtroDestino, filtroProveedor, filtroPlazo, configOperativa]);
 
   const actualizarCampo = async (t, campo, valor, fechaMiami) => {
     try {

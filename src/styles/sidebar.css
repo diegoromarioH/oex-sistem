@@ -556,6 +556,8 @@
   .recibos-toolbar .input, .recibos-limpiar { width: 100% !important; min-height: 42px; }
   .recibo-item--compacto .page-title { flex-direction: row; align-items: flex-start; }
   .recibo-item--compacto .recibo-acciones-principales { flex-direction: row; flex-wrap: wrap; }
+  .recibo-item--compacto .recibo-acciones-principales > .btn,
+  .recibo-item--compacto .recibo-acciones-principales > .input { min-height: 44px; }
   .recibo-item--compacto .recibo-acciones-principales > .input { flex: 1 1 165px; }
 }
 

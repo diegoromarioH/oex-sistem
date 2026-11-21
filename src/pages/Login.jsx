@@ -42,9 +42,15 @@ export default function Login({ onLogin, onLogout, bloqueado = false, errorInici
         <img src={logo} alt="OEX" />
         <h2>OEX Sistema</h2>
         <p>Inicia sesión para continuar</p>
-        <input className="input" type="email" placeholder="Correo" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input className="input" type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        {error && <span className="badge badge-danger">{error}</span>}
+        <label>
+          <span className="field-label">Correo electrónico</span>
+          <input className="input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        <label>
+          <span className="field-label">Contraseña</span>
+          <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </label>
+        <div role="alert">{error && <span className="badge badge-danger">{error}</span>}</div>
         <button className="btn btn-primary" type="submit" disabled={cargando}>
           {cargando ? "Ingresando..." : "Ingresar"}
         </button>

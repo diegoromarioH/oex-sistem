@@ -9,11 +9,12 @@ import TarifaSelect from "../../components/TarifaSelect";
 import { badgeEstado, esEstadoDisponibleParaRecibo } from "../../utils/estadosEnvio";
 import { useFeriadosNicaragua } from "../../hooks/useFeriadosNicaragua";
 
-export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, proveedores = [], configOperativa, empresa, auth, mostrarToast, cargarDatos }) {
+export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, proveedores = [], configOperativa, empresa, auth, mostrarToast, cargarDatos, onVerRecibo }) {
   const [clienteId, setClienteId] = useState(null);
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteTelefono, setClienteTelefono] = useState("");
   const [generando, setGenerando] = useState(false);
+  const [reciboCreado, setReciboCreado] = useState(null);
   const feriados = useFeriadosNicaragua();
 
   const clienteSeleccionado = clientes.find((c) => c.id === clienteId) || null;
@@ -43,6 +44,13 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, provee
       <h3>Generar recibo</h3>
       <p>El recibo puede generarse desde <b>Bodega OEX</b>, aunque el pago al proveedor aún esté pendiente. Debe tener peso registrado y conservará el estado actual del paquete.</p>
 
+      {reciboCreado && (
+        <div className="segment mt-16">
+          <strong role="status">Recibo {reciboCreado.numero} generado.</strong>
+          <button type="button" className="btn btn-primary" disabled={generando} onClick={() => onVerRecibo(reciboCreado.id)}>Ver recibo</button>
+        </div>
+      )}
+
       <ClienteSelector
         clientes={clientes} clienteId={clienteId} nombre={clienteNombre} telefono={clienteTelefono}
         onEscribirNombre={setClienteNombre} onEscribirTelefono={setClienteTelefono}
@@ -71,6 +79,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, provee
           auth={auth}
           mostrarToast={mostrarToast}
           cargarDatos={cargarDatos}
+          onReciboCreado={setReciboCreado}
           generando={generando}
           setGenerando={setGenerando}
         />
@@ -80,7 +89,7 @@ export default function PaqueteriaRecibo({ prealertas, clientes, tarifas, provee
   );
 }
 
-function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, proveedores, configOperativa, empresa, auth, mostrarToast, cargarDatos, generando, setGenerando, feriados }) {
+function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, proveedores, configOperativa, empresa, auth, mostrarToast, cargarDatos, onReciboCreado, generando, setGenerando, feriados }) {
   const [tarifaPerfil, setTarifaPerfil] = useState(perfilEstandarDestino(destino));
   const [tarifaPersonalizada, setTarifaPersonalizada] = useState("");
   const [descuento, setDescuento] = useState("");
@@ -103,9 +112,12 @@ function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, prove
   );
   const total = Math.max(bruto - numero(descuento), 0);
 
+  const [errorRecibo, setErrorRecibo] = useState("");
+
   const generar = async () => {
+    setErrorRecibo("");
     if (trackingsIncluidos.length === 0) {
-      mostrarToast("Selecciona al menos un tracking.", "warning");
+      setErrorRecibo("Selecciona al menos un tracking.");
       return;
     }
     setGenerando(true);
@@ -131,11 +143,17 @@ function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, prove
         tiemposEntrega: configOperativa?.tiemposEntrega || null,
         trackings: (envio.trackings || []).map((t) => ({ ...t, codigo: t.codigo || t.tracking }))
       };
-      generarDetalleEnvio(envioPDF, tarifas, empresa);
-      mostrarToast(`Recibo ${numeroRecibo} generado con estado ${estadoActual}.`);
-      await cargarDatos();
+      onReciboCreado({ id: envio.id, numero: numeroRecibo });
+      try {
+        generarDetalleEnvio(envioPDF, tarifas, empresa);
+      } catch {
+        mostrarToast("El recibo se guardó. Puedes descargar el PDF desde Ver recibo.", "warning");
+      }
+      await cargarDatos().catch(() => {
+        mostrarToast("El recibo se guardó. Recarga la página si todavía no aparece en la lista.", "warning");
+      });
     } catch (err) {
-      mostrarToast(err.message || "No se pudo generar el recibo.", "error");
+      setErrorRecibo(err.message || "No se pudo generar el recibo.");
     } finally {
       setGenerando(false);
     }
@@ -186,6 +204,7 @@ function GrupoRecibo({ cliente, destino, estadoActual, trackings, tarifas, prove
         <div className="metric"><b>Total a cobrar</b><span className="metric-value">${total.toFixed(2)}</span></div>
       </div>
 
+      <div role="alert">{errorRecibo && <p className="badge badge-danger">{errorRecibo}</p>}</div>
       <button className="btn btn-primary mt-16" disabled={generando} onClick={generar}>
         {generando ? "Generando..." : `Generar recibo (${destino})`}
       </button>
