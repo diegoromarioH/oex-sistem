@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import * as XLSX from "xlsx";
 import { supabase } from "../../supabase";
 import { numero } from "../../utils/numero";
+import { saldosCuentasDineroAlCorte } from "../../services/ContabilidadService";
 import EstadoResultadosReporte from "./EstadoResultadosReporte";
 import FinanzasLibroDiario from "./FinanzasLibroDiario";
 import FinanzasBalanceApertura from "./FinanzasBalanceApertura";
