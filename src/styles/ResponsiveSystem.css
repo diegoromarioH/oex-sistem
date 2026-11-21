@@ -38,11 +38,15 @@ table { max-width: 100%; }
 .card:has(> table),.card:has(.table),.page:has(> table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .main-column,.page { overflow-x: hidden; }
 
-/* Algunos paneles antiguos usan grid inline. Esta regla evita que el inline
-   mantenga 3 columnas estrechas en tablet/móvil. */
+.paqueteria-resumen {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
 @media (max-width: 1080px) {
-  .paqueteria-page > div > div:first-child {
-    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  .paqueteria-resumen {
+    grid-template-columns: repeat(2,minmax(0,1fr));
   }
 }
 
@@ -83,23 +87,23 @@ table { max-width: 100%; }
 
   /* Dashboard Paquetería: el grid exterior viene inline; se fuerza a una
      sola columna y sus mini métricas conservan lectura horizontal. */
-  .paqueteria-page > div > div:first-child {
+  .paqueteria-resumen {
     grid-template-columns:1fr !important;
     gap:10px !important;
     margin-bottom:12px !important;
   }
-  .paqueteria-page > div > div:first-child > .card {
+  .paqueteria-resumen > .card {
     min-width:0;
   }
-  .paqueteria-page > div > div:first-child > .card > div:first-child {
+  .paqueteria-resumen > .card > div:first-child {
     flex-wrap:wrap;
     gap:8px !important;
   }
-  .paqueteria-page > div > div:first-child > .card > div:last-child {
+  .paqueteria-resumen > .card > div:last-child {
     grid-template-columns:repeat(2,minmax(0,1fr)) !important;
   }
-  .paqueteria-page > div > div:first-child strong,
-  .paqueteria-page > div > div:first-child small {
+  .paqueteria-resumen strong,
+  .paqueteria-resumen small {
     overflow-wrap:normal;
     word-break:normal;
   }
@@ -134,7 +138,7 @@ table { max-width: 100%; }
   .mini-tracking-row { align-items:flex-start; flex-wrap:wrap; }
   .timeline-item { min-width:0; }
 
-  .paqueteria-page > div > div:first-child > .card > div:last-child {
+  .paqueteria-resumen > .card > div:last-child {
     grid-template-columns:1fr !important;
   }
 }
@@ -143,4 +147,74 @@ table { max-width: 100%; }
   .page { padding-left:8px; padding-right:8px; }
   .card { padding:12px; }
   .btn { width:100%; }
+}
+
+/* Un solo renglón para la navegación de cada módulo. */
+.page-title .page-navigation {
+  width: 100%;
+  min-height: 54px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.page-navigation .nav-btn {
+  flex: 0 0 auto;
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.page-navigation .nav-btn.active {
+  border-color: color-mix(in srgb, var(--module-color) 28%, var(--border));
+  box-shadow: inset 0 -2px var(--module-color), var(--shadow-sm);
+}
+
+.page > .page-title {
+  margin: 0 0 clamp(14px, 2vw, 24px);
+  row-gap: 12px;
+}
+
+.page > .page-title h2 {
+  font-size: clamp(1.35rem, 1.2rem + .7vw, 1.85rem);
+  line-height: 1.2;
+}
+
+.main-column > .page {
+  flex: 0 0 auto;
+}
+
+.main-column > .page,
+.global-search-results,
+.global-create-menu,
+.login-card {
+  animation: oex-enter 220ms ease-out both;
+}
+
+@keyframes oex-enter {
+  from { opacity: 0; translate: 0 5px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (max-width: 720px) {
+  .page { --control-height: 44px; }
+  .page-navigation .nav-btn { min-height: 44px; }
+  .dashboard-page .dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after,
+  .login-card {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,112 +1,80 @@
-/* =========================================================
-   OEX CRM — Sistema de diseño
-   Variables CSS + componentes reutilizables. Reemplaza los
-   objetos `styles` / `darkStyles` inline del App.jsx original.
-   ========================================================= */
-
+/* OEX — paleta, tipografía y superficies compartidas. */
 :root {
-  --font-sans: Arial, "Helvetica Neue", Helvetica, ui-sans-serif, sans-serif;
-  --font-display: "Poppins", var(--font-sans);
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: var(--font-sans);
+  --bg: #f3f5f9;
+  --surface: #fff;
+  --surface-2: #f6f8fb;
+  --border: #dde4ed;
+  --text: #172337;
+  --text-muted: #485970;
+  --text-faint: #5d6d82;
 
-  --bg: #f7f6f3;
-  --surface: #ffffff;
-  --surface-2: #f1f0ec;
-  --border: #d8dadd;
-  --text: #22252b;
-  --text-muted: #5c6470;
-  --text-faint: #8a8f98;
-
-  --accent: #f4562d;
-  --accent-strong: #d43f19;
-  --accent-soft: #fde9e3;
-  --accent-contrast: #ffffff;
-
-  --navy: #0f2445;
+  --accent: #bd3d20;
+  --accent-strong: #9c2f18;
+  --accent-soft: #fff0ea;
+  --accent-contrast: #fff;
+  --navy: #12223b;
   --navy-claro: #2c4267;
-  --navy-palido: #e7e9ec;
+  --navy-palido: #e9eff7;
 
-  --success: #16a34a;
-  --success-soft: #ecfdf5;
-  --danger: #dc2626;
-  --danger-soft: #fef2f2;
-  --warning: #d97706;
-  --warning-soft: #fffbeb;
-  --info: #2c4267;
-  --info-soft: #e7e9ec;
+  --success: #087146;
+  --success-soft: #e8f7ee;
+  --danger: #b42332;
+  --danger-soft: #fff0f1;
+  --warning: #86520c;
+  --warning-soft: #fff5df;
+  --info: #26588f;
+  --info-soft: #e9f2ff;
 
-  /* Color de identidad por módulo — se usa en la barra superior y se
-     "contagia" (vía herencia de custom property) a los sub-menús de cada
-     módulo, para que siempre se sepa en qué sección estás. Elegidos para
-     NO pisar el significado de success/danger/warning que ya usan los
-     badges de estado en toda la app. */
-  --mod-dashboard: var(--navy);
-  --mod-shein: #c2447c;
-  --mod-paqueteria: #2f6fb0;
-  --mod-finanzas: #1f7a5c;
-  --mod-clientes: #6a5acd;
-  --mod-auditoria: #a1752f;
-  --mod-configuracion: var(--text-muted);
+  --mod-dashboard: #33649d;
+  --mod-shein: #9f356a;
+  --mod-paqueteria: #2566a6;
+  --mod-finanzas: #117459;
+  --mod-clientes: #6248a5;
+  --mod-auditoria: #855c28;
+  --mod-configuracion: #52647d;
   --module-color: var(--accent);
 
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
+  --radius-sm: 9px;
+  --radius-md: 13px;
+  --radius-lg: 17px;
   --radius-pill: 999px;
-
-  --shadow-sm: 0 1px 2px rgba(15, 36, 69, 0.07);
-  --shadow-md: 0 12px 28px rgba(15, 36, 69, 0.10);
-  --shadow-lg: 0 20px 45px rgba(15, 36, 69, 0.16);
-
-  --transition: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow-sm: 0 1px 2px #162a4210;
+  --shadow-md: 0 8px 24px #162a4214;
+  --shadow-lg: 0 20px 48px #162a4226;
+  --transition: 180ms cubic-bezier(.2, .75, .3, 1);
+  --content-inset: clamp(18px, 2.5vw, 36px);
+  --control-height: 40px;
 }
 
 [data-theme="dark"] {
-  /* Antes todo esto tiraba a azul marino (bg/surface/border partían de
-     tonos "navy"). Ahora son negros y grises neutros — el color queda
-     reservado para los acentos (naranja de marca, colores de módulo,
-     badges de estado), no para el fondo general. */
-  --bg: #0a0a0c;
-  --surface: #18181b;
-  --surface-2: #232327;
-  --border: #3a3a40;
-  --text: #f4f4f5;
-  --text-muted: #a8a8b3;
-  --text-faint: #75757f;
+  color-scheme: dark;
+  --bg: #101722;
+  --surface: #182131;
+  --surface-2: #202c3e;
+  --border: #334157;
+  --text: #edf3fc;
+  --text-muted: #bbcade;
+  --text-faint: #a5b7cf;
 
-  --accent-soft: #2b1d16;
-  --navy-palido: #2a2a30;
+  --accent: #ffac92;
+  --accent-strong: #ffcab8;
+  --accent-soft: #3a282a;
+  --accent-contrast: #33150d;
+  --navy-palido: #24354e;
 
-  /* Colores de estado en versión "suave" (pastel), pensados para fondo
-     oscuro neutro — ya no son el mismo verde/rojo/ámbar saturado de modo
-     claro, que sobre negro se ve demasiado "neón". */
-  --success: #7ee2ac;
-  --success-soft: #132018;
-  --danger: #f3a5a5;
-  --danger-soft: #2a1717;
-  --warning: #f0c674;
-  --warning-soft: #2a2115;
-  --info: #9cbdf0;
-  --info-soft: #1b2330;
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 20px 45px rgba(0, 0, 0, 0.6);
-}
-
-/* El punteado de fondo usaba --navy (azul) incluso en modo oscuro — con
-   la paleta nueva se ve fuera de lugar, así que en dark usa --text (casi
-   blanco) a muy baja opacidad: puntitos grises tenues sobre negro.
-   Además, un "glow" ambiental de color muy sutil detrás de todo — varios
-   blobs difusos con los colores de módulo, como en apps fintech oscuras
-   modernas — para que el negro no se sienta plano/vacío. */
-[data-theme="dark"] body {
-  background-image:
-    radial-gradient(circle at 12% -5%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 38%),
-    radial-gradient(circle at 92% 15%, color-mix(in srgb, var(--mod-finanzas) 10%, transparent), transparent 42%),
-    radial-gradient(circle at 50% 105%, color-mix(in srgb, var(--mod-clientes) 8%, transparent), transparent 45%),
-    radial-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
-  background-size: auto, auto, auto, 22px 22px;
-  background-attachment: fixed, fixed, fixed, scroll;
+  --success: #84ddb0;
+  --success-soft: #1a342d;
+  --danger: #ffacb4;
+  --danger-soft: #402630;
+  --warning: #ffd18b;
+  --warning-soft: #3c301d;
+  --info: #a8cfff;
+  --info-soft: #233953;
+  --shadow-sm: 0 1px 2px #0003;
+  --shadow-md: 0 8px 24px #0004;
+  --shadow-lg: 0 20px 48px #0007;
 }
 
 * { box-sizing: border-box; }
@@ -120,9 +88,7 @@ body {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   transition: background var(--transition), color var(--transition);
-  /* Patrón sutil de puntos — eco del isotipo circular de la marca */
-  background-image: radial-gradient(color-mix(in srgb, var(--navy) 6%, transparent) 1px, transparent 1px);
-  background-size: 22px 22px;
+  line-height: 1.45;
 }
 
 h1, h2, h3 { font-family: var(--font-display); margin: 0 0 4px; letter-spacing: -0.02em; }
@@ -154,15 +120,6 @@ button, input, select, textarea { font-family: inherit; }
   border-bottom: 1px solid var(--border);
 }
 
-/* Franja fina que refleja el color del módulo activo — visible siempre,
-   incluso haciendo scroll, para ubicarte de un vistazo. */
-.module-strip {
-  position: sticky; top: 0; z-index: 19;
-  height: 3px;
-  background: var(--module-color, var(--accent));
-  transition: background var(--transition);
-}
-
 .brand-btn {
   display: flex; align-items: center; gap: 10px;
   border: 0; background: transparent; cursor: pointer; color: inherit;
@@ -172,14 +129,15 @@ button, input, select, textarea { font-family: inherit; }
 
 .nav { display: flex; gap: 6px; flex-wrap: wrap; }
 
-.page { max-width: 1280px; margin: 0 auto; padding: 24px; }
+.page { width: 100%; max-width: 1560px; margin: 0 auto; padding: var(--content-inset); }
 
 /* ---------- Buttons ---------- */
 .btn {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  padding: 10px 16px;
+  min-height: var(--control-height);
+  padding: 9px 14px;
   border-radius: var(--radius-sm);
   font-weight: 700;
   cursor: pointer;
@@ -205,56 +163,40 @@ button, input, select, textarea { font-family: inherit; }
   border: 0;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: var(--accent-contrast);
-  box-shadow: 0 10px 22px rgba(249, 97, 28, .28);
+  box-shadow: var(--shadow-sm);
 }
-.btn-primary:hover:not(:disabled) { box-shadow: 0 14px 28px rgba(249, 97, 28, .38); }
-.btn-primary:active:not(:disabled) { box-shadow: 0 6px 14px rgba(249, 97, 28, .3); }
+.btn-primary:hover:not(:disabled) { box-shadow: var(--shadow-md); }
+.btn-primary:active:not(:disabled) { box-shadow: var(--shadow-sm); }
 
 .btn-danger { border: 0; background: var(--danger-soft); color: var(--danger); }
-.btn-whatsapp { border: 0; background: #22c55e; color: #fff; }
+.btn-whatsapp { border: 0; background: #087146; color: #fff; }
 .btn-ghost { border: 1px solid transparent; background: transparent; color: var(--text-muted); }
 
 .nav-btn {
-  position: relative;
-  border: 1.5px solid color-mix(in srgb, var(--module-color, var(--accent)) 35%, var(--border));
-  background: color-mix(in srgb, var(--module-color, var(--accent)) 9%, var(--surface));
-  color: var(--text);
-  padding: 10px 16px 10px 30px;
-  border-radius: var(--radius-pill);
+  min-height: var(--control-height);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
-  font-weight: 700;
-  font-size: 13.5px;
-  transition: all var(--transition);
+  font-size: .82rem;
+  font-weight: 650;
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
 }
-/* Punto de color: identifica el módulo aunque el botón esté inactivo. */
-.nav-btn::before {
-  content: "";
-  position: absolute;
-  left: 12px; top: 50%; transform: translateY(-50%);
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--module-color, var(--accent));
-  transition: background var(--transition);
-}
-.nav-btn:hover:not(.active):not(:disabled) {
-  border-color: var(--module-color, var(--accent));
-  background: color-mix(in srgb, var(--module-color, var(--accent)) 18%, var(--surface));
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+.nav-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
 }
 .nav-btn.active {
-  border-color: transparent;
-  background: linear-gradient(135deg, var(--module-color, var(--accent)), color-mix(in srgb, var(--module-color, var(--accent)) 70%, black));
-  color: #fff;
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--module-color, var(--accent)) 45%, transparent);
-  transform: translateY(-1px);
-}
-.nav-btn.active::before {
-  background: #fff;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--module-color, var(--accent)) 55%, transparent);
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
 }
 .nav-btn:focus-visible {
-  outline: 2px solid var(--module-color, var(--accent));
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* ---------- Cards / surfaces ---------- */
@@ -265,18 +207,6 @@ button, input, select, textarea { font-family: inherit; }
   padding: 20px;
   box-shadow: var(--shadow-sm);
   margin-bottom: 16px;
-}
-[data-theme="dark"] .card,
-[data-theme="dark"] .metric,
-[data-theme="dark"] .row-card {
-  /* Filo superior sutil (highlight) + sombra teñida con el color del
-     módulo activo en vez de una sombra negra plana — es lo que hace que
-     las tarjetas se sientan "flotando con luz de color" en vez de
-     bloques grises apilados. */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 18px 40px -22px color-mix(in srgb, var(--module-color, var(--accent)) 45%, transparent),
-    var(--shadow-sm);
 }
 
 .row-card {
@@ -310,7 +240,8 @@ label { display: block; }
 
 .input, select.input, textarea.input {
   width: 100%; box-sizing: border-box;
-  padding: 12px 14px;
+  min-height: var(--control-height);
+  padding: 9px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
@@ -319,7 +250,7 @@ label { display: block; }
   outline: none;
   transition: border-color var(--transition), background var(--transition);
 }
-.input:focus { border-color: var(--accent); background: var(--surface); }
+.input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px var(--accent-soft); }
 .input-sm { width: 150px; padding: 8px 10px; font-size: 13px; }
 .input-tiny { width: 80px; padding: 7px 9px; font-size: 13px; }
 
@@ -450,45 +381,4 @@ textarea.input { min-height: 90px; resize: vertical; margin-top: 12px; }
   .topbar { flex-wrap: wrap; padding: 12px 16px; }
   .tracking-row { grid-template-columns: 1fr 1fr; }
   .product-row { grid-template-columns: 1fr 1fr; }
-}
-
-/* Envíos activos: llamada de atención operativa OEX */
-.paqueteria-page .nav-btn-envios-activos {
-  --envios-active-orange: #f97316;
-  border-color: color-mix(in srgb, var(--envios-active-orange) 55%, var(--border));
-  background: color-mix(in srgb, var(--envios-active-orange) 10%, var(--surface));
-  color: var(--text);
-  isolation: isolate;
-}
-.paqueteria-page .nav-btn-envios-activos::before {
-  background: var(--envios-active-orange);
-}
-.paqueteria-page .nav-btn-envios-activos::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  border: 2px solid color-mix(in srgb, var(--envios-active-orange) 55%, transparent);
-  z-index: -1;
-  pointer-events: none;
-  animation: oex-envios-pulse 2.2s ease-out infinite;
-}
-.paqueteria-page .nav-btn-envios-activos:hover:not(:disabled),
-.paqueteria-page .nav-btn-envios-activos.active {
-  border-color: transparent;
-  background: linear-gradient(135deg, #fb923c, #f97316);
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(249, 115, 22, .28);
-}
-.paqueteria-page .nav-btn-envios-activos:hover:not(:disabled)::before,
-.paqueteria-page .nav-btn-envios-activos.active::before {
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(255,255,255,.2);
-}
-@keyframes oex-envios-pulse {
-  0% { opacity: .65; transform: scale(1); }
-  70%, 100% { opacity: 0; transform: scale(1.12, 1.45); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .paqueteria-page .nav-btn-envios-activos::after { animation: none; }
 }

@@ -223,7 +223,7 @@ export default function PaqueteriaDashboard({ envios, prealertas, auditLog, rol,
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14, marginBottom: 18 }}>
+      <div className="paqueteria-resumen">
         <PanelResumen
           titulo="Operación actual"
           subtitulo="Trackings antes de convertirse en recibo"

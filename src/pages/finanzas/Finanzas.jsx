@@ -48,7 +48,7 @@ const TarjetaKPI = ({ etiqueta, valor, activa, onClick, etiquetaAccion, icono: I
   </button>
 );
 
-export default function Finanzas({ envios, gastos, ingresos = [], clientes = [], prealertas = [], proveedores = [], facturasProveedor = [], cuentasContables = [], cuentasDinero = [], balanceApertura = [], fechaApertura, configOperativa, empresa, rol, auth, mostrarToast, cargarDatos, vistaInicial = "resumen", onVistaChange }) {
+export default function Finanzas({ children, envios, gastos, ingresos = [], clientes = [], prealertas = [], proveedores = [], facturasProveedor = [], cuentasContables = [], cuentasDinero = [], balanceApertura = [], fechaApertura, configOperativa, empresa, rol, auth, mostrarToast, cargarDatos, vistaInicial = "resumen", onVistaChange }) {
   const [vista, setVista] = useState(vistaInicial);
   const [comisionesSocios, setComisionesSocios] = useState([]);
   const [revisionSocios, setRevisionSocios] = useState(0);
@@ -287,7 +287,7 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
 
   return (
     <div className="page">
-      <PageTitle title="Finanzas" subtitle="Ventas, márgenes, costos, gastos e informes">
+      <PageTitle navigation title="Finanzas" subtitle="Ventas, márgenes, costos, gastos e informes">
         <button className={`nav-btn ${vista === "resumen" ? "active" : ""}`} onClick={() => setVista("resumen")}>Resumen</button>
         <button className={`nav-btn ${vista === "ingresos" ? "active" : ""}`} onClick={() => setVista("ingresos")}>Ingresos</button>
         <button className={`nav-btn ${vista === "gastos" ? "active" : ""}`} onClick={() => setVista("gastos")}>Gastos</button>
@@ -298,7 +298,10 @@ export default function Finanzas({ envios, gastos, ingresos = [], clientes = [],
         <button className={`nav-btn ${vista === "libro" ? "active" : ""}`} onClick={() => setVista("libro")}>Libro diario</button>
         <button className={`nav-btn ${vista === "caja" ? "active" : ""}`} onClick={() => setVista("caja")}>Corte de caja</button>
         <button className={`nav-btn ${vista === "resultados" ? "active" : ""}`} onClick={() => setVista("resultados")}>Estado de resultados</button>
+        <button className={`nav-btn ${vista === "reportes" ? "active" : ""}`} onClick={() => setVista("reportes")}>Reportes</button>
       </PageTitle>
+
+      {vista === "reportes" && children}
 
       {vista === "resumen" && (
         <div className="segment mt-8">

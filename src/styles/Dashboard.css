@@ -42,3 +42,37 @@
 .dashboard-bodega-action small { color:var(--text-muted); font-size:11.5px; }
 .dashboard-bodega-action > span:last-child { font-size:18px; }
 @media(max-width:800px){ .dashboard-attention-row{grid-template-columns:1fr;} .dashboard-bodega-action{width:100%;min-width:0;} }
+
+.dashboard-greeting {
+  border: 1px solid #294260;
+  background:
+    radial-gradient(ellipse at 100% 0%, #3a5477, transparent 65%),
+    linear-gradient(120deg, #102039, #1b3554);
+  color: #f5f8ff;
+}
+.dashboard-greeting h1 { font-weight: 750; }
+.dashboard-greeting p { color: #c5d5ed; font-weight: 500; }
+.dashboard-greeting > span {
+  background: #ffffff13;
+  border: 1px solid #ffffff2e;
+  color: #e0ecff;
+}
+.dashboard-alert-zone {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.dashboard-alert-light,
+.dashboard-alert-dot {
+  background: var(--accent);
+  animation: none;
+  box-shadow: none;
+}
+.dashboard-attention-row { margin-bottom: 0; }
+.dashboard-finance,
+.dashboard-fin-card,
+.dashboard-fin-panel,
+.dashboard-bodega-action { border-radius: var(--radius-md); }
+.dashboard-fin-card strong,
+.dashboard-fin-panel strong,
+.metric-value { font-variant-numeric: tabular-nums; }
