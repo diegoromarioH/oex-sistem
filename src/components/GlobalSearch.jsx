@@ -43,8 +43,10 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
       }
     });
 
+    const recibosEntregados = new Map(envios.filter((envio) => envio.estado === "Entregado").map((envio) => [String(envio.id), envio.id]));
     prealertas.forEach((t) => {
       const cliente = t.vinculacion?.cliente?.nombre || t.cliente;
+      const reciboEntregado = recibosEntregados.get(String(t.envioId));
       const codigo = t.tracking || t.codigo || t.almacenId;
       const campos = [t.tracking, t.codigo, t.almacenId, cliente, t.clienteCodigo, t.contacto];
       if (campos.some((v) => texto(v).includes(q))) {
@@ -54,7 +56,9 @@ export default function GlobalSearch({ clientes = [], prealertas = [], envios = 
           titulo: codigo || "Tracking sin código",
           detalle: [cliente, t.destino, t.estado].filter(Boolean).join(" · "),
           icono: Package,
-          destino: ["paqueteria", esPendienteDeConfirmar(t) ? "prealertas" : "activos", t.id]
+          destino: reciboEntregado != null
+            ? ["paqueteria", "lista", reciboEntregado]
+            : ["paqueteria", esPendienteDeConfirmar(t) ? "prealertas" : "activos", t.id]
         });
       }
     });

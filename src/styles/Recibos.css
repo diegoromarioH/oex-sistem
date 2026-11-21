@@ -1,0 +1,144 @@
+.recibo-operativo {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: clamp(12px, 2vw, 20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.recibo-resumen {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.recibo-identidad {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.recibo-icono {
+  display: grid;
+  flex: 0 0 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.recibo-codigo, .recibo-resumen p {
+  color: var(--text-muted);
+  font-size: .78rem;
+  overflow-wrap: anywhere;
+}
+
+.recibo-resumen h4, .recibo-panel h4 {
+  margin: 0 0 2px;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.recibo-estados {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.recibo-estados small { flex-basis: 100%; }
+
+.recibo-importe {
+  display: grid;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.recibo-importe strong {
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  letter-spacing: -.025em;
+  line-height: 1.25;
+}
+
+.recibo-acciones {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.recibo-acciones .btn-whatsapp { text-decoration: none; }
+
+.recibo-abrir { justify-self: start; }
+
+.recibo-panel {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  animation: oex-enter 180ms ease-out both;
+}
+
+.recibo-paquetes > summary {
+  width: fit-content;
+  padding: 8px 0;
+  cursor: pointer;
+  color: var(--info);
+  font-weight: 650;
+}
+
+.recibo-vistas {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 4px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.recibo-vistas .nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.recibo-vistas .nav-btn[aria-pressed="true"] {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.recibo-vistas .nav-btn span {
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--info-soft);
+  color: var(--info);
+  font-variant-numeric: tabular-nums;
+}
+
+.recibo-resultados { animation: oex-enter 200ms ease-out both; }
+
+@media (max-width: 650px) {
+  .recibo-resumen {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+  .recibo-identidad { grid-column: 1 / -1; }
+  .recibo-vistas .nav-btn { padding-inline: 7px; }
+  .recibo-acciones > .btn { width: auto; }
+}
+
+@media (max-width: 360px) {
+  .recibo-vistas .nav-btn svg { display: none; }
+}
