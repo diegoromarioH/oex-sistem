@@ -38,3 +38,18 @@ export const enRango = (fechaISO, inicio, fin) => {
   const hasta = fin ? new Date(`${fin}T23:59:59`) : new Date("2999-12-31T23:59:59");
   return f >= desde && f <= hasta;
 };
+
+const calendarioNicaragua = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Managua",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit"
+});
+
+export const fechaCalendarioNicaragua = (valor = new Date()) => {
+  const fecha = new Date(valor);
+  if (!valor || Number.isNaN(fecha.getTime())) return "";
+  const partes = calendarioNicaragua.formatToParts(fecha);
+  const parte = (tipo) => partes.find((item) => item.type === tipo).value;
+  return `${parte("year")}-${parte("month")}-${parte("day")}`;
+};

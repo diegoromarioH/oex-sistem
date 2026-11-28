@@ -1,13 +1,16 @@
 // src/pages/paqueteria/Prealertas.jsx
 import { useMemo, useState } from "react";
 import { confirmarTracking, eliminarTracking, actualizarPrealerta } from "../../services/trackingsService";
+import { fechaCalendarioNicaragua } from "../../utils/fechas";
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
+import { costoProveedorPorTipo, COSTO_INTERNO_DEFAULT } from "../../utils/calculosPaqueteria";
 import { buscarClientesParecidos, limpiarTelefono } from "../../utils/clientes";
 
 export default function Prealertas({ registroId, prealertas, clientes, proveedores = [], configOperativa, rol, auth, mostrarToast, cargarDatos }) {
   const [confirmando, setConfirmando] = useState(null);
   const [editando, setEditando] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [guardandoConfirmacion, setGuardandoConfirmacion] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [form, setForm] = useState({});
   const [confirmForm, setConfirmForm] = useState({});
@@ -65,21 +68,39 @@ export default function Prealertas({ registroId, prealertas, clientes, proveedor
   const abrirConfirmacion = (t) => {
     if (confirmando === t.id) { setConfirmando(null); return; }
     setConfirmando(t.id);
-    setConfirmForm((prev) => ({ ...prev, [t.id]: { proveedorId: prev[t.id]?.proveedorId || "", almacenId: prev[t.id]?.almacenId || t.almacenId || "" } }));
+    setConfirmForm((prev) => ({
+      ...prev,
+      [t.id]: {
+        proveedorId: prev[t.id]?.proveedorId || "",
+        almacenId: prev[t.id]?.almacenId || t.almacenId || "",
+        fechaRecepcion: fechaCalendarioNicaragua(t.fechaMiami || ""),
+        tipoEnvio: Object.hasOwn(COSTO_INTERNO_DEFAULT, t.tipoEnvio) ? t.tipoEnvio : ""
+      }
+    }));
   };
 
   const confirmar = async (t) => {
+    if (guardandoConfirmacion) return;
     const datos = confirmForm[t.id] || {};
     const proveedor = proveedoresAduana.find((p) => String(p.id) === String(datos.proveedorId));
     if (!proveedor) return mostrarToast("Selecciona el proveedor de Aduana / Flete.", "warning");
     if (!String(datos.almacenId || "").trim()) return mostrarToast("Escribe el ID de almacén.", "warning");
 
+    if (!datos.fechaRecepcion) return mostrarToast("Selecciona la fecha de recepción en Miami.", "warning");
+    if (!datos.tipoEnvio) return mostrarToast("Selecciona el tipo de envío.", "warning");
+
+    setGuardandoConfirmacion(true);
     try {
-      await confirmarTracking({ tracking:t, clientesEnMemoria:clientes, proveedorAduana:proveedor, almacenId:datos.almacenId, configOperativa, auth });
-      mostrarToast(`Tracking confirmado con ${proveedor.nombre}.`);
+      await confirmarTracking({
+        tracking: t, tipoEnvio: datos.tipoEnvio, clientesEnMemoria: clientes,
+        proveedorAduana: proveedor, almacenId: datos.almacenId,
+        fechaRecepcion: datos.fechaRecepcion, configOperativa, auth
+      });
+      mostrarToast(`Tracking confirmado en Miami como ${datos.tipoEnvio} con ${proveedor.nombre}.`);
       setConfirmando(null);
       await cargarDatos();
     } catch (err) { mostrarToast(err.message || "No se pudo confirmar.", "error"); }
+    finally { setGuardandoConfirmacion(false); }
   };
 
   const eliminar = async (t) => {
@@ -90,24 +111,53 @@ export default function Prealertas({ registroId, prealertas, clientes, proveedor
 
   return <div className="card">
     <div className="page-title" style={{ margin:"0 0 8px" }}><h3>Pendientes de confirmar ({pendientes.length})</h3><input className="input input-sm" placeholder="Buscar cliente, tracking, código o ID almacén" value={busqueda} onChange={(e)=>setBusqueda(e.target.value)} /></div>
-    <p><small>Al confirmar, selecciona el proveedor de Aduana / Flete y registra el ID de almacén con el que fue recibido en Miami.</small></p>
+    <p><small>Al confirmar la recepción en Miami, registra la fecha, el ID de almacén, el proveedor y el tipo de envío.</small></p>
     <div className="list mt-8">{pendientes.map((t)=>{
       const vinculo=resolverVinculo(t); const c=vinculo?.cliente;
       const parecidos=vinculo?[]:buscarClientesParecidos(clientes,{telefono:t.contacto,codigo:t.clienteCodigo});
       const nombre=c?.nombre||t.cliente||"Sin nombre"; const codigo=c?.codigo||t.clienteCodigo||"Sin registrar"; const tel=c?.telefono||t.contacto||"Sin WhatsApp";
       const estaEditando=editando===t.id; const estaConfirmando=confirmando===t.id; const cf=confirmForm[t.id]||{};
       const proveedorSel=proveedoresAduana.find((p)=>String(p.id)===String(cf.proveedorId));
-      const tarifa=proveedorSel ? (t.tipoEnvio==="Aéreo"?proveedorSel.tarifaAereo:proveedorSel.tarifaMaritimo) : null;
+      const tarifa = proveedorSel && cf.tipoEnvio ? costoProveedorPorTipo(proveedorSel, cf.tipoEnvio, configOperativa) : null;
+      const cambiarConfirmacion = (campo, valor) => setConfirmForm((prev) => ({
+        ...prev, [t.id]: { ...prev[t.id], [campo]: valor }
+      }));
       return <div key={t.id} className="row-card" style={{flexDirection:"column",alignItems:"stretch",borderLeft:"3px solid #F4562D"}}>
         <div className="page-title" style={{margin:0}}><div><b>{t.tracking||t.almacenId||"Sin código"}</b> <span className="badge badge-neutral">{t.tipoEnvio}</span>{" "}<span className="badge badge-warning">{t.estado||"Sin confirmar"}</span>{diasEnPrealerta(t)>=7&&<>{" "}<span className="badge badge-warning" title="Esta prealerta lleva una semana o más sin confirmarse">⚠ {diasEnPrealerta(t)} días en prealerta</span></>}{c&&<>{" "}<span className="badge badge-success">Vinculado por {vinculo.motivo}</span></>}<p><b>{nombre}</b> · {codigo} · {tel} · {t.destino}</p><small style={{display:"block"}}>{t.fecha}</small></div>
-        <div className="segment"><button className="btn btn-ghost" onClick={()=>estaEditando?setEditando(null):abrirEdicion(t)}>{estaEditando?"Cancelar edición":"Editar"}</button><button className="btn btn-primary" disabled={estaEditando} onClick={()=>abrirConfirmacion(t)}>{estaConfirmando?"Cancelar confirmación":"Confirmar recibido"}</button><button className="btn btn-danger" onClick={()=>eliminar(t)}>Eliminar</button></div></div>
+        <div className="segment"><button className="btn btn-ghost" disabled={guardandoConfirmacion && estaConfirmando} onClick={()=>estaEditando?setEditando(null):abrirEdicion(t)}>{estaEditando?"Cancelar edición":"Editar"}</button><button className="btn btn-primary" disabled={estaEditando || guardandoConfirmacion} onClick={()=>abrirConfirmacion(t)}>{estaConfirmando?"Cancelar confirmación":"Confirmar recibido"}</button><button className="btn btn-danger" disabled={guardandoConfirmacion && estaConfirmando} onClick={()=>eliminar(t)}>Eliminar</button></div></div>
 
         {estaConfirmando && !estaEditando && <div className="mt-8" style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:10,padding:14}}>
-          <div className="form-grid">
-            <label><span className="field-label">Proveedor Aduana / Flete</span><select className="input" value={cf.proveedorId||""} onChange={(e)=>setConfirmForm((prev)=>({...prev,[t.id]:{...(prev[t.id]||{}),proveedorId:e.target.value}}))}><option value="">Selecciona proveedor…</option>{proveedoresAduana.map((p)=><option key={p.id} value={p.id}>{p.nombre}</option>)}</select>{proveedorSel&&<small>Tarifa interna: ${Number(tarifa||0).toFixed(2)}/lb · {t.tipoEnvio}</small>}</label>
-            <label><span className="field-label">ID almacén</span><input className="input" value={cf.almacenId||""} onChange={(e)=>setConfirmForm((prev)=>({...prev,[t.id]:{...(prev[t.id]||{}),almacenId:e.target.value}}))} placeholder="Obligatorio" /></label>
+          <fieldset className="form-grid" disabled={guardandoConfirmacion} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+            <label>
+              <span className="field-label">Proveedor Aduana / Flete</span>
+              <select className="input" value={cf.proveedorId || ""} onChange={(e) => cambiarConfirmacion("proveedorId", e.target.value)}>
+                <option value="">Selecciona proveedor…</option>
+                {proveedoresAduana.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="field-label">Tipo de envío</span>
+              <select className="input" value={cf.tipoEnvio || ""} onChange={(e) => cambiarConfirmacion("tipoEnvio", e.target.value)}>
+                <option value="" disabled>Selecciona el tipo…</option>
+                {Object.keys(COSTO_INTERNO_DEFAULT).map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}
+              </select>
+              {tarifa !== null && <small>Costo interno: ${tarifa.toFixed(2)}/lb</small>}
+            </label>
+            <label>
+              <span className="field-label">ID almacén</span>
+              <input className="input" value={cf.almacenId || ""} onChange={(e) => cambiarConfirmacion("almacenId", e.target.value)} placeholder="Obligatorio" />
+            </label>
+            <label>
+              <span className="field-label">Fecha de recepción en Miami</span>
+              <input className="input" type="date" required max={fechaCalendarioNicaragua()}
+                value={cf.fechaRecepcion || ""} onChange={(e) => cambiarConfirmacion("fechaRecepcion", e.target.value)} />
+            </label>
+          </fieldset>
+          <div style={{ marginTop: 12, textAlign: "right" }}>
+            <button type="button" className="btn btn-primary" disabled={guardandoConfirmacion} onClick={() => confirmar(t)}>
+              {guardandoConfirmacion ? "Confirmando…" : "Confirmar y pasar a Miami"}
+            </button>
           </div>
-          <div style={{marginTop:12,textAlign:"right"}}><button className="btn btn-primary" onClick={()=>confirmar(t)}>Confirmar y pasar a Miami</button></div>
         </div>}
 
         {estaEditando && <div className="mt-8" style={{background:"var(--surface-2)",border:"1px solid var(--border)",borderRadius:10,padding:14}}><div className="form-grid">
