@@ -22,6 +22,7 @@ import GlobalSearch from "./components/GlobalSearch";
 import GlobalCreateMenu from "./components/GlobalCreateMenu";
 import logo from "./assets/logo.svg";
 import "./styles/sidebar.css";
+import { conexionGlobalEntrante } from "./utils/globalConnectionBrowser";
 import { LayoutDashboard, Package, Wallet, Users, ShieldCheck, Settings, Receipt, FilePlus, PackagePlus, Bell, Truck, BarChart3, TrendingUp, TrendingDown, Landmark, Calculator, FileBarChart, Activity, BookOpen, Scale, ChevronRight, RefreshCw, PackageSearch, Handshake } from "lucide-react";
 
 const MODULOS = [
@@ -59,8 +60,8 @@ export default function App() {
   const { session, usuarioActual, rol, autorizado, errorAuth, cargandoAuth, login, logout } = useAuth();
   const datos = useDatosOEX(autorizado ? session : null); const { tarifas, setTarifas } = useTarifas(autorizado); const { empresa, setEmpresa } = useEmpresa(autorizado); const { configOperativa, setConfigOperativa } = useConfiguracionOperativa(autorizado); const { toast, mostrarToast } = useToast();
   const [registroId, setRegistroId] = useState(null);
-  const [vista, setVista] = useState(vistaGuardadaValida);
-  const [subvistaPaqueteria, setSubvistaPaqueteria] = useState(() => subvistaGuardadaValida("paqueteria", "dashboard"));
+  const [vista, setVista] = useState(() => conexionGlobalEntrante() ? "paqueteria" : vistaGuardadaValida());
+  const [subvistaPaqueteria, setSubvistaPaqueteria] = useState(() => conexionGlobalEntrante() ? "global" : subvistaGuardadaValida("paqueteria", "dashboard"));
   const [subvistaFinanzas, setSubvistaFinanzas] = useState(() => subvistaGuardadaValida("finanzas", "resumen"));
   useEffect(() => { localStorage.setItem(STORAGE_NAVEGACION.vista, vista); }, [vista]);
   useEffect(() => { localStorage.setItem(STORAGE_NAVEGACION.paqueteria, subvistaPaqueteria); }, [subvistaPaqueteria]);
