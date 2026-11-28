@@ -82,3 +82,22 @@
 [data-theme="dark"] .tracking-dropdown-menu{box-shadow:0 16px 36px rgba(0,0,0,.32)}
 @media(max-width:1100px){.tracking-dropdown{width:100%}.tracking-dropdown-menu{left:0;right:auto;min-width:100%}}
 @media(max-width:720px){.tracking-dropdown{width:100%}.tracking-dropdown-trigger{height:42px}.tracking-dropdown-menu{position:relative;top:4px;max-width:none;width:100%;box-shadow:var(--shadow-md);margin-bottom:4px}}
+
+.tracking-type-editor {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.tracking-type-editor small {
+  align-self: center;
+}
+
+.tracking-type-editor .segment {
+  flex-wrap: wrap;
+}
