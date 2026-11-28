@@ -1,6 +1,7 @@
 // src/pages/paqueteria/Prealertas.jsx
 import { useMemo, useState } from "react";
 import { confirmarTracking, eliminarTracking, actualizarPrealerta } from "../../services/trackingsService";
+import { fechaCalendarioNicaragua } from "../../utils/fechas";
 import { esPendienteDeConfirmar } from "../../utils/estadosEnvio";
 import { costoProveedorPorTipo, COSTO_INTERNO_DEFAULT } from "../../utils/calculosPaqueteria";
 import { buscarClientesParecidos, limpiarTelefono } from "../../utils/clientes";
@@ -72,6 +73,7 @@ export default function Prealertas({ registroId, prealertas, clientes, proveedor
       [t.id]: {
         proveedorId: prev[t.id]?.proveedorId || "",
         almacenId: prev[t.id]?.almacenId || t.almacenId || "",
+        fechaRecepcion: fechaCalendarioNicaragua(t.fechaMiami || ""),
         tipoEnvio: Object.hasOwn(COSTO_INTERNO_DEFAULT, t.tipoEnvio) ? t.tipoEnvio : ""
       }
     }));
@@ -84,13 +86,15 @@ export default function Prealertas({ registroId, prealertas, clientes, proveedor
     if (!proveedor) return mostrarToast("Selecciona el proveedor de Aduana / Flete.", "warning");
     if (!String(datos.almacenId || "").trim()) return mostrarToast("Escribe el ID de almacén.", "warning");
 
+    if (!datos.fechaRecepcion) return mostrarToast("Selecciona la fecha de recepción en Miami.", "warning");
     if (!datos.tipoEnvio) return mostrarToast("Selecciona el tipo de envío.", "warning");
 
     setGuardandoConfirmacion(true);
     try {
       await confirmarTracking({
         tracking: t, tipoEnvio: datos.tipoEnvio, clientesEnMemoria: clientes,
-        proveedorAduana: proveedor, almacenId: datos.almacenId, configOperativa, auth
+        proveedorAduana: proveedor, almacenId: datos.almacenId,
+        fechaRecepcion: datos.fechaRecepcion, configOperativa, auth
       });
       mostrarToast(`Tracking confirmado en Miami como ${datos.tipoEnvio} con ${proveedor.nombre}.`);
       setConfirmando(null);
@@ -107,7 +111,7 @@ export default function Prealertas({ registroId, prealertas, clientes, proveedor
 
   return <div className="card">
     <div className="page-title" style={{ margin:"0 0 8px" }}><h3>Pendientes de confirmar ({pendientes.length})</h3><input className="input input-sm" placeholder="Buscar cliente, tracking, código o ID almacén" value={busqueda} onChange={(e)=>setBusqueda(e.target.value)} /></div>
-    <p><small>Al confirmar la recepción en Miami, revisa el tipo de envío, selecciona el proveedor y registra el ID de almacén.</small></p>
+    <p><small>Al confirmar la recepción en Miami, registra la fecha, el ID de almacén, el proveedor y el tipo de envío.</small></p>
     <div className="list mt-8">{pendientes.map((t)=>{
       const vinculo=resolverVinculo(t); const c=vinculo?.cliente;
       const parecidos=vinculo?[]:buscarClientesParecidos(clientes,{telefono:t.contacto,codigo:t.clienteCodigo});
@@ -142,6 +146,11 @@ export default function Prealertas({ registroId, prealertas, clientes, proveedor
             <label>
               <span className="field-label">ID almacén</span>
               <input className="input" value={cf.almacenId || ""} onChange={(e) => cambiarConfirmacion("almacenId", e.target.value)} placeholder="Obligatorio" />
+            </label>
+            <label>
+              <span className="field-label">Fecha de recepción en Miami</span>
+              <input className="input" type="date" required max={fechaCalendarioNicaragua()}
+                value={cf.fechaRecepcion || ""} onChange={(e) => cambiarConfirmacion("fechaRecepcion", e.target.value)} />
             </label>
           </fieldset>
           <div style={{ marginTop: 12, textAlign: "right" }}>
