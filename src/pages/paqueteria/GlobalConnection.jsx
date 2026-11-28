@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, PackageSearch, CheckCircle2, AlertTriangle, History } from "lucide-react";
 import { asignarRecepcionGlobal, importarLecturaGlobalConnection, listarRecepcionesGlobal, listarRunsGlobal, sincronizarGlobalConnection } from "../../services/globalConnectionService";
+import { conexionGlobalEntrante, lectorGlobal, recibirLecturaGlobal } from "../../utils/globalConnectionBrowser";
 import "../../styles/GlobalConnection.css";
 
 export default function GlobalConnection({clientes=[],auth,mostrarToast,cargarDatos}){
@@ -12,9 +13,48 @@ export default function GlobalConnection({clientes=[],auth,mostrarToast,cargarDa
  const [copiado,setCopiado]=useState(false);
  const [ultimoResultado,setUltimoResultado]=useState(null);
  const [ultimaImportacion,setUltimaImportacion]=useState(()=>localStorage.getItem("oex_global_ultima_importacion")||"");
- const lectorGlobal=`javascript:(async()=>{try{const parse=async(url)=>{const r=await fetch(url,{credentials:'include'});if(!r.ok)throw new Error('No pude abrir '+url);return new DOMParser().parseFromString(await r.text(),'text/html')};const current=document;const pageLinks=[...current.querySelectorAll('a[href*="whs.asp"]')].map(a=>new URL(a.href,location.href).href);const pages=[...new Set([location.origin+'/appl2.0/agent/whs.asp',...pageLinks])].slice(0,5);const ids=[];for(const p of pages){const doc=p===location.href?current:await parse(p);for(const a of doc.querySelectorAll('a[href*="whs_detail.asp?id="]')){try{const id=new URL(a.href,location.href).searchParams.get('id');if(id&&!ids.includes(id))ids.push(id)}catch{}}}if(!ids.length)throw new Error('No encontré almacenes. Abre la pestaña Almacén.');const out=[];for(const id of ids){const doc=await parse('/appl2.0/agent/whs_detail.asp?id='+encodeURIComponent(id)),inputs=[...doc.querySelectorAll('input')];const valByLabel=(label)=>{for(const el of doc.querySelectorAll('td,th,label,span,div')){if((el.textContent||'').trim().toLowerCase()===label.toLowerCase()){const row=el.closest('tr')||el.parentElement;if(row){const cells=[...row.querySelectorAll('td')],cell=el.closest('td'),i=cells.indexOf(cell);if(i>=0)for(let j=i+1;j<cells.length;j++){const x=cells[j].querySelector('input,textarea,select');if(x&&String(x.value||'').trim())return String(x.value).trim();const t=(cells[j].textContent||'').trim();if(t)return t}}}}return''};let tracking=valByLabel('Tracking');if(!tracking){const inp=inputs.find(x=>/tracking/i.test((x.name||'')+' '+(x.id||'')));tracking=inp?.value?.trim()||''}const fecha=valByLabel('Fecha')||null,referencia=valByLabel('Reference')||valByLabel('Referencia')||null;const selectedByLabel=(label)=>{for(const el of doc.querySelectorAll('td,th,label')){if((el.textContent||'').trim().toLowerCase()===label.toLowerCase()){const row=el.closest('tr')||el.parentElement,s=row?.querySelector('select');if(s)return String(s.selectedOptions?.[0]?.text||s.value||'').trim();const checked=row?.querySelector('input:checked');if(checked)return String(checked.value||'').trim()}}return''};const instrucciones=selectedByLabel('Instructions')||selectedByLabel('Instrucciones')||null,status=selectedByLabel('Status')||valByLabel('Status')||null;if(tracking&&!/^factura$/i.test(tracking)&&tracking!=='N/A')out.push({almacen_id:id,tracking,fecha_miami:fecha,nombre_global:referencia,referencia_global:referencia,instrucciones_global:instrucciones,status_global:status})}if(!out.length)throw new Error('No encontré trackings en los almacenes.');const data=JSON.stringify(out);try{await navigator.clipboard.writeText(data)}catch{prompt('Copia esta lectura de OEX:',data);return}alert('OEX: '+out.length+' paquetes copiados de hasta 5 páginas. Regresa a OEX y pégalos.')}catch(e){alert('OEX: '+e.message)}})();`;
- const copiarLector=async()=>{try{await navigator.clipboard.writeText(lectorGlobal);localStorage.setItem("oex_global_lector_version","2026-09-27-ref-v2");setCopiado(true);mostrarToast?.("Lector copiado. Ahora créalo como marcador en Chrome.","success");setTimeout(()=>setCopiado(false),2500)}catch{mostrarToast?.("Chrome no permitió copiar el lector.","error")}};
- const importarLectura=async()=>{if(importando)return;setImportando(true);try{const raw=lectura.trim();if(/^javascript:/i.test(raw)||raw.includes("OEX Sync"))throw new Error("Pegaste el lector, no la lectura de paquetes. Ejecuta el marcador OEX Sync dentro de Global Connection y luego pega aquí el JSON que copia.");const items=JSON.parse(raw);const r=await importarLecturaGlobalConnection(items,auth);setUltimoResultado(r);const importadoEn=new Date().toISOString();setUltimaImportacion(importadoEn);localStorage.setItem("oex_global_ultima_importacion",importadoEn);const cambios=(r.detalle||[]).filter(d=>String(d.accion||"").includes("_a_"));mostrarToast?.(cambios.length?`Importación lista: ${cambios.length} cambiaron de estado. Revisa el detalle abajo.`:`Lectura importada: sin cambios de estado · ${r.nuevos} nuevos`,"success");setLectura("");await Promise.all([cargar(),cargarDatos?.()])}catch(e){mostrarToast?.(e.message||"Lectura inválida.","error")}finally{setImportando(false)}};
+ const [lecturaDirecta, setLecturaDirecta] = useState(null);
+ const [esperandoLectura, setEsperandoLectura] = useState(() => Boolean(conexionGlobalEntrante()));
+ const importandoRef = useRef(false);
+ useEffect(() => {
+   if (!conexionGlobalEntrante()) return;
+   return recibirLecturaGlobal((items) => {
+     setLecturaDirecta(items);
+     setEsperandoLectura(false);
+   });
+ }, []);
+
+ const copiarLector=async()=>{try{await navigator.clipboard.writeText(lectorGlobal());localStorage.setItem("oex_global_lector_version","2026-09-27-ref-v2");setCopiado(true);mostrarToast?.("Lector copiado. Ahora créalo como marcador en Chrome.","success");setTimeout(()=>setCopiado(false),2500)}catch{mostrarToast?.("Chrome no permitió copiar el lector.","error")}};
+ const importarLectura = async (itemsDirectos) => {
+   if (importandoRef.current) return;
+   importandoRef.current = true;
+   setImportando(true);
+   try {
+     const raw = lectura.trim();
+     if (!itemsDirectos && (/^javascript:/i.test(raw) || raw.includes("OEX Sync"))) {
+       throw new Error("Pegaste el lector. Ejecuta el marcador OEX Sync en Global Connection y luego pega la lectura.");
+     }
+     const items = itemsDirectos || JSON.parse(raw);
+     const resultado = await importarLecturaGlobalConnection(items, auth);
+     setUltimoResultado(resultado);
+     const importadoEn = new Date().toISOString();
+     setUltimaImportacion(importadoEn);
+     localStorage.setItem("oex_global_ultima_importacion", importadoEn);
+     const cambios = (resultado.detalle || []).filter((d) => String(d.accion || "").includes("_a_"));
+     mostrarToast?.(cambios.length
+       ? `Importación lista: ${cambios.length} cambiaron de estado. Revisa el detalle abajo.`
+       : `Lectura importada: sin cambios de estado · ${resultado.nuevos} nuevos`, "success");
+     if (itemsDirectos) setLecturaDirecta(null);
+     else setLectura("");
+     await Promise.all([cargar(), cargarDatos?.()]);
+   } catch (error) {
+     mostrarToast?.(error.message || "Lectura inválida.", "error");
+   } finally {
+     importandoRef.current = false;
+     setImportando(false);
+   }
+ };
+
  const cargar=async()=>{setCargando(true);try{const [r,h]=await Promise.all([listarRecepcionesGlobal(),listarRunsGlobal()]);setRecepciones(r);setRuns(h)}catch(e){mostrarToast?.(e.message,"error")}finally{setCargando(false)}};
  useEffect(()=>{cargar()},[]);
  const pendientes=useMemo(()=>recepciones.filter(x=>x.estado==="sin_asignar"),[recepciones]);
@@ -25,8 +65,43 @@ export default function GlobalConnection({clientes=[],auth,mostrarToast,cargarDa
   <section className="gc-hero"><div><span className="gc-eyebrow">Recepción Miami</span><h2>Global Connection</h2><p>Confirma prealertas recibidas y organiza paquetes que todavía no tienen cliente asignado.</p></div></section>
   {last&&<section className="gc-summary"><div><CheckCircle2 size={18}/><span>Última sincronización</span></div><strong>{last.total_detectados} detectados</strong><span>{last.prealertas_confirmadas} prealertas confirmadas</span><span>{last.sin_asignar_nuevos} nuevos sin asignar</span><span>{last.actualizados_sin_regresion} sin retroceder estado</span>{last.errores>0&&<span className="gc-warning">{last.errores} errores</span>}</section>}
   <div className="gc-kpis"><div><PackageSearch/><span>Por asignar</span><strong>{pendientes.length}</strong></div><div><CheckCircle2/><span>Coincidencias</span><strong>{recepciones.filter(x=>x.estado==="coincidencia").length}</strong></div><div><History/><span>Asignados manualmente</span><strong>{recepciones.filter(x=>x.estado==="asignado").length}</strong></div></div>
-  <section className="gc-panel"><div className="gc-panel-head"><div><h3>Sincronizar desde tu navegador</h3>{ultimaImportacion&&<p><b>Última importación:</b> {new Date(ultimaImportacion).toLocaleString()}</p>}<p>1. Pulsa “Copiar lector”. 2. En Chrome crea un marcador llamado OEX Sync y pega el lector como URL. 3. Abre Global Connection → Almacén y pulsa OEX Sync. El lector revisará hasta las 5 páginas más recientes. 4. Regresa aquí y pega la lectura.</p></div></div>
-   <div className="gc-assign"><button className="btn btn-secondary" type="button" onClick={copiarLector}>{copiado?"✓ Lector copiado":"Copiar lector OEX — últimas 5 páginas"}</button><textarea value={lectura} onChange={e=>setLectura(e.target.value)} placeholder="Pega aquí la lectura copiada por OEX Sync…" rows={3}/><button className="btn btn-primary" onClick={importarLectura} disabled={!lectura.trim()||importando}>{importando?"Importando…":"Importar lectura"}</button>{importando&&<span className="gc-importing" role="status">Procesando lectura y comparando con el histórico de OEX…</span>}</div>
+  <section className="gc-panel">
+    <h3>Enviar paquetes desde Global Connection</h3>
+    {ultimaImportacion && <p>Última importación: {new Date(ultimaImportacion).toLocaleString()}</p>}
+    <p>Arrastra el marcador a la barra de favoritos de Chrome una sola vez. Después, abre Almacén en Global Connection y pulsa el marcador.</p>
+    <a
+      className="btn btn-secondary"
+      draggable
+      ref={(link) => link?.setAttribute("href", lectorGlobal(window.location.origin))}
+      onClick={(event) => event.preventDefault()}
+    >Enviar a OEX</a>
+    {esperandoLectura && <p role="status">Esperando los paquetes de Global Connection…</p>}
+    {lecturaDirecta && (
+      <div className="gc-history mt-8">
+        <h4>Vista previa · {lecturaDirecta.length} paquetes</h4>
+        {lecturaDirecta.map((item) => (
+          <div className="gc-detail" key={item.almacen_id}>
+            <code>{item.tracking}</code>
+            <span>Almacén {item.almacen_id} · Miami: {item.fecha_miami || "Sin fecha"} · {item.instrucciones_global || "Sin instrucciones"}</span>
+          </div>
+        ))}
+        <div className="gc-assign">
+          <button type="button" className="btn btn-primary" disabled={importando} onClick={() => importarLectura(lecturaDirecta)}>
+            {importando ? "Importando…" : "Importar paquetes"}
+          </button>
+          <button type="button" className="btn btn-ghost" disabled={importando} onClick={() => setLecturaDirecta(null)}>Descartar</button>
+        </div>
+      </div>
+    )}
+    <details className="mt-8">
+      <summary>Importar manualmente</summary>
+      <p>Copia el lector y guárdalo como marcador OEX Sync. Ejecútalo en Almacén y pega aquí el resultado.</p>
+      <div className="gc-assign">
+        <button className="btn btn-secondary" type="button" onClick={copiarLector}>{copiado ? "✓ Lector copiado" : "Copiar lector OEX"}</button>
+        <textarea value={lectura} onChange={(event) => setLectura(event.target.value)} placeholder="Pega aquí la lectura de OEX Sync…" rows={3} />
+        <button className="btn btn-primary" type="button" onClick={() => importarLectura()} disabled={!lectura.trim() || importando}>Importar lectura</button>
+      </div>
+    </details>
   </section>
   {ultimoResultado&&<section className="gc-panel"><div className="gc-panel-head"><div><h3>Resultado de la última importación</h3><p>{ultimoResultado.total} leídos · {ultimoResultado.nuevos} nuevos · {ultimoResultado.actualizados||0} avanzaron · {ultimoResultado.sinCambios||0} sin cambios · {ultimoResultado.finalizados||0} finalizados · {ultimoResultado.errores} errores</p></div></div><div className="gc-history">{(ultimoResultado.detalle||[]).filter(d=>String(d.accion||"").includes("_a_")).length>0&&<div className="gc-state-changes"><b>Cambios de estado realizados</b>{(ultimoResultado.detalle||[]).filter(d=>String(d.accion||"").includes("_a_")).map((d,i)=><div className="gc-detail" key={`cambio-${i}`}><code>{d.tracking||"—"}</code><span>{d.anterior||"—"} → {d.final||"—"} · Almacén {d.almacenId||"—"}</span></div>)}</div>}{(ultimoResultado.detalle||[]).map((d,i)=><div className="gc-detail" key={i}><code>{d.tracking||"—"}</code><span>Almacén {d.almacenId||"—"}{d.cliente?` · Cliente: ${d.cliente}`:""} · Global: {d.statusGlobal||"Sin estado"} · OEX: {d.anterior?d.anterior+" → ":""}{d.final||"—"}{d.error?` · Error: ${d.error}`:""}</span></div>)}</div></section>}
   <section className="gc-panel"><div className="gc-panel-head"><div><h3>Paquetes sin asignar</h3><p>Recibidos en Miami que no estaban registrados en OEX.</p></div></div>
