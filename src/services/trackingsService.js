@@ -3,7 +3,7 @@ import { supabase } from "../supabase";
 import { numero } from "../utils/numero";
 import { resolverCliente } from "./clientesService";
 import { generarCodigoRecibo, firmarPayload, registrarAuditoria } from "./coreService";
-import { costoProveedorPorTipo, costoTrackingConProveedor, tarifaDesdePerfil, tipoEnvioResumen } from "../utils/calculosPaqueteria";
+import { COSTO_INTERNO_DEFAULT, costoProveedorPorTipo, costoTrackingConProveedor, tarifaDesdePerfil, tipoEnvioResumen } from "../utils/calculosPaqueteria";
 import { postearAsiento } from "./ContabilidadService";
 import { esEstadoDisponibleParaRecibo } from "../utils/estadosEnvio";
 
@@ -17,7 +17,8 @@ const asegurarTrackingUnico = async (codigo, excluirId = null) => {
   if (data?.length) throw new Error(`El tracking ${limpio} ya está registrado.`);
 };
 
-export const confirmarTracking = async ({ tracking, clientesEnMemoria, proveedorAduana, almacenId, configOperativa, auth }) => {
+export const confirmarTracking = async ({ tracking, tipoEnvio, clientesEnMemoria, proveedorAduana, almacenId, configOperativa, auth }) => {
+  if (!Object.hasOwn(COSTO_INTERNO_DEFAULT, tipoEnvio)) throw new Error("Selecciona un tipo de envío válido.");
   if (!proveedorAduana?.id) throw new Error("Selecciona el proveedor de Aduana / Flete.");
   if (!String(almacenId || "").trim()) throw new Error("Escribe el ID de almacén.");
   let clienteResuelto = null;
@@ -26,18 +27,20 @@ export const confirmarTracking = async ({ tracking, clientesEnMemoria, proveedor
     if (existentePorId) clienteResuelto = { id: existentePorId.id, codigo: existentePorId.codigo, nombre: existentePorId.nombre, telefono: existentePorId.telefono, tipo: existentePorId.tipo, esNuevo: false };
   }
   if (!clienteResuelto) clienteResuelto = await resolverCliente({ clientesEnMemoria, nombre: tracking.cliente, telefono: tracking.contacto, tipo: "General", codigo: tracking.clienteCodigo, auth });
-  const costoInterno = costoProveedorPorTipo(proveedorAduana, tracking.tipoEnvio, configOperativa);
+  const costoInterno = costoProveedorPorTipo(proveedorAduana, tipoEnvio, configOperativa);
   const ahora = new Date().toISOString();
-  const { error } = await supabase.from("tracking_registros").update({
-    estado:"Miami", fecha_miami:tracking.fechaMiami || ahora,
+  const { data, error } = await supabase.from("tracking_registros").update({
+    estado:"Miami", fecha_miami:tracking.fechaMiami || ahora, tipo_envio:tipoEnvio,
     cliente_id:clienteResuelto.id, cliente_codigo:clienteResuelto.codigo, cliente_tipo:clienteResuelto.tipo,
     cliente:clienteResuelto.nombre || tracking.cliente, contacto:clienteResuelto.telefono || tracking.contacto,
     almacen_id:String(almacenId).trim(), proveedor_aduana_id:proveedorAduana.id, costo_interno:costoInterno,
     updated_by:auth.session?.user?.id || null,
     updated_by_name:auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
-  }).eq("id",tracking.id);
-  if(error) throw error;
-  await registrarAuditoria({ ...auth, accion:"Confirmó tracking recibido", modulo:"Trackings", registroCodigo:tracking.tracking || almacenId || "", detalle:`${clienteResuelto.nombre || tracking.cliente || ""} · ${proveedorAduana.nombre} · $${costoInterno.toFixed(2)}/lb` });
+  }).eq("id", tracking.id).eq("estado", tracking.estado).is("envio_id", null).select("id").maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("El tracking cambió o ya fue confirmado. Actualiza la lista e inténtalo de nuevo.");
+  const tipoConfirmado = tracking.tipoEnvio === tipoEnvio ? tipoEnvio : `${tracking.tipoEnvio || "Sin tipo"} → ${tipoEnvio}`;
+  await registrarAuditoria({ ...auth, accion:"Confirmó tracking recibido", modulo:"Trackings", registroCodigo:tracking.tracking || almacenId || "", detalle:`${clienteResuelto.nombre || tracking.cliente || ""} · ${proveedorAduana.nombre} · ${tipoConfirmado} · $${costoInterno.toFixed(2)}/lb` });
 };
 
 export const actualizarPrealerta = async ({ tracking, cambios, auth }) => {
