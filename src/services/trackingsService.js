@@ -73,26 +73,34 @@ const COLUMNAS_EDITABLES={fechaMiami:"fecha_miami",peso:"peso",estado:"estado",a
 export const corregirTipoTrackingActivo = async ({ tracking, nuevoTipo, proveedorAduana, facturaProveedor = null, configOperativa, auth }) => {
   if (!["Marítimo", "Aéreo"].includes(nuevoTipo)) throw new Error("Tipo de envío inválido.");
   if (!tracking?.id) throw new Error("Tracking inválido.");
-  if (!proveedorAduana?.id) throw new Error("El tracking no tiene un proveedor de Aduana / Flete válido.");
+  if (tracking.envioId || tracking.estado === "Entregado") {
+    throw new Error("Solo se puede corregir el tipo de un tracking activo sin recibo.");
+  }
   if (facturaProveedor) {
     throw new Error(`Este tracking ya está incluido en la factura de proveedor ${facturaProveedor.numeroFactura || "#" + facturaProveedor.id}. Corrige primero esa factura para no alterar costos históricos.`);
   }
 
   const costoInterno = costoProveedorPorTipo(proveedorAduana, nuevoTipo, configOperativa);
-  const { error } = await supabase.from("tracking_registros").update({
+  const actualizacion = supabase.from("tracking_registros").update({
     tipo_envio: nuevoTipo,
     costo_interno: costoInterno,
     updated_by: auth.session?.user?.id || null,
     updated_by_name: auth.usuarioActual?.nombre || auth.usuarioActual?.email || auth.session?.user?.email || "Usuario"
-  }).eq("id", tracking.id);
+  }).eq("id", tracking.id).is("envio_id", null)
+    .or("estado.neq.Entregado,estado.is.null");
+  const tipoActual = tracking.tipoEnvio === "Marítimo"
+    ? actualizacion.or("tipo_envio.eq.Marítimo,tipo_envio.is.null")
+    : actualizacion.eq("tipo_envio", tracking.tipoEnvio);
+  const { data, error } = await tipoActual.select("id").maybeSingle();
   if (error) throw error;
+  if (!data) throw new Error("El tracking cambió o no está disponible. Recarga la lista antes de editarlo.");
 
   await registrarAuditoria({
     ...auth,
     accion: "Corrigió tipo de tracking",
     modulo: "Trackings",
     registroCodigo: tracking.tracking || tracking.almacenId || "",
-    detalle: `${tracking.tipoEnvio || "Sin tipo"} → ${nuevoTipo} · ${proveedorAduana.nombre} · ${costoInterno.toFixed(2)}/lb`
+    detalle: `${tracking.tipoEnvio || "Sin tipo"} → ${nuevoTipo} · ${proveedorAduana?.nombre || "Tarifa operativa"} · ${costoInterno.toFixed(2)}/lb`
   });
 
   return { costoInterno };
