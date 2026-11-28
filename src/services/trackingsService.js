@@ -18,16 +18,21 @@ const asegurarTrackingUnico = async (codigo, excluirId = null) => {
   if (data?.length) throw new Error(`El tracking ${limpio} ya está registrado.`);
 };
 
-export const confirmarTracking = async ({ tracking, tipoEnvio, clientesEnMemoria, proveedorAduana, almacenId, fechaRecepcion, configOperativa, auth }) => {
-  if (!Object.hasOwn(COSTO_INTERNO_DEFAULT, tipoEnvio)) throw new Error("Selecciona un tipo de envío válido.");
-  if (!proveedorAduana?.id) throw new Error("Selecciona el proveedor de Aduana / Flete.");
-  if (!String(almacenId || "").trim()) throw new Error("Escribe el ID de almacén.");
+const validarFechaRecepcionMiami = (fechaRecepcion) => {
   const fechaMiami = `${fechaRecepcion}T12:00:00-06:00`;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaRecepcion)
       || fechaCalendarioNicaragua(fechaMiami) !== fechaRecepcion
       || fechaRecepcion > fechaCalendarioNicaragua()) {
     throw new Error("Selecciona una fecha de recepción válida que no sea futura.");
   }
+  return fechaMiami;
+};
+
+export const confirmarTracking = async ({ tracking, tipoEnvio, clientesEnMemoria, proveedorAduana, almacenId, fechaRecepcion, configOperativa, auth }) => {
+  if (!Object.hasOwn(COSTO_INTERNO_DEFAULT, tipoEnvio)) throw new Error("Selecciona un tipo de envío válido.");
+  if (!proveedorAduana?.id) throw new Error("Selecciona el proveedor de Aduana / Flete.");
+  if (!String(almacenId || "").trim()) throw new Error("Escribe el ID de almacén.");
+  const fechaMiami = validarFechaRecepcionMiami(fechaRecepcion);
   let clienteResuelto = null;
   if (tracking.clienteId) {
     const existentePorId = clientesEnMemoria.find((c) => c.id === tracking.clienteId);
@@ -63,20 +68,21 @@ export const actualizarPrealerta = async ({ tracking, cambios, auth }) => {
 };
 
 export const registrarTracking = async ({ form, clientesEnMemoria, proveedorAduana, configOperativa, auth }) => {
-  const {cliente,contacto,destino,tipoEnvio,codigo,almacenId,nota,estadoInicial="Prealertado"}=form;
+  const {cliente,contacto,destino,tipoEnvio,codigo,almacenId,nota,estadoInicial="Prealertado",fechaRecepcion}=form;
   if(!cliente.trim()) throw new Error("Escribe el nombre del cliente.");
   if(!contacto.trim()) throw new Error("Escribe el WhatsApp del cliente.");
   if(!codigo.trim()) throw new Error("Escribe el número de tracking.");
-  await asegurarTrackingUnico(codigo);
   if(!proveedorAduana?.id) throw new Error("Selecciona el proveedor de Aduana / Flete.");
   if(estadoInicial==="Miami"&&!String(almacenId||"").trim()) throw new Error("Para registrar como Recibido en Miami debes escribir el ID de almacén.");
+  const fechaMiami = estadoInicial === "Miami" ? validarFechaRecepcionMiami(fechaRecepcion) : null;
+  await asegurarTrackingUnico(codigo);
   const clienteResuelto=await resolverCliente({clientesEnMemoria,nombre:cliente,telefono:contacto,tipo:"General",auth});
   const costoInterno=costoProveedorPorTipo(proveedorAduana,tipoEnvio,configOperativa);
   const ahora=new Date().toISOString();
-  const {error}=await supabase.from("tracking_registros").insert([{cliente,contacto,destino,tipo_envio:tipoEnvio,tracking:codigo.trim(),almacen_id:String(almacenId||"").trim(),nota:String(nota||"").slice(0,160),peso:0,estado:estadoInicial,fecha_miami:estadoInicial==="Miami"?ahora:null,origen_registro:"manual",proveedor_aduana_id:proveedorAduana.id,costo_interno:costoInterno,cliente_id:clienteResuelto.id,cliente_codigo:clienteResuelto.codigo,cliente_tipo:clienteResuelto.tipo,fecha:ahora,...firmarPayload(auth)}]);
+  const {error}=await supabase.from("tracking_registros").insert([{cliente,contacto,destino,tipo_envio:tipoEnvio,tracking:codigo.trim(),almacen_id:String(almacenId||"").trim(),nota:String(nota||"").slice(0,160),peso:0,estado:estadoInicial,fecha_miami:fechaMiami,origen_registro:"manual",proveedor_aduana_id:proveedorAduana.id,costo_interno:costoInterno,cliente_id:clienteResuelto.id,cliente_codigo:clienteResuelto.codigo,cliente_tipo:clienteResuelto.tipo,fecha:ahora,...firmarPayload(auth)}]);
   if(error?.code==="23505") throw new Error(`El tracking ${codigo.trim()} ya está registrado.`);
   if(error) throw error;
-  await registrarAuditoria({...auth,accion:"Registró tracking",modulo:"Trackings",registroCodigo:codigo||almacenId,detalle:`${cliente} · ${estadoInicial==="Miami"?"Recibido en Miami":"Prealertado"} · ${proveedorAduana.nombre} · $${costoInterno.toFixed(2)}/lb`});
+  await registrarAuditoria({...auth,accion:"Registró tracking",modulo:"Trackings",registroCodigo:codigo||almacenId,detalle:`${cliente} · ${estadoInicial==="Miami"?`Recibido en Miami el ${fechaRecepcion.split("-").reverse().join("/")}`:"Prealertado"} · ${proveedorAduana.nombre} · $${costoInterno.toFixed(2)}/lb`});
 };
 
 const COLUMNAS_EDITABLES={fechaMiami:"fecha_miami",peso:"peso",estado:"estado",almacenId:"almacen_id",costoInterno:"costo_interno",nota:"nota",tipoEnvio:"tipo_envio"};
